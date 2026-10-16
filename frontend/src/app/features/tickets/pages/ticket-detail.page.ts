@@ -50,7 +50,8 @@ export class TicketDetailPage {
     await this.tickets.loadTicket(id);
     const ticket = this.tickets.selected();
     if (ticket?.status !== 'VALID') return;
-    const qrCode = await import('qrcode');
+    const imported = await import('qrcode');
+    const qrCode = 'default' in imported ? imported.default : imported;
     this.qr.set(await qrCode.toDataURL(ticket.code, { width: 256, margin: 2,
       errorCorrectionLevel: 'H', color: { dark: '#080808', light: '#f5f2ec' } }));
   }

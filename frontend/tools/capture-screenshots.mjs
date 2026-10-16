@@ -85,7 +85,7 @@ try {
 
   const general = page.locator('app-ticket-type-card').filter({ hasText: 'General' });
   await general.getByRole('button', { name: 'Añadir una entrada' }).click();
-  await page.locator('#entradas').evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await page.locator('#entradas').evaluate((element) => window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY - 130));
   await general.locator('.ticket-price-equation').getByText('× 2').waitFor();
   await capture(page, '05-ticket-selection.png');
 
