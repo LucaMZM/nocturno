@@ -49,7 +49,7 @@ try {
   const publicContext = await browser.newContext(contextOptions);
   const page = await publicContext.newPage();
   page.on('pageerror', (error) => console.error('Browser error:', error.message));
-  page.on('console', (message) => { if (message.text().startsWith('[map]')) console.log(message.text()); });
+  page.on('console', (message) => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await page.goto('/');
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
