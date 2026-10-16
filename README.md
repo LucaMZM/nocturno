@@ -4,6 +4,8 @@
 
 ![Angular 22](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white) ![TypeScript 6](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white) ![Node.js 24](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white) ![Express 5](https://img.shields.io/badge/Express-5-222222?logo=express&logoColor=white) ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white) ![Stripe test](https://img.shields.io/badge/Stripe-test%20integration-635BFF?logo=stripe&logoColor=white)
 
+[![CI](https://github.com/LucaMZM/nocturno/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LucaMZM/nocturno/actions/workflows/ci.yml) ![License: All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-555555)
+
 [Capturas](docs/screenshots/README.md) · [API local](#api-y-pruebas) · [Fuentes de la demo](docs/demo-sources.md)
 
 **Proyecto independiente de portfolio.** Los datos de algunos locales proceden de fuentes públicas; los eventos, precios y entradas de Nocturno son simulaciones. No existe afiliación ni venta oficial para esos locales. No hay una demo desplegada ni una API pública.
