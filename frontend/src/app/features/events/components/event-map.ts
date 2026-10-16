@@ -23,11 +23,14 @@ export class EventMapComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit() { void this.setup(); }
 
   private async setup() {
+    console.info('[map] setup', { browser: this.browser, host: !!this.host, initialized: !!this.map });
     if (!this.browser || !this.host || this.map) return;
     const leaflet = await import('leaflet');
+    console.info('[map] leaflet imported', { host: !!this.host });
     if (!this.host) return;
     this.leaflet = leaflet;
     this.map = leaflet.map(this.host.nativeElement, { scrollWheelZoom: false });
+    console.info('[map] leaflet initialized');
     leaflet.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
