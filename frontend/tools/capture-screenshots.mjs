@@ -48,6 +48,7 @@ async function assertNoAppError(page) {
 try {
   const publicContext = await browser.newContext(contextOptions);
   const page = await publicContext.newPage();
+  page.on('pageerror', (error) => console.error('Browser error:', error.message));
   await page.goto('/');
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
@@ -58,7 +59,15 @@ try {
   await capture(page, '02-discover.png');
 
   await page.getByRole('button', { name: 'Mapa', exact: true }).click();
-  await page.locator('.nocturno-map-pin').first().waitFor({ timeout: 20000 });
+  await page.waitForTimeout(2500);
+  console.log('Map diagnostics:', await page.evaluate(() => ({
+    map: document.querySelectorAll('.event-map').length,
+    markers: document.querySelectorAll('.nocturno-map-pin').length,
+    tiles: document.querySelectorAll('.leaflet-tile-loaded').length,
+    alerts: [...document.querySelectorAll('[role="alert"]')].map((node) => node.textContent?.trim()),
+    status: document.querySelector('.map-status')?.textContent?.trim(),
+  })));
+  await page.locator('.nocturno-map-pin').first().waitFor({ state: 'attached', timeout: 20000 });
   await page.locator('.leaflet-tile-loaded').first().waitFor({ timeout: 20000 });
   await page.evaluate(() => window.scrollTo(0, 560));
   await capture(page, '03-discover-map.png');
