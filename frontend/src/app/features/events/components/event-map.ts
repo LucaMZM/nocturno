@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { afterNextRender, Component, ElementRef, inject, input, OnDestroy, PLATFORM_ID, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, input, OnDestroy, PLATFORM_ID, ViewChild } from '@angular/core';
 import type * as Leaflet from 'leaflet';
 import type { Event } from '../../../core/models/domain.model';
 import { euro, formatDistance } from '../../../shared/utils/format';
@@ -9,7 +9,7 @@ import { euro, formatDistance } from '../../../shared/utils/format';
   template: `<div #mapHost class="event-map" role="application" aria-label="Mapa de eventos"></div>
     <p class="map-attribution-note">Mapa © OpenStreetMap contributors. {{ place() ? 'Ubicación del local.' : 'Los marcadores muestran eventos de la búsqueda actual.' }}</p>`,
 })
-export class EventMapComponent implements OnDestroy {
+export class EventMapComponent implements AfterViewInit, OnDestroy {
   readonly events = input.required<Event[]>();
   readonly center = input<{ latitude: number; longitude: number } | null>(null);
   readonly place = input<{ name: string; latitude: number; longitude: number } | null>(null);
@@ -20,9 +20,7 @@ export class EventMapComponent implements OnDestroy {
   private renderVersion = 0;
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
 
-  constructor() {
-    afterNextRender(() => { void this.setup(); });
-  }
+  ngAfterViewInit() { void this.setup(); }
 
   private async setup() {
     if (!this.browser || !this.host || this.map) return;
