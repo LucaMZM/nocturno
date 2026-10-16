@@ -1,0 +1,84 @@
+name: Capture portfolio screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17.11-alpine3.24
+        env:
+          POSTGRES_DB: nocturno_capture
+          POSTGRES_USER: nocturno_capture
+          POSTGRES_PASSWORD: capture_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nocturno_capture -d nocturno_capture"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://nocturno_capture:capture_only_password@localhost:5432/nocturno_capture
+      CORS_ORIGIN: http://localhost:4200
+      FRONTEND_URL: http://localhost:4200
+      JWT_ACCESS_SECRET: capture-only-access-secret-never-use-outside-ci
+      JWT_REFRESH_SECRET: capture-only-refresh-secret-never-use-outside-ci
+      DEMO_USER_EMAIL: user@nocturno.test
+      DEMO_USER_PASSWORD: UserDemo!2026
+      DEMO_ADMIN_EMAIL: admin@nocturno.test
+      DEMO_ADMIN_PASSWORD: AdminDemo!2026
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install, migrate and seed backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run db:migrate
+          npm run db:seed
+      - name: Install frontend and isolated Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Start API and Angular in runner
+        run: |
+          npm --prefix backend start > /tmp/nocturno-api.log 2>&1 &
+          npm --prefix frontend start -- --host 127.0.0.1 --port 4200 > /tmp/nocturno-angular.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://localhost:3000/health > /dev/null && curl --fail --silent http://localhost:4200/ > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/nocturno-api.log /tmp/nocturno-angular.log
+          exit 1
+      - name: Capture real application views
+        working-directory: frontend
+        run: node tools/capture-screenshots.mjs
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nocturno-screenshots
+          path: docs/screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Show server logs on failure
+        if: failure()
+        run: cat /tmp/nocturno-api.log /tmp/nocturno-angular.log
