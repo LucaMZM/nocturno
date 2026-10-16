@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/LucaMZM/nocturno/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/LucaMZM/nocturno/actions/workflows/ci.yml) ![License: All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-555555)
 
-[Capturas](docs/screenshots/README.md) · [API local](#api-y-pruebas) · [Fuentes de la demo](docs/demo-sources.md)
+[Capturas](#capturas) · [API local](#api-y-pruebas) · [Fuentes de la demo](docs/demo-sources.md)
 
 **Proyecto independiente de portfolio.** Los datos de algunos locales proceden de fuentes públicas; los eventos, precios y entradas de Nocturno son simulaciones. No existe afiliación ni venta oficial para esos locales. No hay una demo desplegada ni una API pública.
 
@@ -16,7 +16,25 @@ Quien busca una sesión necesita conocer local, ubicación y disponibilidad; qui
 
 ## Capturas
 
-Las capturas reales aún no están disponibles. La [guía de capturas](docs/screenshots/README.md) prepara una portada y grupos Discover/Mapa, Event/Ticketing, Dashboard/Check-in y Account/QR. Las imágenes se incorporarán tras capturarlas y revisar datos personales y permisos de uso.
+<p align="center"><img src="docs/screenshots/01-home.png" width="900" alt="Portada y buscador de Nocturno" /></p>
+
+| Discover | Mapa |
+| :---: | :---: |
+| <img src="docs/screenshots/02-discover.png" width="420" alt="Listado de eventos en Valencia" /> | <img src="docs/screenshots/03-discover-map.png" width="420" alt="Eventos de Valencia sobre el mapa" /> |
+
+| Detalle del evento | Selección de entradas |
+| :---: | :---: |
+| <img src="docs/screenshots/04-event-detail.png" width="420" alt="Detalle de un evento demo en Palau Alameda" /> | <img src="docs/screenshots/05-ticket-selection.png" width="420" alt="Tipos de entrada y cálculo de dos entradas" /> |
+
+| Mis entradas | QR individual |
+| :---: | :---: |
+| <img src="docs/screenshots/07-account-ticket.png" width="420" alt="Entradas de la cuenta demo" /> | <img src="docs/screenshots/08-ticket-qr.png" width="420" alt="Entrada demo con QR ya invalidado" /> |
+
+| Dashboard | Check-in |
+| :---: | :---: |
+| <img src="docs/screenshots/09-dashboard.png" width="420" alt="Métricas del panel administrador" /> | <img src="docs/screenshots/10-checkin.png" width="420" alt="Acceso de entrada validado en el centro de check-in" /> |
+
+El [carrito con dos entradas](docs/screenshots/06-cart.png) completa el recorrido visual. Todas las capturas proceden de la aplicación levantada con el seed en un runner aislado de GitHub Actions. El código del QR mostrado se invalidó mediante check-in antes de publicar la imagen. [Proceso y archivos](docs/screenshots/README.md).
 
 ## Funcionalidades
 
