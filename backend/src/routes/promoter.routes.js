@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import { promoterController as c } from '../controllers/promoter.controller.js';
+import { validate, validateId, listQuery, publicSlug } from '../validators/common.js';
+import { promoterCreate, promoterPatch } from '../validators/promoter.validator.js';
+import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+import { requireOwnPromoter } from '../middlewares/ownership.middleware.js';
+export const promoterRoutes = Router();
+promoterRoutes.get('/', validate(listQuery, 'query'), c.list);
+promoterRoutes.get('/slug/:slug', validate(publicSlug, 'params'), c.publicProfile);
+promoterRoutes.post('/', requireAuth, requireRole('ADMIN'), validate(promoterCreate), c.create);
+promoterRoutes.get('/:id', validateId(), c.get);
+promoterRoutes.patch('/:id', requireAuth, requireRole('ADMIN', 'PROMOTER'), validateId(), requireOwnPromoter, validate(promoterPatch), c.update);
+promoterRoutes.delete('/:id', requireAuth, requireRole('ADMIN'), validateId(), c.remove);

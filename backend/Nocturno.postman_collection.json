@@ -1,0 +1,1081 @@
+{
+  "info": {
+    "name": "Nocturno API · flujo completo",
+    "description": "API real de Nocturno. Inicia sesión; Postman conserva la cookie HttpOnly para refresh. Consulta backend/postman.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "email",
+      "value": "user@nocturno.test"
+    },
+    {
+      "key": "password",
+      "value": "UserDemo!2026"
+    },
+    {
+      "key": "displayName",
+      "value": "Usuario Postman"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
+    },
+    {
+      "key": "eventSlug",
+      "value": ""
+    },
+    {
+      "key": "ticketTypeId",
+      "value": ""
+    },
+    {
+      "key": "cartItemId",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "ticketId",
+      "value": ""
+    },
+    {
+      "key": "ticketCode",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "venueId",
+      "value": "10000000-0000-4000-8000-000000000001"
+    },
+    {
+      "key": "promoterId",
+      "value": "20000000-0000-4000-8000-000000000002"
+    },
+    {
+      "key": "paymentIntentId",
+      "value": ""
+    },
+    {
+      "key": "stripeSignature",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health y Auth",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"{{displayName}}\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json().data; pm.collectionVariables.set(\"accessToken\", data.accessToken); pm.collectionVariables.set(\"userId\", data.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json().data; pm.collectionVariables.set(\"accessToken\", data.accessToken); pm.collectionVariables.set(\"userId\", data.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const data = pm.response.json().data; pm.collectionVariables.set(\"accessToken\", data.accessToken); pm.collectionVariables.set(\"userId\", data.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Nuevo nombre\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/openapi.json"
+          }
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/docs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Discover y Events",
+      "item": [
+        {
+          "name": "Public events + filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events?municipality=Valencia&genre=TECHNO&page=1&limit=12",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const events = pm.response.json().data; if (events.length) { pm.collectionVariables.set(\"eventId\", events[0].id); pm.collectionVariables.set(\"eventSlug\", events[0].slug); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Events near Valencia",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events?latitude=39.47&longitude=-0.37&radiusKm=10&sort=distance&page=1&limit=12",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Nearby techno below 20 EUR",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events?municipality=Valencia&genre=TECHNO&maxPrice=20&latitude=39.47&longitude=-0.37&radiusKm=10&sort=distance",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Event by slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events/slug/{{eventSlug}}",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Atmosphere filter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events?atmosphere=UNDERGROUND"
+          }
+        },
+        {
+          "name": "Managed event by UUID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events/{{eventId}}"
+          }
+        },
+        {
+          "name": "Create event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venueId\": \"{{venueId}}\",\n  \"promoterId\": \"{{promoterId}}\",\n  \"title\": \"Noche Postman\",\n  \"eventType\": \"CLUB\",\n  \"startsAt\": \"2027-06-01T22:00:00+02:00\",\n  \"endsAt\": \"2027-06-02T05:00:00+02:00\",\n  \"status\": \"DRAFT\",\n  \"musicGenres\": [\n    \"TECHNO\"\n  ],\n  \"atmosphere\": [\n    \"UNDERGROUND\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const event = pm.response.json().data; pm.collectionVariables.set(\"eventId\", event.id); pm.collectionVariables.set(\"eventSlug\", event.slug);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rename event (new slug)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Noche Postman Renovada\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"eventSlug\", pm.response.json().data.slug);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publish event",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\",\n  \"isActive\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Soft delete event",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events/{{eventId}}/soft-delete",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          }
+        },
+        {
+          "name": "Toggle event active",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events/{{eventId}}/active",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete event (soft-delete alias)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Mismo borrado lógico que /soft-delete."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Venues y Promoters",
+      "item": [
+        {
+          "name": "List venues",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/venues?page=1&limit=20",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Create venue (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/venues",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sala Postman\",\n  \"type\": \"CLUB\",\n  \"province\": \"Valencia\",\n  \"municipality\": \"Valencia\",\n  \"address\": \"Carrer de Prova 1\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"venueId\", pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update venue (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/venues/{{venueId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 250\n}"
+            }
+          }
+        },
+        {
+          "name": "List promoters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/promoters?page=1&limit=20",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Create promoter (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/promoters",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Promotora Postman\",\n  \"email\": \"postman-promoter@example.com\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"promoterId\", pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update promoter",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/promoters/{{promoterId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+34960000000\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"displayName\": \"{{displayName}}\",\n  \"role\": \"USER\"\n}"
+            },
+            "description": "ADMIN. Usa un correo nuevo para evitar un conflicto."
+          }
+        },
+        {
+          "name": "Admin get user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Admin update user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Usuario actualizado\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "Elimina el usuario indicado. Solo ADMIN."
+          }
+        },
+        {
+          "name": "Get promoter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/promoters/{{promoterId}}"
+          }
+        },
+        {
+          "name": "Delete promoter",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/promoters/{{promoterId}}",
+            "description": "Requiere ADMIN y que el promotor no tenga eventos relacionados."
+          }
+        },
+        {
+          "name": "Get venue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/venues/{{venueId}}"
+          }
+        },
+        {
+          "name": "Delete venue",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/venues/{{venueId}}",
+            "description": "Requiere ADMIN y que el local no tenga eventos relacionados."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Entradas y favoritos",
+      "item": [
+        {
+          "name": "Event ticket types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events/{{eventId}}/ticket-types?page=1&limit=20",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items=pm.response.json().data; if(items.length) pm.collectionVariables.set(\"ticketTypeId\",items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ticket type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events/{{eventId}}/ticket-types",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"General Postman\",\n  \"price\": 15.5,\n  \"quantity\": 100,\n  \"maxPerUser\": 4,\n  \"benefits\": [\n    \"Acceso general\"\n  ],\n  \"active\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"ticketTypeId\",pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update ticket type",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ticket-types/{{ticketTypeId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 18\n}"
+            }
+          }
+        },
+        {
+          "name": "My favorites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/me/favorites?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Add favorite",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/me/favorites/{{eventId}}"
+          }
+        },
+        {
+          "name": "Remove favorite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/me/favorites/{{eventId}}"
+          }
+        },
+        {
+          "name": "Get ticket type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/ticket-types/{{ticketTypeId}}"
+          }
+        },
+        {
+          "name": "Delete ticket type",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/ticket-types/{{ticketTypeId}}",
+            "description": "Puede fallar si ya hay compras relacionadas."
+          }
+        },
+        {
+          "name": "Legacy list user favorites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}/favorites?page=1&limit=20",
+            "description": "Solo el dueño o ADMIN. La interfaz actual usa /api/me/favorites."
+          }
+        },
+        {
+          "name": "Legacy add user favorite",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}/favorites/{{eventId}}",
+            "description": "Solo el dueño o ADMIN."
+          }
+        },
+        {
+          "name": "Legacy remove user favorite",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}/favorites/{{eventId}}",
+            "description": "Solo el dueño o ADMIN."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cart, checkout y pedidos",
+      "item": [
+        {
+          "name": "Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart"
+          }
+        },
+        {
+          "name": "Add 2 tickets",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/cart/items",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketTypeId\": \"{{ticketTypeId}}\",\n  \"quantity\": 2\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items=pm.response.json().data.items; if(items.length) pm.collectionVariables.set(\"cartItemId\",items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change quantity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}"
+          }
+        },
+        {
+          "name": "Empty cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/cart/items"
+          }
+        },
+        {
+          "name": "Stripe config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/config/payments",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Start checkout (reuse same key on retry)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"orderId\",pm.response.json().data.order.id);"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"idempotencyKey\")) pm.collectionVariables.set(\"idempotencyKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/orders?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Order detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "Stripe signed webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Stripe-Signature",
+                "value": "{{stripeSignature}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/stripe/webhook",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"payment_intent.succeeded\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"{{paymentIntentId}}\",\n      \"amount_received\": 0,\n      \"currency\": \"eur\"\n    }\n  }\n}"
+            },
+            "description": "Solo acepta firma real de Stripe en Stripe-Signature. Para la prueba local usa Stripe CLI; una firma manual o inventada devuelve 400.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tickets y dashboard",
+      "item": [
+        {
+          "name": "My tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tickets?page=1&limit=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items=pm.response.json().data; if(items.length){pm.collectionVariables.set(\"ticketId\",items[0].id);pm.collectionVariables.set(\"ticketCode\",items[0].code);}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ticket detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}"
+          }
+        },
+        {
+          "name": "Check in (ADMIN/PROMOTER)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/tickets/{{ticketCode}}/check-in",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Dashboard summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard"
+          }
+        },
+        {
+          "name": "Managed events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/events?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Sales",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/sales?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Attendees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/events/{{eventId}}/attendees?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Admin users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users?page=1&limit=20&role=PROMOTER"
+          }
+        },
+        {
+          "name": "Admin orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/orders?page=1&limit=20&status=PAID"
+          }
+        },
+        {
+          "name": "Admin payments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/payments?page=1&limit=20&status=PAID"
+          }
+        },
+        {
+          "name": "Admin tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tickets/admin/all?page=1&limit=20&status=VALID"
+          }
+        }
+      ]
+    }
+  ]
+}

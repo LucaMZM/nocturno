@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { venueController as c } from '../controllers/venue.controller.js';
+import { validate, validateId, listQuery, publicSlug } from '../validators/common.js';
+import { venueCreate, venuePatch } from '../validators/venue.validator.js';
+import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+export const venueRoutes = Router();
+venueRoutes.get('/', validate(listQuery, 'query'), c.list);
+venueRoutes.get('/slug/:slug', validate(publicSlug, 'params'), c.publicProfile);
+venueRoutes.post('/', requireAuth, requireRole('ADMIN'), validate(venueCreate), c.create);
+venueRoutes.get('/:id', validateId(), c.get);
+venueRoutes.patch('/:id', requireAuth, requireRole('ADMIN'), validateId(), validate(venuePatch), c.update);
+venueRoutes.delete('/:id', requireAuth, requireRole('ADMIN'), validateId(), c.remove);

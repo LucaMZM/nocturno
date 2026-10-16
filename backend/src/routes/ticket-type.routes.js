@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { ticketTypeController as c } from '../controllers/ticket-type.controller.js';
+import { validate, validateId } from '../validators/common.js';
+import { ticketTypePatch } from '../validators/ticket-type.validator.js';
+import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+import { requireTicketTypeManager } from '../middlewares/ownership.middleware.js';
+export const ticketTypeRoutes = Router();
+ticketTypeRoutes.get('/:id', requireAuth, requireRole('ADMIN', 'PROMOTER'), validateId(), requireTicketTypeManager, c.get);
+ticketTypeRoutes.patch('/:id', requireAuth, requireRole('ADMIN', 'PROMOTER'), validateId(), requireTicketTypeManager, validate(ticketTypePatch), c.update);
+ticketTypeRoutes.delete('/:id', requireAuth, requireRole('ADMIN', 'PROMOTER'), validateId(), requireTicketTypeManager, c.remove);

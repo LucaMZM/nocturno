@@ -1,0 +1,11 @@
+<app-header
+  [municipality]="location.municipality()"
+  [municipalities]="location.municipalities()"
+  (locationChanged)="changeLocation($event)"
+/>
+<main id="main-content"><router-outlet /></main>
+<footer class="site-footer">
+  <div class="page-width footer-inner">
+    <strong>NOCTURNO.</strong><span>Descubre la noche a tu manera.</span><span>© {{ year }}</span>
+  </div>
+</footer>

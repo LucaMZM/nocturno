@@ -1,0 +1,101 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { app } from '../src/app.js';
+import { env } from '../src/config/env.js';
+import { getPool, closePool } from '../src/config/db.js';
+import { hashPassword } from '../src/utils/password.js';
+
+// Uses only its own fixtures. The final SQL cleanup removes these rows and their test relations.
+test('event lifecycle keeps UUID relations and public slug visibility', { skip: !env.DATABASE_URL }, async () => {
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise((resolve) => server.once('listening', resolve));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const ids = [];
+  const venueId = randomUUID();
+  const userId = randomUUID();
+  let accessToken = null;
+  const call = async (path, method = 'GET', payload) => {
+    const response = await fetch(origin + path, {
+      method, headers: { 'content-type': 'application/json', ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) })
+    });
+    return { status: response.status, body: response.status === 204 ? null : await response.json() };
+  };
+  try {
+    await getPool().query(`INSERT INTO venues (id, name, slug, type, province, municipality, address)
+      VALUES ($1, 'Lifecycle fixture', $2, 'CLUB', 'Valencia', 'Valencia', 'Fixture street')`,
+      [venueId, `lifecycle-${venueId}`]);
+    const email = `lifecycle-${userId}@example.com`;
+    await getPool().query(`INSERT INTO users (id, email, display_name, role, password_hash)
+      VALUES ($1, $2, 'Lifecycle fixture', 'ADMIN', $3)`, [userId, email, await hashPassword('fixture-password-123')]);
+    const login = await call('/api/auth/login', 'POST', { email, password: 'fixture-password-123' });
+    assert.equal(login.status, 200);
+    accessToken = login.body.data.accessToken;
+    const name = `Lifecycle test ${randomUUID().slice(0, 8)}`;
+    const payload = { venueId, title: name,
+      eventType: 'CLUB', startsAt: '2027-01-01T21:00:00+01:00', endsAt: '2027-01-02T05:00:00+01:00', status: 'PUBLISHED',
+      sourceUrl: 'https://example.com/event', imageSourceUrl: 'https://example.com/image' };
+    const paseo = await call('/api/events', 'POST', { ...payload, title: 'Paseo en barca por El Retiro' });
+    assert.equal(paseo.status, 201);
+    ids.push(paseo.body.data.id);
+    assert.equal(paseo.body.data.slug, 'paseo-en-barca-por-el-retiro');
+    const renamedPaseo = await call(`/api/events/${paseo.body.data.id}`, 'PATCH',
+      { title: 'Paseo por El Retiro' });
+    assert.equal(renamedPaseo.status, 200);
+    assert.equal(renamedPaseo.body.data.slug, 'paseo-por-el-retiro');
+    const first = await call('/api/events', 'POST', payload);
+    assert.equal(first.status, 201, JSON.stringify(first.body));
+    const event = first.body.data; ids.push(event.id);
+    assert.equal(event.sourceUrl, payload.sourceUrl);
+    assert.equal(event.imageSourceUrl, payload.imageSourceUrl);
+    assert.equal(event.updatedAt, null);
+    assert.equal(event.isActive, true);
+    const second = await call('/api/events', 'POST', payload);
+    assert.equal(second.status, 201); ids.push(second.body.data.id);
+    assert.notEqual(second.body.data.slug, event.slug);
+    assert.equal((await call(`/api/events/${event.id}`)).status, 200);
+    assert.equal((await call('/api/events/not-a-uuid')).status, 400);
+    assert.equal((await call(`/api/events/slug/${event.slug}`)).status, 200);
+    assert.equal((await call(`/api/events/${second.body.data.id}`, 'PATCH', { status: 'SOLD_OUT' })).status, 200);
+    assert.equal((await call(`/api/events/slug/${second.body.data.slug}`)).status, 200);
+    assert.equal((await call('/api/events/slug/does-not-exist-lifecycle-test')).status, 404);
+    const collision = await call(`/api/events/${second.body.data.id}`, 'PATCH', { title: name });
+    assert.equal(collision.status, 200);
+    assert.notEqual(collision.body.data.slug, event.slug);
+    const changed = await call(`/api/events/${event.id}`, 'PATCH', { title: `${name} edited` });
+    assert.equal(changed.status, 200);
+    assert.notEqual(changed.body.data.slug, event.slug);
+    assert.equal((await call(`/api/events/slug/${event.slug}`)).status, 404);
+    const newSlug = changed.body.data.slug;
+    assert.ok(changed.body.data.updatedAt);
+    assert.equal((await call(`/api/events/${event.id}/active`, 'PATCH', { isActive: false })).body.data.isActive, false);
+    assert.equal((await call(`/api/events/slug/${newSlug}`)).status, 404);
+    const list = await call(`/api/events?search=${encodeURIComponent(name)}`);
+    assert.equal(list.body.data.some((item) => item.id === event.id), false);
+    assert.equal(list.body.data.some((item) => item.id === second.body.data.id), true);
+    assert.equal((await call(`/api/events/${event.id}/active`, 'PATCH', { isActive: true })).body.data.isActive, true);
+    assert.equal((await call(`/api/events/slug/${newSlug}`)).status, 200);
+    assert.equal((await call(`/api/events/${event.id}/ticket-types`, 'POST', { name: 'Fixture', price: 1, quantity: 1 })).status, 201);
+    assert.equal((await call(`/api/users/${userId}/favorites/${event.id}`, 'POST')).status, 201);
+    const deleted = await call(`/api/events/${event.id}/soft-delete`, 'PATCH');
+    assert.equal(deleted.status, 200);
+    assert.equal(deleted.body.data.isActive, false);
+    assert.ok(deleted.body.data.deletedAt);
+    assert.ok(deleted.body.data.updatedAt);
+    assert.equal((await call(`/api/events/slug/${newSlug}`)).status, 404);
+    assert.equal((await call(`/api/events/${event.id}`)).status, 200);
+    assert.equal((await call(`/api/events/${event.id}/active`, 'PATCH', { isActive: true })).status, 409);
+    assert.equal((await call(`/api/users/${userId}/favorites`)).body.data.some((item) => item.id === event.id), false);
+    const relations = await getPool().query(`SELECT (SELECT count(*) FROM ticket_types WHERE event_id = $1) AS tickets,
+      (SELECT count(*) FROM favorites WHERE event_id = $1) AS favorites`, [event.id]);
+    assert.equal(Number(relations.rows[0].tickets), 1);
+    assert.equal(Number(relations.rows[0].favorites), 1);
+  } finally {
+    for (const id of ids) await getPool().query('DELETE FROM events WHERE id = $1', [id]);
+    await getPool().query('DELETE FROM users WHERE id = $1', [userId]);
+    await getPool().query('DELETE FROM venues WHERE id = $1', [venueId]);
+    await new Promise((resolve) => server.close(resolve));
+    await closePool();
+  }
+});

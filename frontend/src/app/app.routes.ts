@@ -1,0 +1,48 @@
+import { Routes } from '@angular/router';
+import { authGuard, roleGuard } from './features/auth/auth.guard';
+
+export const routes: Routes = [
+  { path: '', title: 'Descubrir · Nocturno', loadComponent: () => import('./features/events/pages/events-list.page').then((m) => m.EventsListPage) },
+  { path: 'auth/login', title: 'Iniciar sesión · Nocturno', loadComponent: () => import('./features/auth/pages/login.page').then((m) => m.LoginPage) },
+  { path: 'auth/register', title: 'Crear cuenta · Nocturno', loadComponent: () => import('./features/auth/pages/register.page').then((m) => m.RegisterPage) },
+  { path: 'events/new', redirectTo: 'dashboard/events/create' },
+  { path: 'events/:id/edit', redirectTo: 'dashboard/events/:id/edit' },
+  { path: 'events/:slug', title: 'Evento · Nocturno', loadComponent: () => import('./features/events/pages/event-detail.page').then((m) => m.EventDetailPage) },
+  { path: 'venues/:slug', title: 'Local · Nocturno', loadComponent: () => import('./features/venues/pages/venue-public.page').then((m) => m.VenuePublicPage) },
+  { path: 'promoters/:slug', title: 'Organizador · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-public.page').then((m) => m.PromoterPublicPage) },
+  { path: 'favorites', canActivate: [authGuard], title: 'Favoritos · Nocturno', loadComponent: () => import('./features/favorites/pages/favorites.page').then((m) => m.FavoritesPage) },
+  { path: 'cart', canActivate: [authGuard], title: 'Carrito · Nocturno', loadComponent: () => import('./features/cart/pages/cart.page').then((m) => m.CartPage) },
+  { path: 'checkout', canActivate: [authGuard], title: 'Finalizar compra · Nocturno', loadComponent: () => import('./features/checkout/pages/checkout.page').then((m) => m.CheckoutPage) },
+  { path: 'account', canActivate: [authGuard], loadComponent: () => import('./features/account/pages/account-layout.page').then((m) => m.AccountLayoutPage), children: [
+    { path: '', title: 'Mi perfil · Nocturno', loadComponent: () => import('./features/account/pages/profile.page').then((m) => m.ProfilePage) },
+    { path: 'favorites', title: 'Mis favoritos · Nocturno', loadComponent: () => import('./features/favorites/pages/favorites.page').then((m) => m.FavoritesPage) },
+    { path: 'orders', title: 'Mis pedidos · Nocturno', loadComponent: () => import('./features/orders/pages/orders.page').then((m) => m.OrdersPage) },
+    { path: 'orders/:id', title: 'Pedido · Nocturno', loadComponent: () => import('./features/orders/pages/order-detail.page').then((m) => m.OrderDetailPage) },
+    { path: 'tickets', title: 'Mis entradas · Nocturno', loadComponent: () => import('./features/tickets/pages/tickets.page').then((m) => m.TicketsPage) },
+    { path: 'tickets/:id', title: 'Entrada · Nocturno', loadComponent: () => import('./features/tickets/pages/ticket-detail.page').then((m) => m.TicketDetailPage) },
+  ] },
+  { path: 'dashboard', canActivate: [roleGuard], data: { roles: ['ADMIN', 'PROMOTER'] }, loadComponent: () => import('./features/dashboard/pages/dashboard-layout.page').then((m) => m.DashboardLayoutPage), children: [
+    { path: '', title: 'Panel · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-home.page').then((m) => m.DashboardHomePage) },
+    { path: 'events', title: 'Eventos · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-events.page').then((m) => m.DashboardEventsPage) },
+    { path: 'events/create', title: 'Crear evento · Nocturno', loadComponent: () => import('./features/events/pages/event-create.page').then((m) => m.EventCreatePage) },
+    { path: 'events/:id/edit', title: 'Editar evento · Nocturno', loadComponent: () => import('./features/events/pages/event-edit.page').then((m) => m.EventEditPage) },
+    { path: 'events/:id/tickets', title: 'Entradas · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-ticket-types.page').then((m) => m.DashboardTicketTypesPage) },
+    { path: 'events/:id/sales', title: 'Ventas del evento · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-sales.page').then((m) => m.DashboardSalesPage) },
+    { path: 'events/:id/attendees', title: 'Asistentes · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-attendees.page').then((m) => m.DashboardAttendeesPage) },
+    { path: 'events/:id/check-in', title: 'Control de acceso · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-attendees.page').then((m) => m.DashboardAttendeesPage) },
+    { path: 'sales', title: 'Ventas · Nocturno', loadComponent: () => import('./features/dashboard/pages/dashboard-sales.page').then((m) => m.DashboardSalesPage) },
+    { path: 'venues', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Locales · Nocturno', loadComponent: () => import('./features/venues/pages/venues-list.page').then((m) => m.VenuesListPage) },
+    { path: 'venues/create', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Crear local · Nocturno', loadComponent: () => import('./features/venues/pages/venue-editor.page').then((m) => m.VenueEditorPage) },
+    { path: 'venues/:id/edit', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Editar local · Nocturno', loadComponent: () => import('./features/venues/pages/venue-editor.page').then((m) => m.VenueEditorPage) },
+    { path: 'promoters', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Promotores · Nocturno', loadComponent: () => import('./features/promoters/pages/promoters-list.page').then((m) => m.PromotersListPage) },
+    { path: 'promoters/create', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Crear promotor · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-editor.page').then((m) => m.PromoterEditorPage) },
+    { path: 'promoters/:id/edit', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Editar promotor · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-editor.page').then((m) => m.PromoterEditorPage) },
+    { path: 'profile', title: 'Perfil de promotor · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-profile.page').then((m) => m.PromoterProfilePage) },
+    { path: 'users', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Usuarios · Nocturno', loadComponent: () => import('./features/admin/pages/admin-users.page').then((m) => m.AdminUsersPage) },
+    { path: 'orders', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Pedidos · Nocturno', loadComponent: () => import('./features/admin/pages/admin-orders.page').then((m) => m.AdminOrdersPage) },
+    { path: 'orders/:id', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Detalle de pedido · Nocturno', loadComponent: () => import('./features/orders/pages/order-detail.page').then((m) => m.OrderDetailPage) },
+    { path: 'payments', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Pagos · Nocturno', loadComponent: () => import('./features/admin/pages/admin-payments.page').then((m) => m.AdminPaymentsPage) },
+    { path: 'tickets', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Entradas · Nocturno', loadComponent: () => import('./features/admin/pages/admin-tickets.page').then((m) => m.AdminTicketsPage) },
+  ] },
+  { path: '**', redirectTo: '' }
+];

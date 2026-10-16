@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { userController as c } from '../controllers/user.controller.js';
+import { validate, validateId, userListQuery } from '../validators/common.js';
+import { userCreate, userPatch } from '../validators/user.validator.js';
+import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+export const userRoutes = Router();
+userRoutes.use(requireAuth, requireRole('ADMIN'));
+userRoutes.get('/', validate(userListQuery, 'query'), c.list);
+userRoutes.post('/', validate(userCreate), c.create);
+userRoutes.get('/:id', validateId(), c.get);
+userRoutes.patch('/:id', validateId(), validate(userPatch), c.update);
+userRoutes.delete('/:id', validateId(), c.remove);
