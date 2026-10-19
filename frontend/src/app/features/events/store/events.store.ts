@@ -131,6 +131,7 @@ export const EventsStore = signalStore(
         if (
           page < DEFAULT_EVENT_PAGE ||
           page > store.pagination().totalPages ||
+          store.loading() ||
           store.loadingMore()
         )
           return;

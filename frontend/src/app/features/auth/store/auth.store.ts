@@ -84,10 +84,15 @@ export const AuthStore = signalStore(
         finally { patchState(store, { user: null, accessToken: null, initialized: true }); }
       },
       async updateProfile(displayName: string): Promise<boolean> {
+        const requestVersion = sessionVersion;
+        const userId = store.user()?.id;
         try {
-          patchState(store, { user: (await api.updateProfile(displayName)).data, error: null });
+          const updatedUser = (await api.updateProfile(displayName)).data;
+          if (requestVersion !== sessionVersion || updatedUser.id !== userId) return false;
+          patchState(store, { user: updatedUser, error: null });
           return true;
         } catch (error) {
+          if (requestVersion !== sessionVersion) return false;
           patchState(store, { error: toApiProblem(error, 'No hemos podido guardar tu perfil.').message });
           return false;
         }

@@ -19,13 +19,15 @@ export class EventsApiService {
   private readonly location = inject(LocationStore);
 
   async getEvents(eventFilters: EventFilters): Promise<PaginatedResponse<Event>> {
-    const hasLocation = this.location.mode() === 'automatic' && this.location.latitude() !== null && this.location.longitude() !== null;
+    const latitude = this.location.latitude();
+    const longitude = this.location.longitude();
+    const hasLocation = this.location.mode() === 'automatic' && latitude !== null && longitude !== null;
     let params = eventFiltersToHttpParams({
       ...eventFilters,
       radiusKm: hasLocation ? eventFilters.radiusKm : undefined,
       sort: !hasLocation && eventFilters.sort === 'distance' ? 'date' : eventFilters.sort,
     });
-    if (hasLocation) params = params.set('latitude', this.location.latitude()!).set('longitude', this.location.longitude()!);
+    if (hasLocation) params = params.set('latitude', latitude).set('longitude', longitude);
     return firstValueFrom(
       this.http.get<PaginatedResponse<Event>>(`${environment.apiUrl}/events`, {
         params,

@@ -52,6 +52,7 @@ export const EventDetailStore = signalStore(
             promoter: null,
             tickets: [],
             joinedWaitlist: false,
+            waitlistPending: false,
             waitlistMessage: null,
             loading: true,
             error: null,
@@ -84,12 +85,16 @@ export const EventDetailStore = signalStore(
           }
         },
         async joinWaitlist(eventId: string) {
+          if (store.waitlistPending()) return;
+          const requestId = latestRequestId;
           patchState(store, { waitlistPending: true, waitlistMessage: null });
           try {
             await eventsApi.joinWaitlist(eventId);
+            if (requestId !== latestRequestId) return;
             patchState(store, { joinedWaitlist: true, waitlistPending: false,
               waitlistMessage: 'Te has unido a la lista de espera. No se enviará ningún correo automático.' });
           } catch (error) {
+            if (requestId !== latestRequestId) return;
             const problem = toApiProblem(error, 'No hemos podido apuntarte a la lista de espera.');
             patchState(store, { waitlistPending: false,
               waitlistMessage: problem.code === 'TICKETS_AVAILABLE' ? 'Hay entradas disponibles ahora mismo.' : problem.message });
