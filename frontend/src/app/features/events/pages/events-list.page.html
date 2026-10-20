@@ -1,0 +1,148 @@
+    <div class="page-width discover-page">
+      <section class="discover-hero" aria-label="Descubre la noche">
+        <div class="hero-image" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="red-dot"></span> {{ eventsStore.filters().municipality || 'TU CIUDAD' }} ·
+            LA NOCHE EMPIEZA AQUÍ
+          </p>
+          <h1>¿Qué se cuece<br /><em>esta noche?</em></h1>
+          <p>Encuentra fiestas, clubs y directos cerca de ti. Tu próximo plan empieza aquí.</p>
+          <app-search-bar
+            [initial]="eventsStore.filters().search ?? ''"
+            (searched)="onSearchChange($event)"
+          />
+          <app-quick-date-filters
+            [selected]="selectedDatePreset()"
+            (chosen)="onDatePresetChange($event)"
+          />
+        </div>
+        <span class="hero-index">NOCTURNO / 001 — DESCUBRIR</span>
+      </section>
+
+      <section class="discovery-controls" aria-label="Filtrar eventos">
+        <div class="controls-intro">
+          <div>
+            <span class="eyebrow">EXPLORA LA AGENDA</span>
+            <h2>Encuentra tu noche<span>.</span></h2>
+          </div>
+          <div class="controls-actions">
+            <span class="controls-location">{{
+              locationStore.mode() === 'automatic' ? 'Cerca de mí' : (eventsStore.filters().municipality || 'Todas las localidades')
+            }}</span>
+            <button class="button-outline" type="button" [disabled]="locationStore.locating()" (click)="onNearMe()">
+              {{ locationStore.locating() ? 'Buscando ubicación…' : '⌖ Cerca de mí' }}
+            </button>
+            @if (auth.user()?.role === 'ADMIN' || auth.user()?.role === 'PROMOTER') {
+              <a class="button-outline" routerLink="/dashboard/events/create">Crear evento <span>＋</span></a>
+            }
+          </div>
+        </div>
+        @if (locationStore.geolocationError()) {
+          <p class="inline-alert" role="alert">{{ locationStore.geolocationError() }}</p>
+        }
+        @if (locationStore.mode() === 'automatic') {
+          <div class="nearby-controls">
+            <label>Radio
+              <select [value]="eventsStore.filters().radiusKm ?? 10" #radius (change)="onRadiusChange(radius.value)">
+                <option value="2">2 km</option><option value="5">5 km</option><option value="10">10 km</option>
+                <option value="25">25 km</option><option value="50">50 km</option>
+              </select>
+            </label>
+            <button class="button-text" type="button" (click)="onStopNearMe()">Desactivar ubicación</button>
+          </div>
+        }
+        <app-event-filters
+          [filters]="eventsStore.filters()"
+          [nearMe]="locationStore.mode() === 'automatic'"
+          [municipalities]="locationStore.municipalities()"
+          [provinces]="locationStore.provinces()"
+          [total]="eventsStore.totalEvents()"
+          [hasActiveFilters]="eventsStore.hasActiveFilters()"
+          (filtersChanged)="onFiltersChange($event)"
+          (numberFilterChanged)="onNumberFilterChange($event)"
+          (dateFilterChanged)="onDateFilterChange($event)"
+          (radiusChanged)="onRadiusChange($event)"
+          (sortChanged)="onSortChange($event)"
+          (allFiltersCleared)="onClearFilters()"
+        />
+        <app-active-filters
+          [filters]="eventsStore.filters()"
+          (removed)="onFilterRemoved($event)"
+          (cleared)="onClearFilters()"
+        />
+      </section>
+
+      <section class="results-section" aria-live="polite">
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">LA AGENDA</p>
+            <h2>Planes para salir</h2>
+            <p class="results-context">
+              {{ eventsStore.totalEvents() }}
+              {{ eventsStore.totalEvents() === 1 ? 'evento' : 'eventos' }} en
+              {{ eventsStore.filters().municipality || 'todas las localidades' }}
+            </p>
+          </div>
+          <label class="sort-control"
+            >Ordenar por
+            <select [value]="eventsStore.filters().sort" #sort (change)="onSortChange(sort.value)">
+              <option value="date">Próximos</option>
+              <option value="price">Menor precio</option>
+              <option value="createdAt">Recientes</option>
+              @if (locationStore.mode() === 'automatic') { <option value="distance">Más cerca</option> }
+            </select></label
+          >
+          <div class="view-switch" role="group" aria-label="Vista de resultados">
+            <button type="button" [class.active]="view() === 'list'" [attr.aria-pressed]="view() === 'list'" (click)="view.set('list')">Lista</button>
+            <button type="button" [class.active]="view() === 'map'" [attr.aria-pressed]="view() === 'map'" (click)="view.set('map')">Mapa</button>
+          </div>
+        </div>
+        @if (favoritesStore.message()) {
+          <div class="inline-alert" role="alert">
+            {{ favoritesStore.message() }}
+            <button type="button" (click)="favoritesStore.clearMessage()" aria-label="Cerrar aviso">
+              ×
+            </button>
+          </div>
+        }
+        @if (view() === 'map') {
+          @if (mapLoading()) { <p role="status" class="map-status">Situando eventos en el mapa…</p> }
+          @else if (mapError()) { <p class="inline-alert" role="alert">{{ mapError() }} <button type="button" (click)="loadMap()">Reintentar</button></p> }
+          @else if (!mapEvents().length) { <app-empty-state (action)="onClearFilters()" /> }
+          @else {
+            <app-event-map [events]="mapEvents()" [center]="mapCenter()" />
+            @if (mapTotal() > mapEvents().length) { <p class="muted">Mostrando los primeros {{ mapEvents().length }} de {{ mapTotal() }} eventos. Afina los filtros para ver más.</p> }
+          }
+        } @else if (eventsStore.loading()) {
+          <app-loading-skeleton />
+        } @else if (eventsStore.error()) {
+          <app-error-state [message]="eventsStore.error()!" (retry)="eventsStore.refreshEvents()" />
+        } @else if (!eventsStore.hasEvents()) {
+          <app-empty-state (action)="onClearFilters()" />
+        } @else {
+          <app-event-grid
+            [events]="eventsStore.events()"
+            [favoriteIds]="favoritesStore.favoriteIds()"
+            [pendingIds]="favoritesStore.pendingIds()"
+            (favoriteClicked)="onFavoriteToggle($event)"
+          />
+          @if (eventsStore.pagination().page < eventsStore.pagination().totalPages) {
+            <div class="load-more">
+              <p>
+                Mostrando {{ eventsStore.events().length }} de
+                {{ eventsStore.totalEvents() }} planes
+              </p>
+              <button
+                class="button-outline"
+                type="button"
+                [disabled]="eventsStore.loadingMore()"
+                (click)="onPageChange(eventsStore.pagination().page + 1)"
+              >
+                {{ eventsStore.loadingMore() ? 'Cargando…' : 'Ver más planes' }} <span>↓</span>
+              </button>
+            </div>
+          }
+        }
+      </section>
+    </div>

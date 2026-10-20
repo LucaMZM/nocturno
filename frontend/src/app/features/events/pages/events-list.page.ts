@@ -44,163 +44,24 @@ import { toApiProblem } from '../../../shared/utils/api-error';
     ErrorStateComponent,
     RouterLink,
   ],
-  template: `
-    <div class="page-width discover-page">
-      <section class="discover-hero" aria-label="Descubre la noche">
-        <div class="hero-image" aria-hidden="true"></div>
-        <div class="hero-copy">
-          <p class="eyebrow">
-            <span class="red-dot"></span> {{ eventsStore.filters().municipality || 'TU CIUDAD' }} ·
-            LA NOCHE EMPIEZA AQUÍ
-          </p>
-          <h1>¿Qué se cuece<br /><em>esta noche?</em></h1>
-          <p>Encuentra fiestas, clubs y directos cerca de ti. Tu próximo plan empieza aquí.</p>
-          <app-search-bar
-            [initial]="eventsStore.filters().search ?? ''"
-            (searched)="onSearchChange($event)"
-          />
-          <app-quick-date-filters
-            [selected]="selectedDatePreset()"
-            (chosen)="onDatePresetChange($event)"
-          />
-        </div>
-        <span class="hero-index">NOCTURNO / 001 — DESCUBRIR</span>
-      </section>
-
-      <section class="discovery-controls" aria-label="Filtrar eventos">
-        <div class="controls-intro">
-          <div>
-            <span class="eyebrow">EXPLORA LA AGENDA</span>
-            <h2>Encuentra tu noche<span>.</span></h2>
-          </div>
-          <div class="controls-actions">
-            <span class="controls-location">{{
-              locationStore.mode() === 'automatic' ? 'Cerca de mí' : (eventsStore.filters().municipality || 'Todas las localidades')
-            }}</span>
-            <button class="button-outline" type="button" [disabled]="locationStore.locating()" (click)="onNearMe()">
-              {{ locationStore.locating() ? 'Buscando ubicación…' : '⌖ Cerca de mí' }}
-            </button>
-            @if (auth.user()?.role === 'ADMIN' || auth.user()?.role === 'PROMOTER') {
-              <a class="button-outline" routerLink="/dashboard/events/create">Crear evento <span>＋</span></a>
-            }
-          </div>
-        </div>
-        @if (locationStore.geolocationError()) {
-          <p class="inline-alert" role="alert">{{ locationStore.geolocationError() }}</p>
-        }
-        @if (locationStore.mode() === 'automatic') {
-          <div class="nearby-controls">
-            <label>Radio
-              <select [value]="eventsStore.filters().radiusKm ?? 10" #radius (change)="onRadiusChange(radius.value)">
-                <option value="2">2 km</option><option value="5">5 km</option><option value="10">10 km</option>
-                <option value="25">25 km</option><option value="50">50 km</option>
-              </select>
-            </label>
-            <button class="button-text" type="button" (click)="onStopNearMe()">Desactivar ubicación</button>
-          </div>
-        }
-        <app-event-filters
-          [filters]="eventsStore.filters()"
-          [nearMe]="locationStore.mode() === 'automatic'"
-          [municipalities]="locationStore.municipalities()"
-          [provinces]="locationStore.provinces()"
-          [total]="eventsStore.totalEvents()"
-          [hasActiveFilters]="eventsStore.hasActiveFilters()"
-          (filtersChanged)="onFiltersChange($event)"
-          (numberFilterChanged)="onNumberFilterChange($event)"
-          (dateFilterChanged)="onDateFilterChange($event)"
-          (radiusChanged)="onRadiusChange($event)"
-          (sortChanged)="onSortChange($event)"
-          (allFiltersCleared)="onClearFilters()"
-        />
-        <app-active-filters
-          [filters]="eventsStore.filters()"
-          (removed)="onFilterRemoved($event)"
-          (cleared)="onClearFilters()"
-        />
-      </section>
-
-      <section class="results-section" aria-live="polite">
-        <div class="results-heading">
-          <div>
-            <p class="eyebrow">LA AGENDA</p>
-            <h2>Planes para salir</h2>
-            <p class="results-context">
-              {{ eventsStore.totalEvents() }}
-              {{ eventsStore.totalEvents() === 1 ? 'evento' : 'eventos' }} en
-              {{ eventsStore.filters().municipality || 'todas las localidades' }}
-            </p>
-          </div>
-          <label class="sort-control"
-            >Ordenar por
-            <select [value]="eventsStore.filters().sort" #sort (change)="onSortChange(sort.value)">
-              <option value="date">Próximos</option>
-              <option value="price">Menor precio</option>
-              <option value="createdAt">Recientes</option>
-              @if (locationStore.mode() === 'automatic') { <option value="distance">Más cerca</option> }
-            </select></label
-          >
-          <div class="view-switch" role="group" aria-label="Vista de resultados">
-            <button type="button" [class.active]="view() === 'list'" [attr.aria-pressed]="view() === 'list'" (click)="view.set('list')">Lista</button>
-            <button type="button" [class.active]="view() === 'map'" [attr.aria-pressed]="view() === 'map'" (click)="view.set('map')">Mapa</button>
-          </div>
-        </div>
-        @if (favoritesStore.message()) {
-          <div class="inline-alert" role="alert">
-            {{ favoritesStore.message() }}
-            <button type="button" (click)="favoritesStore.clearMessage()" aria-label="Cerrar aviso">
-              ×
-            </button>
-          </div>
-        }
-        @if (view() === 'map') {
-          @if (mapLoading()) { <p role="status" class="map-status">Situando eventos en el mapa…</p> }
-          @else if (mapError()) { <p class="inline-alert" role="alert">{{ mapError() }} <button type="button" (click)="loadMap()">Reintentar</button></p> }
-          @else if (!mapEvents().length) { <app-empty-state (action)="onClearFilters()" /> }
-          @else {
-            <app-event-map [events]="mapEvents()" [center]="mapCenter()" />
-            @if (mapTotal() > mapEvents().length) { <p class="muted">Mostrando los primeros {{ mapEvents().length }} de {{ mapTotal() }} eventos. Afina los filtros para ver más.</p> }
-          }
-        } @else if (eventsStore.loading()) {
-          <app-loading-skeleton />
-        } @else if (eventsStore.error()) {
-          <app-error-state [message]="eventsStore.error()!" (retry)="eventsStore.refreshEvents()" />
-        } @else if (!eventsStore.hasEvents()) {
-          <app-empty-state (action)="onClearFilters()" />
-        } @else {
-          <app-event-grid
-            [events]="eventsStore.events()"
-            [favoriteIds]="favoritesStore.favoriteIds()"
-            [pendingIds]="favoritesStore.pendingIds()"
-            (favoriteClicked)="onFavoriteToggle($event)"
-          />
-          @if (eventsStore.pagination().page < eventsStore.pagination().totalPages) {
-            <div class="load-more">
-              <p>
-                Mostrando {{ eventsStore.events().length }} de
-                {{ eventsStore.totalEvents() }} planes
-              </p>
-              <button
-                class="button-outline"
-                type="button"
-                [disabled]="eventsStore.loadingMore()"
-                (click)="onPageChange(eventsStore.pagination().page + 1)"
-              >
-                {{ eventsStore.loadingMore() ? 'Cargando…' : 'Ver más planes' }} <span>↓</span>
-              </button>
-            </div>
-          }
-        }
-      </section>
-    </div>
-  `,
+  templateUrl: './events-list.page.html',
 })
 export class EventsListPage implements OnInit {
+  // State exposed to the template: the list store owns results; map data stays local to this page.
   readonly eventsStore = inject(EventsStore);
   readonly favoritesStore = inject(FavoritesStore);
   readonly locationStore = inject(LocationStore);
   readonly auth = inject(AuthStore);
   private readonly eventsApi = inject(EventsApiService);
+
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly urlQueryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  // Holds the next filter set while Router has not emitted the new query params yet.
+  private filtersAwaitingNavigation: EventFilters | null = null;
+
   readonly view = signal<'list' | 'map'>('list');
   readonly mapEvents = signal<Event[]>([]);
   readonly mapLoading = signal(false);
@@ -212,13 +73,7 @@ export class EventsListPage implements OnInit {
     return this.locationStore.mode() === 'automatic' && latitude !== null && longitude !== null
       ? { latitude, longitude } : null;
   });
-  private mapRequest = 0;
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly routeQueryParams = toSignal(this.route.queryParamMap, {
-    initialValue: this.route.snapshot.queryParamMap,
-  });
-  private pendingUrlFilters: EventFilters | null = null;
+  private latestMapRequestId = 0;
   readonly selectedDatePreset = computed<DatePreset | null>(() => {
     const { dateFrom, dateTo } = this.eventsStore.filters();
     if (!dateFrom || !dateTo) return null;
@@ -231,7 +86,9 @@ export class EventsListPage implements OnInit {
   });
 
   constructor() {
+    // The URL drives list filters, including browser back and forward navigation.
     effect(() => this.syncFiltersFromUrl());
+    // Map uses the same filters as the list and reloads when position changes.
     effect(() => {
       if (this.view() !== 'map') return;
       const filters = this.eventsStore.filters();
@@ -241,39 +98,28 @@ export class EventsListPage implements OnInit {
     });
   }
 
-  async loadMap(filters = this.eventsStore.filters()) {
-    const request = ++this.mapRequest;
-    this.mapLoading.set(true);
-    this.mapError.set(null);
-    try {
-      const response = await this.eventsApi.getEvents({ ...filters, page: 1, limit: 100 });
-      if (request !== this.mapRequest) return;
-      this.mapEvents.set(response.data);
-      this.mapTotal.set(response.pagination.total);
-    } catch (error) {
-      if (request === this.mapRequest) this.mapError.set(toApiProblem(error, 'No hemos podido cargar el mapa.').message);
-    } finally {
-      if (request === this.mapRequest) this.mapLoading.set(false);
-    }
-  }
-
   ngOnInit() {
     void this.favoritesStore.load();
   }
+
+  // Search, quick dates and modal controls all converge on the same URL update.
   onSearchChange(searchText: string) {
     this.onFiltersChange({ search: searchText || undefined });
   }
+
   onDatePresetChange(chosenPreset: DatePreset) {
     const nextPreset = this.selectedDatePreset() === chosenPreset ? null : chosenPreset;
     this.onFiltersChange(
       nextPreset ? dateRangeFor(nextPreset) : { dateFrom: undefined, dateTo: undefined },
     );
   }
+
   onFiltersChange(filterChanges: Partial<EventFilters>) {
-    const currentFilters = this.pendingUrlFilters ?? this.eventsStore.filters();
+    const currentFilters = this.filtersAwaitingNavigation ?? this.eventsStore.filters();
     const nextFilters = { ...currentFilters, ...filterChanges, page: DEFAULT_EVENT_PAGE };
     this.navigateWithFilters(nextFilters);
   }
+
   onNumberFilterChange(change: { key: 'minPrice' | 'maxPrice' | 'minimumAge'; value: string }) {
     const numericValue = change.value === '' ? undefined : Number(change.value);
     if (numericValue !== undefined && (!Number.isFinite(numericValue) || numericValue < 0)) return;
@@ -284,7 +130,7 @@ export class EventsListPage implements OnInit {
     )
       return;
 
-    const currentFilters = this.pendingUrlFilters ?? this.eventsStore.filters();
+    const currentFilters = this.filtersAwaitingNavigation ?? this.eventsStore.filters();
     const filterChanges: Partial<EventFilters> = { [change.key]: numericValue };
     if (
       change.key === 'minPrice' &&
@@ -302,6 +148,7 @@ export class EventsListPage implements OnInit {
       filterChanges.minPrice = undefined;
     this.onFiltersChange(filterChanges);
   }
+
   onDateFilterChange(change: { key: 'dateFrom' | 'dateTo'; value: string }) {
     if (!change.value) {
       this.onFiltersChange({ [change.key]: undefined });
@@ -318,7 +165,7 @@ export class EventsListPage implements OnInit {
     if (Number.isNaN(selectedDate.getTime())) return;
 
     const selectedDateIso = selectedDate.toISOString();
-    const currentFilters = this.pendingUrlFilters ?? this.eventsStore.filters();
+    const currentFilters = this.filtersAwaitingNavigation ?? this.eventsStore.filters();
     const oppositeDateKey = change.key === 'dateFrom' ? 'dateTo' : 'dateFrom';
     const oppositeDate = currentFilters[oppositeDateKey];
     const filterChanges: Partial<EventFilters> = { [change.key]: selectedDateIso };
@@ -329,6 +176,7 @@ export class EventsListPage implements OnInit {
     }
     this.onFiltersChange(filterChanges);
   }
+
   onFilterRemoved(key: ActiveFilterKey) {
     if (key === 'date') {
       this.onFiltersChange({ dateFrom: undefined, dateTo: undefined });
@@ -344,42 +192,83 @@ export class EventsListPage implements OnInit {
     }
     this.onFiltersChange({ [key]: undefined });
   }
+
   onClearFilters() {
     this.locationStore.clearNearMe();
     this.navigateWithFilters({ ...DEFAULT_EVENT_FILTERS, municipality: undefined });
   }
+
   onSortChange(value: string) {
-    this.onFiltersChange({ sort: value === 'price' || value === 'createdAt' || (value === 'distance' && this.locationStore.mode() === 'automatic') ? value as EventFilters['sort'] : 'date' });
+    const validSort =
+      value === 'price' ||
+      value === 'createdAt' ||
+      (value === 'distance' && this.locationStore.mode() === 'automatic');
+    this.onFiltersChange({ sort: validSort ? (value as EventFilters['sort']) : 'date' });
   }
+
+  // Position is requested only after the user chooses "Cerca de mí".
   async onNearMe() {
     if (await this.locationStore.requestNearMe()) {
       this.onFiltersChange({ municipality: undefined, radiusKm: 10, sort: 'distance' });
     }
   }
+
   onRadiusChange(value: string) {
     const radius = Number(value);
-    if ([2, 5, 10, 25, 50].includes(radius)) this.onFiltersChange({ radiusKm: radius as EventFilters['radiusKm'] });
+    if ([2, 5, 10, 25, 50].includes(radius)) {
+      this.onFiltersChange({ radiusKm: radius as EventFilters['radiusKm'] });
+    }
   }
+
   onStopNearMe() {
     this.locationStore.clearNearMe();
     this.onFiltersChange({ radiusKm: undefined, sort: 'date' });
   }
-  onPageChange(page: number) {
-    this.navigateWithFilters({ ...(this.pendingUrlFilters ?? this.eventsStore.filters()), page });
+
+  // Map requests mirror list filters but fetch up to 100 results for markers.
+  async loadMap(filters = this.eventsStore.filters()) {
+    const requestId = ++this.latestMapRequestId;
+    this.mapLoading.set(true);
+    this.mapError.set(null);
+    try {
+      const response = await this.eventsApi.getEvents({ ...filters, page: 1, limit: 100 });
+      if (requestId !== this.latestMapRequestId) return;
+      this.mapEvents.set(response.data);
+      this.mapTotal.set(response.pagination.total);
+    } catch (error) {
+      if (requestId === this.latestMapRequestId) {
+        this.mapError.set(toApiProblem(error, 'No hemos podido cargar el mapa.').message);
+      }
+    } finally {
+      if (requestId === this.latestMapRequestId) this.mapLoading.set(false);
+    }
   }
+
+  // Pagination and favorites complete the list interactions.
+  onPageChange(page: number) {
+    this.navigateWithFilters({
+      ...(this.filtersAwaitingNavigation ?? this.eventsStore.filters()),
+      page,
+    });
+  }
+
   onFavoriteToggle(event: Event) {
     void this.favoritesStore.toggle(event);
   }
 
-  /** The URL owns filter history, so browser back/forward restores the same results. */
+  /** Parse and normalize the URL, then give the list store its filter set. */
   private syncFiltersFromUrl() {
-    const queryParams = this.routeQueryParams();
-    const parsed = parseEventFilters(queryParams);
-    const eventFilters = untracked(() => this.locationStore.mode()) === 'automatic' ? parsed : {
-      ...parsed, radiusKm: undefined,
-      sort: parsed.sort === 'distance' ? 'date' as const : parsed.sort,
-    };
-    this.pendingUrlFilters = eventFilters;
+    const queryParams = this.urlQueryParams();
+    const parsedFilters = parseEventFilters(queryParams);
+    // Location mode must not retrigger this URL effect: only query params are its input.
+    const eventFilters = untracked(() => this.locationStore.mode()) === 'automatic'
+      ? parsedFilters
+      : {
+          ...parsedFilters,
+          radiusKm: undefined,
+          sort: parsedFilters.sort === 'distance' ? 'date' as const : parsedFilters.sort,
+        };
+    this.filtersAwaitingNavigation = eventFilters;
     untracked(() => this.locationStore.setMunicipality(eventFilters.municipality || ''));
 
     const canonicalQueryParams = serializeEventFilters(eventFilters);
@@ -393,12 +282,15 @@ export class EventsListPage implements OnInit {
         replaceUrl: true,
       });
     }
+    // Store updates read signals internally; untracked keeps them out of this URL effect.
     untracked(() => { void this.eventsStore.replaceFilters(eventFilters); });
   }
 
   private navigateWithFilters(nextFilters: EventFilters) {
-    if (sameEventFilters(nextFilters, this.pendingUrlFilters ?? this.eventsStore.filters())) return;
-    this.pendingUrlFilters = nextFilters;
+    if (sameEventFilters(nextFilters, this.filtersAwaitingNavigation ?? this.eventsStore.filters())) {
+      return;
+    }
+    this.filtersAwaitingNavigation = nextFilters;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: serializeEventFilters(nextFilters),

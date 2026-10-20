@@ -11,7 +11,7 @@ import {
   sameEventFilters,
 } from '../../../shared/utils/event-filter-contract';
 
-// STATE: one source for list filters, pagination and the selected public event.
+// List results, filters, pagination and public detail share this SignalStore.
 interface EventsState {
   events: Event[];
   selectedEvent: Event | null;
@@ -45,7 +45,7 @@ const initialState: EventsState = {
 export const EventsStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  // COMPUTED: labels and empty states derive from the current signals.
+  // Values read by the list template; no extra mutable state for counts or empty state.
   withComputed(({ events, filters, pagination }) => ({
     hasEvents: computed(() => events().length > 0),
     totalEvents: computed(() => pagination().total),
@@ -58,7 +58,7 @@ export const EventsStore = signalStore(
       );
     }),
   })),
-  // METHODS: load, filter, pagination and detail actions keep HTTP inside the API service.
+  // HTTP remains in EventsApiService; request IDs protect against stale responses.
   withMethods((store, eventsApiService = inject(EventsApiService)) => {
     let latestListRequestId = 0;
     let latestDetailRequestId = 0;
@@ -67,19 +67,19 @@ export const EventsStore = signalStore(
     async function loadEvents() {
       const requestId = ++latestListRequestId;
       const eventFilters = store.filters();
-      const appendPage = eventFilters.page > DEFAULT_EVENT_PAGE;
+      const isLoadingAnotherPage = eventFilters.page > DEFAULT_EVENT_PAGE;
       patchState(store, {
-        loading: !appendPage,
-        loadingMore: appendPage,
+        loading: !isLoadingAnotherPage,
+        loadingMore: isLoadingAnotherPage,
         error: null,
         initialized: true,
       });
       try {
-        const eventsResponse = await eventsApiService.getEvents(eventFilters);
+        const response = await eventsApiService.getEvents(eventFilters);
         if (requestId !== latestListRequestId) return;
         patchState(store, {
-          events: appendPage ? [...store.events(), ...eventsResponse.data] : eventsResponse.data,
-          pagination: eventsResponse.pagination,
+          events: isLoadingAnotherPage ? [...store.events(), ...response.data] : response.data,
+          pagination: response.pagination,
           loading: false,
           loadingMore: false,
         });
@@ -93,10 +93,10 @@ export const EventsStore = signalStore(
       }
     }
     return {
-      // LOAD
+      // List loading
       loadEvents,
 
-      // FILTERS
+      // Filter changes
       async replaceFilters(filters: EventFilters) {
         if (store.initialized() && sameEventFilters(store.filters(), filters)) return;
         patchState(store, { filters });
@@ -126,7 +126,7 @@ export const EventsStore = signalStore(
         await loadEvents();
       },
 
-      // PAGINATION AND ORDER
+      // Pagination and order
       async setPage(page: number) {
         if (
           page < DEFAULT_EVENT_PAGE ||
@@ -143,7 +143,7 @@ export const EventsStore = signalStore(
         await loadEvents();
       },
 
-      // DETAIL
+      // Public detail
       /** Ignore an older detail response when the user navigates to a new slug. */
       async loadEventBySlug(eventSlug: string) {
         const requestId = ++latestDetailRequestId;
@@ -161,7 +161,7 @@ export const EventsStore = signalStore(
         }
       },
 
-      // ACTIONS
+      // Retry
       async refreshEvents() {
         await loadEvents();
       },

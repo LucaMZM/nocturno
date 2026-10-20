@@ -9,7 +9,9 @@ import { LocationStore } from '../../location/store/location.store';
 
 export function eventFiltersToHttpParams(eventFilters: EventFilters): HttpParams {
   let params = new HttpParams();
-  for (const [key, value] of eventFilterEntries(eventFilters)) params = params.set(key, value);
+  for (const [key, value] of eventFilterEntries(eventFilters)) {
+    params = params.set(key, value);
+  }
   return params;
 }
 
@@ -18,16 +20,20 @@ export class EventsApiService {
   private readonly http = inject(HttpClient);
   private readonly location = inject(LocationStore);
 
+  // The store and map both call this public endpoint with their current filters.
   async getEvents(eventFilters: EventFilters): Promise<PaginatedResponse<Event>> {
     const latitude = this.location.latitude();
     const longitude = this.location.longitude();
-    const hasLocation = this.location.mode() === 'automatic' && latitude !== null && longitude !== null;
+    const hasAutomaticLocation =
+      this.location.mode() === 'automatic' && latitude !== null && longitude !== null;
     let params = eventFiltersToHttpParams({
       ...eventFilters,
-      radiusKm: hasLocation ? eventFilters.radiusKm : undefined,
-      sort: !hasLocation && eventFilters.sort === 'distance' ? 'date' : eventFilters.sort,
+      radiusKm: hasAutomaticLocation ? eventFilters.radiusKm : undefined,
+      sort: !hasAutomaticLocation && eventFilters.sort === 'distance' ? 'date' : eventFilters.sort,
     });
-    if (hasLocation) params = params.set('latitude', latitude).set('longitude', longitude);
+    if (hasAutomaticLocation) {
+      params = params.set('latitude', latitude).set('longitude', longitude);
+    }
     return firstValueFrom(
       this.http.get<PaginatedResponse<Event>>(`${environment.apiUrl}/events`, {
         params,
