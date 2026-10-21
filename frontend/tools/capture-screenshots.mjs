@@ -151,20 +151,27 @@ try {
   await admin.goto(`/dashboard/events/${sampleEventId}/edit`);
   const gallery = admin.locator('app-event-gallery-editor');
   await gallery.waitFor({ timeout: 15000 });
+  await admin.waitForFunction((cover) =>
+    document.querySelector('app-event-gallery-editor .gallery-editor-row input')?.value === cover,
+  sampleEvent.images[0].url);
   assert.equal(await gallery.locator('.gallery-editor-row').count(), 3);
   await gallery.getByRole('button', { name: '+ Añadir imagen' }).click();
-  assert.equal(await gallery.locator('.gallery-editor-row').count(), 4);
+  await gallery.locator('.gallery-editor-row').nth(3).waitFor();
   const missingImage = '/posters/nocturno-missing-image.svg';
   await gallery.locator('.gallery-editor-row').last().locator('input').first().fill(missingImage);
   await gallery.getByRole('button', { name: 'Subir imagen 4' }).click();
-  assert.equal(await gallery.locator('.gallery-editor-row').nth(2).locator('input').first().inputValue(), missingImage);
+  await admin.waitForFunction((url) =>
+    document.querySelectorAll('app-event-gallery-editor .gallery-editor-row')[2]?.querySelector('input')?.value === url,
+  missingImage);
   await gallery.getByRole('button', { name: 'Eliminar imagen 4' }).click();
-  assert.equal(await gallery.locator('.gallery-editor-row').count(), 3);
+  await gallery.locator('.gallery-editor-row').nth(3).waitFor({ state: 'detached' });
   await admin.getByRole('button', { name: /Guardar cambios/ }).click();
   await admin.getByText('Evento guardado correctamente.').waitFor({ timeout: 15000 });
   await admin.reload();
   await gallery.waitFor({ timeout: 15000 });
-  assert.equal(await gallery.locator('.gallery-editor-row').nth(2).locator('input').first().inputValue(), missingImage);
+  await admin.waitForFunction((url) =>
+    document.querySelectorAll('app-event-gallery-editor .gallery-editor-row')[2]?.querySelector('input')?.value === url,
+  missingImage);
   await admin.goto(`/events/${sampleEvent.slug}`);
   await admin.getByRole('button', { name: 'Mostrar imagen 3' }).click();
   await admin.getByText('IMAGEN NO DISPONIBLE').waitFor({ timeout: 15000 });
