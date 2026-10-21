@@ -160,3 +160,7 @@ Las compras de pago y los refunds reales requieren claves Stripe test y un webho
 ## Licencia
 
 **Proprietary — All Rights Reserved.** El código está disponible para revisión y evaluación de portfolio. Consulta [LICENSE](LICENSE) para las condiciones de uso; los nombres e imágenes de terceros conservan sus propios derechos.
+
+## Cookies y Yomogan
+
+Preferencias de cookies como demostración visual y asesor de eventos con recuperación híbrida sobre PostgreSQL. Ollama local es el proveedor predeterminado; si falta, el chat identifica expresamente el modo búsqueda. La fotografía oficial del avatar está pendiente de recibir. [Configuración, arquitectura y límites](docs/cookies-yomogan.md).
