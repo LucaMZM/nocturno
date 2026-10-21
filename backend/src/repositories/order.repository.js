@@ -28,6 +28,7 @@ export const orderRepository = {
               tt.name, tt.price, tt.quantity AS stock, tt.sold, tt.reserved,
               tt.max_per_user, tt.active, tt.sales_start, tt.sales_end,
               e.title AS event_title, e.starts_at AS event_starts_at,
+              e.ends_at AS event_ends_at,
               v.name AS venue_name, e.status AS event_status, e.is_active AS event_active,
               e.deleted_at AS event_deleted_at
        FROM cart_items ci JOIN ticket_types tt ON tt.id = ci.ticket_type_id

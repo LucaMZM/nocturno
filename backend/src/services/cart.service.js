@@ -4,7 +4,8 @@ import { AppError } from '../utils/AppError.js';
 
 function validateSelection(ticket, quantity) {
   if (!ticket || !ticket.active || !ticket.event_active || ticket.event_deleted_at ||
-      !['PUBLISHED', 'SOLD_OUT'].includes(ticket.event_status))
+      ticket.event_status !== 'PUBLISHED' ||
+      new Date(ticket.event_ends_at) <= new Date())
     throw new AppError(404, 'TICKET_TYPE_NOT_FOUND', 'Ticket type is not available');
   if (ticket.sales_start && new Date(ticket.sales_start) > new Date())
     throw new AppError(409, 'SALES_NOT_STARTED', 'Ticket sales have not started');

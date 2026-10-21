@@ -20,7 +20,8 @@ export const ticketService = {
       if (!ticket) throw new AppError(404, 'TICKET_NOT_FOUND', 'Ticket not found');
       if (ticket.eventId !== eventId)
         throw new AppError(409, 'WRONG_EVENT', 'Ticket belongs to another event');
-      if (actor.role !== 'ADMIN' && actor.promoterId !== ticket.promoterId)
+      if (actor.role !== 'ADMIN' && !(actor.role === 'PROMOTER' &&
+          actor.promoterId && actor.promoterId === ticket.promoterId))
         throw new AppError(403, 'FORBIDDEN', 'You cannot check in this event');
       if (ticket.status === 'USED')
         throw new AppError(409, 'TICKET_ALREADY_USED', 'Ticket was already checked in',

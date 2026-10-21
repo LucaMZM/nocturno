@@ -33,7 +33,7 @@ export const cartRepository = {
   async getTicketForCart(client, ticketTypeId) {
     const { rows } = await client.query(
       `SELECT tt.*, e.status AS event_status, e.is_active AS event_active,
-              e.deleted_at AS event_deleted_at
+              e.deleted_at AS event_deleted_at, e.ends_at AS event_ends_at
        FROM ticket_types tt JOIN events e ON e.id = tt.event_id
        WHERE tt.id = $1 FOR UPDATE OF tt`, [ticketTypeId]);
     return rows[0] ?? null;

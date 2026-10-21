@@ -15,7 +15,7 @@ export function moneyToCents(value) {
 function checkTicketAvailability(ticket, previousQuantity) {
   const now = new Date();
   if (!ticket.active || !ticket.event_active || ticket.event_deleted_at ||
-      ticket.event_status !== 'PUBLISHED')
+      ticket.event_status !== 'PUBLISHED' || new Date(ticket.event_ends_at) <= now)
     throw new AppError(409, 'EVENT_UNAVAILABLE', 'An event is no longer available');
   if (ticket.sales_start && ticket.sales_start > now)
     throw new AppError(409, 'SALES_NOT_STARTED', 'Ticket sales have not started');

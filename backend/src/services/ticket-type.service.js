@@ -22,7 +22,7 @@ export const ticketTypeService = {
     if (!event) throw new AppError(404, 'EVENT_NOT_FOUND', 'Event not found');
     const publicEvent = event.isActive && !event.deletedAt && ['PUBLISHED', 'SOLD_OUT'].includes(event.status);
     const managedEvent = actor && (actor.role === 'ADMIN' ||
-      (actor.role === 'PROMOTER' && actor.promoterId === event.promoterId));
+      (actor.role === 'PROMOTER' && actor.promoterId && actor.promoterId === event.promoterId));
     if (!publicEvent && !managedEvent) throw new AppError(404, 'EVENT_NOT_FOUND', 'Event not found');
     return ticketTypeRepository.listByEvent(eventId, query);
   },

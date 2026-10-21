@@ -7,6 +7,7 @@ import { getPool, closePool } from '../src/config/db.js';
 import { checkoutService } from '../src/services/checkout.service.js';
 import { ticketService } from '../src/services/ticket.service.js';
 import { cartService } from '../src/services/cart.service.js';
+import { ticketTypeService } from '../src/services/ticket-type.service.js';
 
 test('two concurrent PostgreSQL checkouts cannot oversell; duplicate webhook does not duplicate tickets',
   { skip: !env.DATABASE_URL }, async () => {
@@ -38,8 +39,35 @@ test('two concurrent PostgreSQL checkouts cannot oversell; duplicate webhook doe
       await getPool().query(
         `INSERT INTO ticket_types (id, event_id, name, price, quantity)
          VALUES ($1, $2, 'General', 10.00, 3)`, [ticketTypeId, eventId]);
+      // An unassigned promoter must not manage private ticket sales via null === null.
+      await getPool().query("UPDATE events SET status = 'DRAFT' WHERE id = $1", [eventId]);
+      await assert.rejects(
+        () => ticketTypeService.listByEvent(eventId, { page: 1, limit: 20 },
+          { role: 'PROMOTER', promoterId: null }),
+        { code: 'EVENT_NOT_FOUND' });
+      // SOLD_OUT must be rejected at cart time, not only after entering checkout.
+      await getPool().query("UPDATE events SET status = 'SOLD_OUT' WHERE id = $1", [eventId]);
+      await assert.rejects(
+        () => cartService.addItem(users[0], { ticketTypeId, quantity: 1 }),
+        { code: 'TICKET_TYPE_NOT_FOUND' });
+      // A formerly published but ended event cannot sell tickets.
+      await getPool().query(`UPDATE events SET status = 'PUBLISHED',
+        starts_at = NOW() - INTERVAL '2 days', ends_at = NOW() - INTERVAL '1 day'
+        WHERE id = $1`, [eventId]);
+      await assert.rejects(
+        () => cartService.addItem(users[0], { ticketTypeId, quantity: 1 }),
+        { code: 'TICKET_TYPE_NOT_FOUND' });
+      await getPool().query(`UPDATE events SET starts_at = NOW() + INTERVAL '2 days',
+        ends_at = NOW() + INTERVAL '2 days 6 hours' WHERE id = $1`, [eventId]);
       for (const userId of users)
         assert.equal((await cartService.addItem(userId, { ticketTypeId, quantity: 2 })).totalCents, 2000);
+      await getPool().query(`UPDATE events SET starts_at = NOW() - INTERVAL '2 days',
+        ends_at = NOW() - INTERVAL '1 day' WHERE id = $1`, [eventId]);
+      await assert.rejects(
+        () => checkoutService.createOrderFromCart(users[0], randomUUID()),
+        { code: 'EVENT_UNAVAILABLE' });
+      await getPool().query(`UPDATE events SET starts_at = NOW() + INTERVAL '2 days',
+        ends_at = NOW() + INTERVAL '2 days 6 hours' WHERE id = $1`, [eventId]);
       const results = await Promise.allSettled(users.map((userId) =>
         checkoutService.createOrderFromCart(userId, randomUUID())));
       assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
@@ -94,6 +122,9 @@ test('two concurrent PostgreSQL checkouts cannot oversell; duplicate webhook doe
       assert.notEqual(issued.rows[0].code, issued.rows[1].code);
       const sold = await getPool().query('SELECT sold, reserved FROM ticket_types WHERE id = $1', [ticketTypeId]);
       assert.deepEqual([sold.rows[0].sold, sold.rows[0].reserved], [2, 0]);
+      await assert.rejects(
+        () => ticketService.checkIn(issued.rows[0].code, eventId, { role: 'PROMOTER', promoterId: null }),
+        { code: 'FORBIDDEN' });
       const used = await ticketService.checkIn(issued.rows[0].code, eventId, { role: 'ADMIN' });
       assert.equal(used.status, 'USED');
       await assert.rejects(() => ticketService.checkIn(issued.rows[0].code, eventId, { role: 'ADMIN' }),
