@@ -6,6 +6,7 @@ export function buildRecommendationQuery(filters={},query='',ids=null) {
   const add=(sql,value)=>{values.push(value);where.push(sql.replaceAll('?', '$'+values.length));};
   if(filters.municipality) add('lower(v.municipality)=lower(?)',filters.municipality);
   if(filters.province) add('lower(v.province)=lower(?)',filters.province);
+  if(filters.excludedGenres?.length) add('NOT (e.music_genres && ?::text[])',filters.excludedGenres);
   if(filters.genre) add('?=ANY(e.music_genres)',filters.genre);
   if(filters.atmosphere) add('?=ANY(e.atmosphere)',filters.atmosphere);
   if(filters.idealFor) add('?=ANY(e.ideal_for)',filters.idealFor);

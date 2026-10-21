@@ -68,7 +68,6 @@ try {
   const link = page.locator('.yomogan-event').first();
   assert.match(await link.getAttribute('href'), /^\/events\/[a-z0-9-]+$/);
   await page.screenshot({ path: output+'/yomogan-search-mobile.png' });
-  console.log('YOMOGAN_PREVIEW:'+ (await page.screenshot()).toString('base64'));
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.getByLabel('Cuéntame tu plan').fill('¿Y en Madrid?');
   await page.getByRole('button', { name: 'Enviar mensaje a Yomogan' }).click();
@@ -76,6 +75,7 @@ try {
   const lastLinks = page.locator('.yomogan-message:not(.is-user)').last().locator('.yomogan-event');
   for (const text of await lastLinks.allTextContents()) assert.match(text, /Madrid/);
   await page.getByRole('button', { name: 'Nueva conversación' }).click();
+  await page.locator('.yomogan-message').first().waitFor({ state: 'detached' });
   assert.equal(await page.locator('.yomogan-message').count(), 0);
   await page.route('**/api/yomogan/chat', route => route.abort());
   await page.getByLabel('Cuéntame tu plan').fill('Valencia');

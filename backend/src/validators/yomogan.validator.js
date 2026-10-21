@@ -9,6 +9,7 @@ export const chatInput=z.object({messages:z.array(z.object({
 export const preferenceSchema=z.object({
   municipality:z.string().trim().max(120).nullable(),
   province:z.string().trim().max(120).nullable(),
+  excludedGenres:z.array(z.enum(genres)).max(5),
   genre:z.enum(genres).nullable(),atmosphere:z.enum(atmospheres).nullable(),
   eventType:z.enum(eventTypes).nullable(),idealFor:z.enum(ideals).nullable(),
   dressCode:z.enum(['CASUAL','SMART_CASUAL','ELEGANT','STREETWEAR','NO_DRESS_CODE']).nullable(),

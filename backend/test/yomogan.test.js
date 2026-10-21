@@ -8,7 +8,7 @@ import { buildRecommendationQuery } from '../src/repositories/yomogan.repository
 import { createChatLimit } from '../src/routes/yomogan.routes.js';
 import { AppError } from '../src/utils/AppError.js';
 
-const preference={municipality:'Valencia',province:null,genre:'TECHNO',atmosphere:null,eventType:null,
+const preference={excludedGenres:[],municipality:'Valencia',province:null,genre:'TECHNO',atmosphere:null,eventType:null,
   idealFor:null,dressCode:null,maxPrice:20,exclusivePrice:true,groupSize:1,age:null,day:null,date:null};
 const event={id:randomUUID(),slug:'plan-demo',title:'Plan DEMO',venue_name:'Local',
   municipality:'Valencia',province:'Valencia',music_genres:['TECHNO'],atmosphere:['UNDERGROUND'],
@@ -105,4 +105,11 @@ test('usage limiter caps concurrent calls and does not release twice',()=>{
   limit(b,res(),(e)=>{error=e;});assert.equal(error.status,429);
   a.releaseYomoganSlot();one.emit('finish');
   limit(b,res(),(e)=>{error=e;});assert.equal(error,undefined);
+});
+
+test('fallback respects unknown municipality and explicit rejected genres',()=>{
+  const result=explicitFilters([{role:'user',content:'Valencia techno'},{role:'user',content:'Ahora en Sevilla sin techno, house'}],[{municipality:'Valencia'}]);
+  assert.equal(result.municipality,'sevilla');assert.equal(result.genre,'HOUSE');
+  assert.ok(result.excludedGenres.includes('TECHNO'));
+  assert.match(buildRecommendationQuery(result).sql,/NOT \(e.music_genres &&/);
 });
