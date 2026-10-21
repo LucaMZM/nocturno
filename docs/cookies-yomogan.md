@@ -118,6 +118,6 @@ al asistente: informa de ese tratamiento antes de una publicación real con usua
 Las pruebas unitarias usan dobles de proveedor solo dentro de tests.
 Assistant UI levanta API, PostgreSQL y Chromium en GitHub Actions, guarda capturas de
 cookies/chat y verifica el modo búsqueda con Ollama ausente. Después arranca Ollama
-aislado y ejecuta tools/test-yomogan-live.js con los dos modelos reales.
+aislado y ejecuta tools/verify-yomogan-live.js con los dos modelos reales.
 El resultado de ese job, no la mera existencia del script, determina si la IA real
 ha quedado verificada.

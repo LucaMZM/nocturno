@@ -89,7 +89,7 @@ jobs:
         working-directory: backend
         env:
           YOMOGAN_TIMEOUT_MS: '180000'
-        run: node tools/test-yomogan-live.js
+        run: node tools/verify-yomogan-live.js
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
