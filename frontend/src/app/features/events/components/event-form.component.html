@@ -6,7 +6,7 @@
         <p>Completa los datos del evento y guarda los cambios.</p>
       </div>
 
-      @if (editor.loading()) {
+      @if (editor.loading() || !ready()) {
         <p class="muted" role="status">Cargando formulario…</p>
       } @else if (editor.error() && !editor.venues().length) {
         <app-error-state [message]="editor.error()!" (retry)="load()" />

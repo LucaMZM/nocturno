@@ -89,6 +89,7 @@ export class EventFormComponent implements OnInit {
   readonly eventSaved = output<NocturnoEvent>();
   readonly validationError = signal<string | null>(null);
   readonly dateError = signal<string | null>(null);
+  readonly ready = signal(false);
   readonly initialGallery = signal<EventImageInput[]>([]);
   readonly galleryDraft = signal<EventImageInput[]>([]);
   readonly auth = inject(AuthStore);
@@ -115,9 +116,11 @@ export class EventFormComponent implements OnInit {
   }
 
   async load() {
+    this.ready.set(false);
     await this.editor.load(this.eventId());
     const event = this.editor.event();
     if (event) this.fillForm(event);
+    this.ready.set(true);
   }
 
   selected(field: SelectionField, value: string): boolean {
