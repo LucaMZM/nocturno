@@ -282,3 +282,19 @@ for (const [path, methods] of Object.entries(swaggerSpec.paths)) {
       if (method !== 'get') operation.security = [{ bearerAuth: [] }];
   }
 }
+
+swaggerSpec.paths['/api/yomogan/chat']={post:{
+  tags:['Yomogan'],summary:'Public event recommendations with explicit search fallback when AI is unavailable',
+  requestBody:{required:true,content:{'application/json':{schema:{
+    type:'object',additionalProperties:false,required:['messages'],properties:{
+      messages:{type:'array',minItems:1,maxItems:11,items:{type:'object',additionalProperties:false,
+        required:['role','content'],properties:{role:{type:'string',enum:['user','assistant']},
+          content:{type:'string',minLength:1,maxLength:1200}}}}
+    }
+  }}}},
+  responses:{'200':{description:'Mode (assistant/search/clarification), message, question, verified event references, applied filters, retrieval method and DEMO disclaimer'},
+    '400':{description:'Invalid conversation'},'429':{description:'Usage limit; Retry-After header'},'503':{description:'Catalogue unavailable'}}
+}};
+
+swaggerSpec.paths['/api/yomogan/config']={get:{tags:['Yomogan'],summary:'Public avatar asset path, never provider credentials',
+  responses:{'200':{description:'Configured avatarUrl or null if the official photograph is unavailable'}}}};

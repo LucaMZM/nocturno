@@ -1,6 +1,11 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, ElementRef, OnDestroy, ViewChild, inject, signal } from '@angular/core';
-import { COOKIE_CHOICE_KEY, CookieChoice, cookieChoice, readCookieChoice } from '../utils/cookie-choice';
+import {
+  COOKIE_CHOICE_KEY,
+  CookieChoice,
+  cookieChoice,
+  readCookieChoice,
+} from '../utils/cookie-choice';
 
 type OptionalCookie = 'preferences' | 'analytics' | 'marketing';
 
@@ -17,16 +22,34 @@ export class CookiePreferencesComponent implements OnDestroy {
   readonly choice = signal<CookieChoice | null>(readCookieChoice(this.storage));
   readonly draft = signal(cookieChoice());
   readonly categories: { key: OptionalCookie; title: string; description: string }[] = [
-    { key: 'preferences', title: 'Preferencias', description: 'Cómo te gustaría personalizar tu experiencia.' },
-    { key: 'analytics', title: 'Analíticas', description: 'Simulación de una elección sobre medición de visitas.' },
-    { key: 'marketing', title: 'Marketing', description: 'Simulación de una elección sobre publicidad.' },
+    {
+      key: 'preferences',
+      title: 'Preferencias',
+      description: 'Cómo te gustaría personalizar tu experiencia.',
+    },
+    {
+      key: 'analytics',
+      title: 'Analíticas',
+      description: 'Simulación de una elección sobre medición de visitas.',
+    },
+    {
+      key: 'marketing',
+      title: 'Marketing',
+      description: 'Simulación de una elección sobre publicidad.',
+    },
   ];
 
   private get storage(): Storage | null {
-    try { return this.document.defaultView?.localStorage ?? null; } catch { return null; }
+    try {
+      return this.document.defaultView?.localStorage ?? null;
+    } catch {
+      return null;
+    }
   }
 
-  chooseAll(optional: boolean) { this.save(cookieChoice(optional)); }
+  chooseAll(optional: boolean) {
+    this.save(cookieChoice(optional));
+  }
 
   openPreferences() {
     if (!this.dialog || this.dialog.nativeElement.open) return;
@@ -43,22 +66,32 @@ export class CookiePreferencesComponent implements OnDestroy {
   }
 
   save(choice = this.draft()) {
-    try { this.storage?.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice)); } catch { /* The choice still works for this visit. */ }
+    try {
+      this.storage?.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+    } catch {
+      /* The choice still works for this visit. */
+    }
     this.choice.set({ ...choice });
     this.dialog?.nativeElement.close();
   }
 
-  close() { this.dialog?.nativeElement.close(); }
+  close() {
+    this.dialog?.nativeElement.close();
+  }
 
   trapFocus(event: KeyboardEvent) {
     if (event.key !== 'Tab') return;
-    const buttons = this.dialog?.nativeElement.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+    const buttons =
+      this.dialog?.nativeElement.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
     if (!buttons?.length) return;
-    const first = buttons[0], last = buttons[buttons.length - 1];
+    const first = buttons[0],
+      last = buttons[buttons.length - 1];
     if (event.shiftKey && this.document.activeElement === first) {
-      event.preventDefault(); last.focus();
+      event.preventDefault();
+      last.focus();
     } else if (!event.shiftKey && this.document.activeElement === last) {
-      event.preventDefault(); first.focus();
+      event.preventDefault();
+      first.focus();
     }
   }
 
@@ -72,9 +105,19 @@ export class CookiePreferencesComponent implements OnDestroy {
     const dialog = this.dialog?.nativeElement;
     if (!dialog || event.target !== dialog) return;
     const box = dialog.getBoundingClientRect();
-    if (event.clientX < box.left || event.clientX > box.right ||
-        event.clientY < box.top || event.clientY > box.bottom) dialog.close();
+    if (
+      event.clientX < box.left ||
+      event.clientX > box.right ||
+      event.clientY < box.top ||
+      event.clientY > box.bottom
+    )
+      dialog.close();
   }
 
-  ngOnDestroy() { if (this.dialog?.nativeElement.open) { this.close(); this.onClose(); } }
+  ngOnDestroy() {
+    if (this.dialog?.nativeElement.open) {
+      this.close();
+      this.onClose();
+    }
+  }
 }

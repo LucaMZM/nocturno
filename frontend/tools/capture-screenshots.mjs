@@ -35,6 +35,8 @@ async function login(page, email, password) {
   await page.goto('/auth/login');
   await page.locator('input[formcontrolname="email"]').fill(email);
   await page.locator('input[formcontrolname="password"]').fill(password);
+  const cookieChoice = page.getByRole('button', { name: 'Rechazar opcionales', exact: true });
+  if (await cookieChoice.isVisible()) await cookieChoice.click();
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/auth/login'));
   await assertNoAppError(page);
@@ -51,6 +53,7 @@ try {
   page.on('pageerror', (error) => console.error('Browser error:', error.message));
   page.on('console', (message) => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Rechazar opcionales', exact: true }).click();
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
 
@@ -186,7 +189,12 @@ try {
   await admin.waitForFunction((url) =>
     document.querySelectorAll('app-event-gallery-editor .gallery-editor-row')[2]?.querySelector('input')?.value === url,
   missingImage);
+  const refreshedSession = admin.waitForResponse((response) =>
+    response.url().endsWith('/api/auth/refresh') && response.request().method() === 'POST');
   await admin.goto(`/events/${sampleEvent.slug}`);
+  const refreshResponse = await refreshedSession;
+  assert.equal(refreshResponse.status(), 200, 'Admin session survives the public detail reload');
+  await refreshResponse.finished();
   await admin.getByRole('button', { name: 'Mostrar imagen 3' }).click();
   await admin.getByText('IMAGEN NO DISPONIBLE').waitFor({ timeout: 15000 });
   console.log('Gallery editor add, move, remove and save persisted; carousel image fallback rendered.');

@@ -1076,6 +1076,37 @@
           }
         }
       ]
+    },
+    {
+      "name": "Yomogan",
+      "item": [
+        {
+          "name": "Public avatar configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/yomogan/config"
+          }
+        },
+        {
+          "name": "Grounded event recommendations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Techno en Valencia por menos de 20 euros\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/yomogan/chat"
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }

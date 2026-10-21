@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: assistant-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   capture:
     runs-on: ubuntu-latest
@@ -30,6 +34,7 @@ jobs:
           --health-timeout 3s
           --health-retries 15
     env:
+      YOMOGAN_TIMEOUT_MS: '180000'
       NODE_ENV: development
       DATABASE_URL: postgresql://nocturno_capture:capture_only_password@localhost:5432/nocturno_capture
       CORS_ORIGIN: http://localhost:4200
@@ -76,6 +81,26 @@ jobs:
       - name: Capture real application views
         working-directory: frontend
         run: node tools/test-assistant-ui.mjs
+      - name: Verify existing public and ticketing flows
+        working-directory: frontend
+        run: node tools/capture-screenshots.mjs
+      - name: Start isolated real Ollama
+        run: |
+          docker run -d --name yomogan-ollama -p 127.0.0.1:11434:11434 -e OLLAMA_MAX_LOADED_MODELS=1 -e OLLAMA_NUM_PARALLEL=1 ollama/ollama:0.40.7
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:11434/api/tags > /dev/null; then break; fi
+            sleep 2
+          done
+          docker exec yomogan-ollama ollama pull qwen3:4b
+          docker exec yomogan-ollama ollama pull embeddinggemma
+      - name: Test real generation and embeddings
+        working-directory: backend
+        env:
+          YOMOGAN_TIMEOUT_MS: '180000'
+        run: node tools/verify-yomogan-live.js
+      - name: Test real AI through Angular and HTTP
+        working-directory: frontend
+        run: node tools/test-assistant-ui.mjs --live
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,4 +111,7 @@ jobs:
           retention-days: 7
       - name: Show server logs on failure
         if: failure()
-        run: cat /tmp/nocturno-api.log /tmp/nocturno-angular.log
+        run: |
+          cat /tmp/nocturno-api.log /tmp/nocturno-angular.log
+          docker logs yomogan-ollama || true
+          docker inspect --format '{{.State.OOMKilled}} {{.State.ExitCode}}' yomogan-ollama || true
