@@ -51,6 +51,7 @@ try {
   page.on('pageerror', (error) => console.error('Browser error:', error.message));
   page.on('console', (message) => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await page.goto('/');
+  await page.getByRole('button', { name: 'Rechazar opcionales', exact: true }).click();
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
 

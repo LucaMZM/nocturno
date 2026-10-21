@@ -13,7 +13,7 @@ export const YomoganStore=signalStore(
     async function respond(){
       if(store.pending())return;
       const requestVersion=version;
-      const messages=store.messages().slice(-11).map(({role,content})=>({role,content}));
+      const messages=store.messages().slice(-11).map(({role,content,reply})=>({role,content:reply?.events.length ? (content+' Opciones sugeridas: '+reply.events.map((event)=>event.title).join('; ')).slice(0,1200) : content}));
       // Stay within the HTTP conversation budget without persisting chat history.
       while(messages.reduce((n,m)=>n+m.content.length,0)>8000)messages.shift();
       patchState(store,{pending:true,error:null});
