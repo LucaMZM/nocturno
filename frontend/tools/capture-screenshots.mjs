@@ -189,7 +189,12 @@ try {
   await admin.waitForFunction((url) =>
     document.querySelectorAll('app-event-gallery-editor .gallery-editor-row')[2]?.querySelector('input')?.value === url,
   missingImage);
+  const refreshedSession = admin.waitForResponse((response) =>
+    response.url().endsWith('/api/auth/refresh') && response.request().method() === 'POST');
   await admin.goto(`/events/${sampleEvent.slug}`);
+  const refreshResponse = await refreshedSession;
+  assert.equal(refreshResponse.status(), 200, 'Admin session survives the public detail reload');
+  await refreshResponse.finished();
   await admin.getByRole('button', { name: 'Mostrar imagen 3' }).click();
   await admin.getByText('IMAGEN NO DISPONIBLE').waitFor({ timeout: 15000 });
   console.log('Gallery editor add, move, remove and save persisted; carousel image fallback rendered.');
