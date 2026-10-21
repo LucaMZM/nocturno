@@ -14,7 +14,7 @@
   </aside>
 }
 <dialog #preferencesDialog class="cookie-dialog" aria-labelledby="cookie-dialog-title"
-  aria-describedby="cookie-demo-description" (close)="onClose()" (click)="outsideClick($event)">
+  aria-describedby="cookie-demo-description" (keydown)="trapFocus($event)" (close)="onClose()" (click)="outsideClick($event)">
   <div class="cookie-dialog-heading">
     <p class="cookie-eyebrow">NOCTURNO · PREFERENCIAS</p>
     <button type="button" class="cookie-close" aria-label="Cerrar preferencias de cookies" autofocus (click)="close()">×</button>

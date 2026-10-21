@@ -34,6 +34,7 @@ export class CookiePreferencesComponent implements OnDestroy {
     this.previousOverflow = this.document.body.style.overflow;
     this.draft.set({ ...(this.choice() ?? cookieChoice()) });
     this.dialog.nativeElement.showModal();
+    this.dialog.nativeElement.querySelector<HTMLElement>('[autofocus]')?.focus();
     this.document.body.style.overflow = 'hidden';
   }
 
@@ -48,6 +49,18 @@ export class CookiePreferencesComponent implements OnDestroy {
   }
 
   close() { this.dialog?.nativeElement.close(); }
+
+  trapFocus(event: KeyboardEvent) {
+    if (event.key !== 'Tab') return;
+    const buttons = this.dialog?.nativeElement.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+    if (!buttons?.length) return;
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && this.document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && this.document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+  }
 
   onClose() {
     this.document.body.style.overflow = this.previousOverflow;
