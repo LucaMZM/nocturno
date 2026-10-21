@@ -60,6 +60,11 @@ try {
   await page.goto('/dashboard');
   await page.waitForURL((url) => url.pathname === '/error/401');
   await page.getByRole('link', { name: /Iniciar sesión/ }).waitFor();
+  for (const code of ['500', '503']) {
+    await page.goto(`/error/${code}`);
+    await page.getByText(code, { exact: true }).waitFor();
+    assert.equal(await page.locator('.full-error-illustration').evaluate((image) => image.complete && image.naturalWidth > 0), true);
+  }
 
   await page.goto('/?municipality=Valencia');
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
@@ -85,6 +90,11 @@ try {
   const events = (await eventsResponse.json()).data;
   const sampleEvent = events.find((event) => event.id === sampleEventId);
   assert.ok(sampleEvent, 'Seeded Nocturno event must appear in public Discover');
+  const singleImageEvent = events.find((event) => event.images.length === 1);
+  assert.ok(singleImageEvent, 'Seeded catalogue includes a one-image event');
+  await page.goto(`/events/${singleImageEvent.slug}`);
+  await page.locator('.event-carousel').waitFor({ timeout: 20000 });
+  assert.equal(await page.locator('.carousel-arrow').count(), 0);
   await page.goto(`/events/${sampleEvent.slug}`);
   await page.locator('.detail-sidebar h1').getByText(sampleEvent.title).waitFor({ timeout: 20000 });
   await page.locator('app-ticket-type-card').first().waitFor({ timeout: 20000 });
