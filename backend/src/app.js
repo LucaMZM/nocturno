@@ -49,6 +49,9 @@ app.get('/api/config/payments', (_req, res) => res.json({ data: {
   testMode: Boolean(env.STRIPE_SECRET_KEY?.startsWith('sk_test_')
     && env.STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_'))
 } }));
+app.get('/api/config/events', (_req, res) => res.json({ data: {
+  maxImages: env.EVENT_GALLERY_MAX_IMAGES
+} }));
 app.get('/api/openapi.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);

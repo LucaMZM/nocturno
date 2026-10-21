@@ -12,10 +12,11 @@ import { serializeEventFilters } from '../../../shared/utils/event-filter-contra
 import { AuthStore } from '../../auth/store/auth.store';
 import { CartStore } from '../../cart/store/cart.store';
 import { LocationStore } from '../../location/store/location.store';
+import { EventImageCarouselComponent } from '../components/event-image-carousel.component';
 
 @Component({
   selector: 'app-event-detail-page',
-  imports: [RouterLink, TicketTypeCardComponent, ErrorStateComponent],
+  imports: [RouterLink, TicketTypeCardComponent, ErrorStateComponent, EventImageCarouselComponent],
   providers: [EventDetailStore],
   template: `
     <div class="page-width detail-page">
@@ -31,28 +32,13 @@ import { LocationStore } from '../../location/store/location.store';
           </div>
         </div>
       } @else if (eventsStore.detailError()) {
-        <app-error-state [message]="eventsStore.detailError()!" (retry)="loadPageForSlug(slug())" />
+        <app-error-state [message]="eventsStore.detailError()!"
+          [code]="eventsStore.detailErrorCode() === 'NETWORK_ERROR' || eventsStore.detailErrorCode() === 'DATABASE_UNAVAILABLE' ? '503' : '500'"
+          (retry)="loadPageForSlug(slug())" />
       } @else if (eventsStore.selectedEvent(); as event) {
         <div class="detail-layout">
           <div class="detail-main">
-            <div class="detail-poster">
-              @if (event.posterUrl) {
-                <img [src]="event.posterUrl" [alt]="'Imagen de ' + event.title" />
-              } @else {
-                <div class="detail-poster-art">
-                  <span>NOCTURNO. / {{ event.eventType.replaceAll('_', ' ') }}</span
-                  ><strong>{{ event.title }}</strong
-                  ><span
-                    >{{ event.municipality || event.province }} · {{ date(event.startsAt) }}</span
-                  >
-                </div>
-              }
-            </div>
-            @if (event.imageSourceUrl && event.posterUrl) {
-              <p class="image-credit">{{ event.isDemo ? 'Fotografía del local' : 'Imagen publicada por la organización' }} ·
-                <a [href]="event.imageSourceUrl" target="_blank" rel="noopener noreferrer">Fuente ↗</a>
-              </p>
-            }
+            <app-event-image-carousel [event]="event" />
             <div class="detail-description">
               <p class="eyebrow">SOBRE EL EVENTO</p>
               <h2>La noche, en detalle.</h2>
@@ -243,6 +229,10 @@ export class EventDetailPage {
     this.cart.clearMessage();
     this.shareMessage.set(null);
     await this.eventsStore.loadEventBySlug(slug);
+    if (this.eventsStore.detailErrorCode() === 'EVENT_NOT_FOUND') {
+      void this.router.navigate(['/error/404'], { replaceUrl: true });
+      return;
+    }
     const event = this.eventsStore.selectedEvent();
     if (event?.slug === slug) {
       await this.eventDetailStore.loadEventRelations(event);

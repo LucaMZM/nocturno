@@ -1,0 +1,190 @@
+    <main class="page-width editor-page">
+      <a routerLink="/dashboard/events" class="back-link">← Volver a eventos</a>
+      <div class="editor-heading">
+        <p class="eyebrow">GESTIÓN DE EVENTOS</p>
+        <h1>{{ eventId() ? 'Editar evento' : 'Crear evento' }}<span>.</span></h1>
+        <p>Completa los datos del evento y guarda los cambios.</p>
+      </div>
+
+      @if (editor.loading()) {
+        <p class="muted" role="status">Cargando formulario…</p>
+      } @else if (editor.error() && !editor.venues().length) {
+        <app-error-state [message]="editor.error()!" (retry)="load()" />
+      } @else {
+        @if (saved()) {
+          <div class="editor-notice success" role="status">Evento guardado correctamente.</div>
+        }
+        @if (editor.error()) {
+          <div class="editor-notice" role="alert">{{ editor.error() }}</div>
+        }
+        @if (validationError()) {
+          <div class="editor-notice" role="alert">{{ validationError() }}</div>
+        }
+        @if (!editor.venues().length) {
+          <div class="editor-notice" role="alert">
+            Necesitas crear un local en Gestión → Locales antes de registrar un evento.
+          </div>
+        }
+        @if (editor.event()?.deletedAt) {
+          <div class="editor-notice" role="alert">
+            Este evento está eliminado y no se puede editar.
+          </div>
+        }
+
+        <form [formGroup]="form" (ngSubmit)="save()" class="editor-form">
+          <section class="editor-panel">
+            <h2>Información</h2>
+            <div class="editor-fields">
+              <label
+                >Título <span>*</span>
+                <input formControlName="title" maxlength="180" autocomplete="off" />
+                @if (form.controls.title.touched && form.controls.title.invalid) {
+                  <small>Introduce un título.</small>
+                }
+              </label>
+              <label
+                >Tipo de evento <span>*</span>
+                <select formControlName="eventType">
+                  <option value="">Selecciona un tipo</option>
+                  @for (type of eventTypes; track type) {
+                    <option [value]="type">{{ label(type) }}</option>
+                  }
+                </select>
+              </label>
+              <h3 class="editor-wide editor-subheading">Ubicación</h3>
+              <label
+                >Local <span>*</span>
+                <select formControlName="venueId">
+                  <option value="">Selecciona un local</option>
+                  @for (venue of editor.venues(); track venue.id) {
+                    <option [value]="venue.id">{{ venue.name }} · {{ venue.municipality }}</option>
+                  }
+                </select>
+              </label>
+              @if (auth.user()?.role === 'ADMIN') { <label
+                >Promotor
+                <select formControlName="promoterId">
+                  <option value="">Sin promotor</option>
+                  @for (promoter of editor.promoters(); track promoter.id) {
+                    <option [value]="promoter.id">{{ promoter.name }}</option>
+                  }
+                </select>
+              </label> }
+              <h3 class="editor-wide editor-subheading">Fecha y horario</h3>
+              <label
+                >Comienzo <span>*</span>
+                <input type="datetime-local" formControlName="startsAt" />
+              </label>
+              <label
+                >Final <span>*</span>
+                <input type="datetime-local" formControlName="endsAt" />
+              </label>
+              @if (dateError()) {
+                <p class="editor-field-error" role="alert">{{ dateError() }}</p>
+              }
+              <h3 class="editor-wide editor-subheading">Publicación</h3>
+              <label
+                >Estado <span>*</span>
+                <select formControlName="status">
+                  @for (status of statuses; track status) {
+                    <option [value]="status">{{ label(status) }}</option>
+                  }
+                </select>
+                <small class="editor-help">Los borradores no aparecen en la agenda pública.</small>
+              </label>
+              <label class="editor-toggle"><input type="checkbox" formControlName="isActive" [attr.disabled]="editor.event()?.deletedAt ? true : null" /> Evento activo</label>
+              <h3 class="editor-wide editor-subheading">Clasificación y descripción</h3>
+              <label
+                >Edad mínima
+                <input type="number" min="0" step="1" formControlName="minimumAge" />
+              </label>
+              <label class="editor-wide"
+                >Descripción
+                <textarea formControlName="description" maxlength="5000" rows="5"></textarea>
+              </label>
+              <label
+                >Código de vestimenta
+                <select formControlName="dressCode">
+                  <option value="">Sin especificar</option>
+                  @for (code of dressCodes; track code) {
+                    <option [value]="code">{{ label(code) }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <app-event-gallery-editor
+            [initialImages]="initialGallery()"
+            [maxImages]="editor.maxImages()"
+            (imagesChanged)="galleryDraft.set($event)"
+          />
+
+          <section class="editor-panel">
+            <h2>Música, ambiente y público</h2>
+            <p>Marca las opciones que describen este evento.</p>
+            <fieldset>
+              <legend>Géneros musicales</legend>
+              <div class="editor-options">
+                @for (genre of genres; track genre) {
+                  <label
+                    ><input
+                      type="checkbox"
+                      [checked]="selected('musicGenres', genre)"
+                      (change)="toggleSelection('musicGenres', genre, $event)"
+                    />
+                    {{ label(genre) }}</label
+                  >
+                }
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Ambiente</legend>
+              <div class="editor-options">
+                @for (atmosphere of atmospheres; track atmosphere) {
+                  <label
+                    ><input
+                      type="checkbox"
+                      [checked]="selected('atmosphere', atmosphere)"
+                      (change)="toggleSelection('atmosphere', atmosphere, $event)"
+                    />
+                    {{ label(atmosphere) }}</label
+                  >
+                }
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Público ideal</legend>
+              <div class="editor-options">
+                @for (ideal of ideals; track ideal) {
+                  <label
+                    ><input
+                      type="checkbox"
+                      [checked]="selected('idealFor', ideal)"
+                      (change)="toggleSelection('idealFor', ideal, $event)"
+                    />
+                    {{ label(ideal) }}</label
+                  >
+                }
+              </div>
+            </fieldset>
+          </section>
+
+          <div class="editor-actions">
+            <button
+              class="button-primary"
+              type="submit"
+              [disabled]="editor.saving() || !editor.venues().length || !!editor.event()?.deletedAt"
+            >
+              {{ editor.saving() ? 'Guardando…' : eventId() ? 'Guardar cambios' : 'Crear evento' }}
+              <span>↗</span>
+            </button>
+            @if (canViewEvent()) {
+              <a class="button-outline" [routerLink]="['/events', editor.event()!.slug]"
+                >Ver evento ↗</a
+              >
+            }
+          </div>
+        </form>
+      }
+    </main>

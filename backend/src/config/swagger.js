@@ -14,11 +14,12 @@ const genres = ['TECHNO','HARD_TECHNO','HARDGROOVE','HOUSE','TECH_HOUSE','EDM','
 const atmospheres = ['UNDERGROUND','COMMERCIAL','UNIVERSITY','ELEGANT','INTERNATIONAL','ALTERNATIVE','CHILL'];
 const ideals = ['FRIENDS','MEETING_PEOPLE','DANCING','DATE','GROUPS','CELEBRATIONS','DRINKS'];
 const object = (properties, required = []) => ({ type: 'object', additionalProperties: false, properties, required });
+const eventImageInput = object({ url: str(2048), altText: nullable(str(240)), sourceUrl: nullable(url) }, ['url']);
 const bodySchema = {
   User: object({ email: { type: 'string', format: 'email', maxLength: 320 }, displayName: str(120) }, ['email','displayName']),
   Promoter: object({ name: str(160), description: nullable(str(5000)), email: nullable({ type: 'string', format: 'email' }), phone: nullable(str(40)), websiteUrl: nullable(url) }, ['name']),
   Venue: object({ name: str(160), description: nullable(str(5000)), type: values(venueTypes), province: str(120), municipality: str(120), zone: nullable(str(120)), address: str(240), postalCode: nullable({ type: 'string', pattern: '^[0-9]{5}$' }), latitude: nullable({ type: 'number', minimum: -90, maximum: 90 }), longitude: nullable({ type: 'number', minimum: -180, maximum: 180 }), capacity: nullable(integer()), minimumAge: nullable(integer()), websiteUrl: nullable(url), imageUrl: nullable(url) }, ['name','type','province','municipality','address']),
-  Event: object({ venueId: uuid, promoterId: nullable(uuid), title: str(180), description: nullable(str(5000)), eventType: values(eventTypes), startsAt: date, endsAt: date, minimumAge: nullable(integer()), dressCode: nullable(values(['CASUAL','SMART_CASUAL','ELEGANT','STREETWEAR','NO_DRESS_CODE'])), musicGenres: array(values(genres)), atmosphere: array(values(atmospheres)), idealFor: array(values(ideals)), posterUrl: nullable({ type: 'string', description: 'HTTP(S) URL or local /posters/*.svg asset' }), sourceUrl: nullable(url), imageSourceUrl: nullable(url), status: values(statuses), isActive: { type: 'boolean' } }, ['venueId','title','eventType','startsAt','endsAt']),
+  Event: object({ venueId: uuid, promoterId: nullable(uuid), title: str(180), description: nullable(str(5000)), eventType: values(eventTypes), startsAt: date, endsAt: date, minimumAge: nullable(integer()), dressCode: nullable(values(['CASUAL','SMART_CASUAL','ELEGANT','STREETWEAR','NO_DRESS_CODE'])), musicGenres: array(values(genres)), atmosphere: array(values(atmospheres)), idealFor: array(values(ideals)), posterUrl: nullable({ type: 'string', description: 'HTTP(S) URL or local /posters/*.svg asset' }), images: array(eventImageInput), sourceUrl: nullable(url), imageSourceUrl: nullable(url), status: values(statuses), isActive: { type: 'boolean' } }, ['venueId','title','eventType','startsAt','endsAt']),
   TicketType: object({ name: str(120), price: money, quantity: integer(), salesStart: nullable(date), salesEnd: nullable(date), maxPerUser: nullable(integer(1)), benefits: array(str(160)), active: { type: 'boolean' } }, ['name','price','quantity'])
 };
 const record = (name, extra = {}) => object({ id: uuid, ...bodySchema[name].properties, createdAt: date, updatedAt: name === 'Event' ? nullable(date) : date, ...extra });
@@ -27,7 +28,7 @@ const response = (schema) => ({ description: 'Success', content: { 'application/
 const wrapped = (schema) => object({ data: schema }, ['data']);
 const list = (schema) => object({ data: array(schema), pagination: object({ page: integer(1), limit: integer(1), total: integer(), totalPages: integer() }, ['page','limit','total','totalPages']) }, ['data','pagination']);
 const err = (description) => ({ description, content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } });
-const commonErrors = { '400': err('Validation error or invalid UUID'), '404': err('Resource not found'), '409': err('Conflict'), '422': err('Business rule or database constraint'), '500': err('Internal server error') };
+const commonErrors = { '400': err('Validation error or invalid UUID'), '401': err('Authentication required'), '403': err('Forbidden'), '404': err('Resource not found'), '409': err('Conflict'), '422': err('Business rule or database constraint'), '429': err('Rate limit exceeded'), '500': err('Internal server error'), '502': err('External dependency error'), '503': err('Service unavailable') };
 const idParam = (name = 'id') => ({ name, in: 'path', required: true, schema: uuid });
 const query = (name, schema) => ({ name, in: 'query', schema });
 const pages = [query('page', { type: 'integer', minimum: 1, default: 1 }), query('limit', { type: 'integer', minimum: 1, maximum: 100, default: 20 })];
@@ -138,6 +139,7 @@ export const swaggerSpec = {
         venueLatitude: nullable({ type: 'number' }), venueLongitude: nullable({ type: 'number' }),
         distanceKm: nullable({ type: 'number', minimum: 0, description: 'Calculated from request coordinates; never persisted' }),
         posterUrl: nullable({ type: 'string', description: 'Absolute URL or local poster asset' }),
+        images: array(object({ id: uuid, url: str(2048), position: integer(), altText: nullable(str(240)), sourceUrl: nullable(url) })),
         minPrice: nullable(money), ticketAvailability: integer() } : name === 'TicketType' ? { eventId: uuid, sold: integer(), reserved: integer() } : name === 'User' ? { role: values(['USER','PROMOTER','ADMIN']), isActive: { type: 'boolean' }, promoterId: nullable(uuid) } : { slug: str(220) })]
     ]))
   } }
@@ -190,6 +192,8 @@ Object.assign(swaggerSpec.components.schemas, {
 });
 
 Object.assign(swaggerSpec.paths, {
+  '/api/config/events': { get: { tags: ['Events'], summary: 'Public gallery limits',
+    responses: { '200': response(wrapped(object({ maxImages: integer(1) }, ['maxImages']))) } } },
   '/api/config/payments': { get: { tags: ['Payments'], summary: 'Public Stripe configuration',
     responses: { '200': response(wrapped(object({ enabled: { type: 'boolean' }, publishableKey: nullable(str()) }))) } } },
   '/api/auth/register': { post: { tags: ['Auth'], summary: 'Register USER and set refresh cookie',

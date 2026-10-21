@@ -1,0 +1,40 @@
+<section class="editor-panel gallery-editor" aria-label="Galería de imágenes">
+  <h2>Galería de imágenes</h2>
+  <p>La primera imagen será la portada. Puedes añadir hasta {{ maxImages() }} imágenes; usa fotografías del local con permiso o una imagen propia.</p>
+  <div class="gallery-editor-list">
+    @for (row of rows(); track row.key; let i = $index) {
+      <div class="gallery-editor-row">
+        <div class="gallery-editor-row-head">
+          <strong>{{ i === 0 ? 'PORTADA' : 'IMAGEN ' + (i + 1) }}</strong>
+          <div class="gallery-editor-actions">
+            <button type="button" class="button-text" [disabled]="i === 0" [attr.aria-label]="'Subir imagen ' + (i + 1)" (click)="move(i, -1)">↑</button>
+            <button type="button" class="button-text" [disabled]="i === rows().length - 1" [attr.aria-label]="'Bajar imagen ' + (i + 1)" (click)="move(i, 1)">↓</button>
+            <button type="button" class="button-text" [attr.aria-label]="'Eliminar imagen ' + (i + 1)" (click)="remove(i)">Eliminar</button>
+          </div>
+        </div>
+        <div class="editor-fields">
+          <label>URL de la imagen
+            <input type="text" inputmode="url" [value]="row.url" placeholder="https://… o /posters/…" (input)="update(i, 'url', $any($event.target).value)" />
+          </label>
+          <label>Texto alternativo
+            <input type="text" maxlength="240" [value]="row.altText" placeholder="Describe la fotografía" (input)="update(i, 'altText', $any($event.target).value)" />
+          </label>
+          <label class="editor-wide">Fuente o crédito (URL HTTP/HTTPS)
+            <input type="url" [value]="row.sourceUrl" placeholder="https://…" (input)="update(i, 'sourceUrl', $any($event.target).value)" />
+          </label>
+        </div>
+        @if (row.url && !isSafeUrl(row.url)) { <p class="editor-field-error" role="alert">URL no válida. Usa HTTP/HTTPS o un cartel local de /posters/.</p> }
+        @if (row.sourceUrl && !isHttpUrl(row.sourceUrl)) { <p class="editor-field-error" role="alert">La fuente debe ser una URL HTTP/HTTPS.</p> }
+        @if (row.url && isSafeUrl(row.url)) {
+          <div class="gallery-editor-preview">
+            @if (failedPreviews().has(row.key)) { <span role="status">No se ha podido cargar la imagen. Comprueba la URL.</span> }
+            <img [src]="row.url" [alt]="row.altText || 'Vista previa de imagen ' + (i + 1)" loading="lazy"
+              [class.is-broken]="failedPreviews().has(row.key)"
+              (load)="onPreviewLoaded(row.key)" (error)="onPreviewError(row.key)" />
+          </div>
+        }
+      </div>
+    }
+  </div>
+  <button type="button" class="button-outline" [disabled]="rows().length >= maxImages()" (click)="add()">+ Añadir imagen</button>
+</section>

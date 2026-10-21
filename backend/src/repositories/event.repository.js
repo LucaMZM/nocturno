@@ -1,5 +1,4 @@
 import { getPool } from '../config/db.js';
-import { crudRepository } from './crud.repository.js';
 import { mapEvent } from '../models/event.model.js';
 
 const eventFields = [
@@ -22,11 +21,30 @@ const eventFields = [
   'status',
   'isActive',
 ];
-const sharedCrudRepository = crudRepository('events', eventFields, mapEvent);
 const priceSql = `LEFT JOIN LATERAL (
   SELECT min(price) AS min_price, coalesce(sum(quantity - sold - reserved), 0) AS ticket_availability
   FROM ticket_types t WHERE t.event_id = e.id AND t.active = true
 ) tickets ON true`;
+const gallerySql = `LEFT JOIN LATERAL (
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'id', image.id, 'url', image.url, 'position', image.position,
+    'altText', image.alt_text, 'sourceUrl', image.source_url
+  ) ORDER BY image.position), '[]'::jsonb) AS images
+  FROM event_images image WHERE image.event_id = e.id
+) gallery ON true`;
+
+const columnName = (field) => field.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`);
+
+async function replaceImages(client, eventId, images) {
+  await client.query('DELETE FROM event_images WHERE event_id = $1', [eventId]);
+  for (const [position, image] of images.entries()) {
+    await client.query(
+      `INSERT INTO event_images (event_id, url, position, alt_text, source_url, origin)
+       VALUES ($1,$2,$3,$4,$5,'USER')`,
+      [eventId, image.url, position, image.altText ?? null, image.sourceUrl ?? null],
+    );
+  }
+}
 
 export function buildEventListQuery(filters) {
   const values = [];
@@ -86,8 +104,8 @@ export function buildEventListQuery(filters) {
   values.push(filters.limit, (filters.page - 1) * filters.limit);
   return {
     sql: `SELECT e.*, v.name AS venue_name, v.slug AS venue_slug, v.municipality, v.province, v.latitude AS venue_latitude, v.longitude AS venue_longitude,
-      tickets.min_price, tickets.ticket_availability, ${hasCoordinates ? 'geo.distance_km' : 'NULL::double precision'} AS distance_km,
-      count(*) OVER() AS total_count FROM events e JOIN venues v ON v.id = e.venue_id ${priceSql} ${geoJoin} ${clause}
+      tickets.min_price, tickets.ticket_availability, gallery.images, ${hasCoordinates ? 'geo.distance_km' : 'NULL::double precision'} AS distance_km,
+      count(*) OVER() AS total_count FROM events e JOIN venues v ON v.id = e.venue_id ${priceSql} ${gallerySql} ${geoJoin} ${clause}
       ORDER BY ${order}, e.id LIMIT $${values.length - 1} OFFSET $${values.length}`,
     values,
     countSql: `SELECT count(*) AS total FROM events e JOIN venues v ON v.id = e.venue_id ${priceSql} ${geoJoin} ${clause}`,
@@ -110,8 +128,8 @@ export const eventRepository = {
   async findPublicBySlug(eventSlug) {
     const { rows } = await getPool().query(
       `SELECT e.*, v.name AS venue_name, v.slug AS venue_slug, v.municipality, v.province, v.latitude AS venue_latitude, v.longitude AS venue_longitude,
-      p.name AS promoter_name, p.slug AS promoter_slug, tickets.min_price, tickets.ticket_availability FROM events e
-      JOIN venues v ON v.id = e.venue_id LEFT JOIN promoters p ON p.id = e.promoter_id ${priceSql}
+      p.name AS promoter_name, p.slug AS promoter_slug, tickets.min_price, tickets.ticket_availability, gallery.images FROM events e
+      JOIN venues v ON v.id = e.venue_id LEFT JOIN promoters p ON p.id = e.promoter_id ${priceSql} ${gallerySql}
       WHERE e.slug = $1 AND e.is_active = TRUE AND e.deleted_at IS NULL AND e.status IN ('PUBLISHED', 'SOLD_OUT')`,
       [eventSlug],
     );
@@ -121,16 +139,36 @@ export const eventRepository = {
   async findById(eventId) {
     const { rows } = await getPool().query(
       `SELECT e.*, v.name AS venue_name, v.slug AS venue_slug, v.municipality, v.province, v.latitude AS venue_latitude, v.longitude AS venue_longitude,
-      p.name AS promoter_name, p.slug AS promoter_slug, tickets.min_price, tickets.ticket_availability FROM events e
-      JOIN venues v ON v.id = e.venue_id LEFT JOIN promoters p ON p.id = e.promoter_id ${priceSql} WHERE e.id = $1`,
+      p.name AS promoter_name, p.slug AS promoter_slug, tickets.min_price, tickets.ticket_availability, gallery.images FROM events e
+      JOIN venues v ON v.id = e.venue_id LEFT JOIN promoters p ON p.id = e.promoter_id ${priceSql} ${gallerySql} WHERE e.id = $1`,
       [eventId],
     );
     return mapEvent(rows[0]);
   },
 
   async create(eventData) {
-    const createdEvent = await sharedCrudRepository.create(eventData);
-    return eventRepository.findById(createdEvent.id);
+    const entries = Object.entries(eventData).filter(([field]) => eventFields.includes(field));
+    const values = entries.map(([, value]) => value);
+    const columns = entries.map(([field]) => columnName(field));
+    const markers = values.map((_, index) => `$${index + 1}`);
+    const client = await getPool().connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        `INSERT INTO events (${columns.join(', ')}) VALUES (${markers.join(', ')}) RETURNING id`, values,
+      );
+      const images = eventData.images ?? (eventData.posterUrl
+        ? [{ url: eventData.posterUrl, altText: eventData.title, sourceUrl: eventData.imageSourceUrl }]
+        : []);
+      await replaceImages(client, rows[0].id, images);
+      await client.query('COMMIT');
+      return eventRepository.findById(rows[0].id);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   async update(eventId, changes) {
@@ -143,11 +181,25 @@ export const eventRepository = {
           `${field.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`)} = $${index + 2}`,
       )
       .join(', ');
-    const { rowCount } = await getPool().query(
-      `UPDATE events SET ${set} WHERE id = $1 AND deleted_at IS NULL`,
-      [eventId, ...entries.map(([, value]) => value)],
-    );
-    return rowCount ? eventRepository.findById(eventId) : null;
+    const client = await getPool().connect();
+    try {
+      await client.query('BEGIN');
+      const { rowCount } = await client.query(
+        `UPDATE events SET ${set} WHERE id = $1 AND deleted_at IS NULL`,
+        [eventId, ...entries.map(([, value]) => value)],
+      );
+      if (rowCount && changes.images !== undefined) {
+        await replaceImages(client, eventId, changes.images);
+        await client.query('UPDATE events SET gallery_user_edited = TRUE WHERE id = $1', [eventId]);
+      }
+      await client.query('COMMIT');
+      return rowCount ? eventRepository.findById(eventId) : null;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   async slugExists(eventSlug, excludeId = null) {

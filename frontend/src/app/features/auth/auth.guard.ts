@@ -7,7 +7,7 @@ export const authGuard: CanActivateFn = async (_route, state) => {
   const auth = inject(AuthStore);
   const router = inject(Router);
   await auth.bootstrap();
-  return auth.user() ? true : router.createUrlTree(['/auth/login'],
+  return auth.user() ? true : router.createUrlTree(['/error/401'],
     { queryParams: { returnUrl: state.url } });
 };
 
@@ -15,10 +15,10 @@ export const roleGuard: CanActivateFn = async (route, state) => {
   const auth = inject(AuthStore);
   const router = inject(Router);
   await auth.bootstrap();
-  if (!auth.user()) return router.createUrlTree(['/auth/login'],
+  if (!auth.user()) return router.createUrlTree(['/error/401'],
     { queryParams: { returnUrl: state.url } });
   const roles = route.data['roles'] as Array<UserRole> | undefined;
-  return canAccessRole(auth.user(), roles) ? true : router.createUrlTree(['/']);
+  return canAccessRole(auth.user(), roles) ? true : router.createUrlTree(['/error/403']);
 };
 
 type UserRole = 'USER' | 'PROMOTER' | 'ADMIN';

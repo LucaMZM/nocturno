@@ -6,9 +6,9 @@ import { PublicPromoterProfile, PromotersApiService } from '../../../core/servic
 import { toApiProblem } from '../../../shared/utils/api-error';
 
 interface PromoterState { promoters: Promoter[]; selected: Promoter | null; publicProfile: PublicPromoterProfile | null; pagination: Pagination;
-  loading: boolean; saving: boolean; error: string | null; }
+  loading: boolean; saving: boolean; error: string | null; errorCode: string | null; }
 const initialState: PromoterState = { promoters: [], selected: null, publicProfile: null,
-  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }, loading: false, saving: false, error: null };
+  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }, loading: false, saving: false, error: null, errorCode: null };
 export const PromotersStore = signalStore(
   withState(initialState),
   withMethods((store, api = inject(PromotersApiService)) => ({
@@ -26,10 +26,10 @@ export const PromotersStore = signalStore(
         error: toApiProblem(error, 'No hemos podido cargar el promotor.').message }); }
     },
     async loadPublicProfile(slug: string) {
-      patchState(store, { loading: true, error: null, publicProfile: null });
+      patchState(store, { loading: true, error: null, errorCode: null, publicProfile: null });
       try { patchState(store, { publicProfile: (await api.getPublicProfile(slug)).data, loading: false }); }
-      catch (error) { patchState(store, { loading: false,
-        error: toApiProblem(error, 'No hemos podido cargar este promotor.').message }); }
+      catch (error) { const problem = toApiProblem(error, 'No hemos podido cargar este promotor.');
+        patchState(store, { loading: false, error: problem.message, errorCode: problem.code }); }
     },
     async save(id: string | null, payload: object): Promise<Promoter | null> {
       patchState(store, { saving: true, error: null });

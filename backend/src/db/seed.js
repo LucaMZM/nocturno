@@ -98,6 +98,32 @@ const venuePhotos = {
     ['https://www.lafabricadehielo.net/wp-content/uploads/2016/03/sala21_c-520x347.jpg','https://www.lafabricadehielo.net/galeria/'],
   ],
 };
+
+function galleryImages(posterUrl, title, sourceUrl, venueImages = []) {
+  const candidates = [
+    ...(posterUrl ? [{ url: posterUrl, altText: title, sourceUrl }] : []),
+    ...venueImages.map(([url, page]) => ({
+      url, altText: `Fotografía del local · ${title}`, sourceUrl: page,
+    })),
+  ];
+  return candidates.filter((image, index) =>
+    candidates.findIndex((candidate) => candidate.url === image.url) === index);
+}
+
+export async function seedGalleryIfUntouched(client, eventId, images) {
+  const { rows } = await client.query(
+    'SELECT gallery_user_edited FROM events WHERE id = $1', [eventId],
+  );
+  if (!rows.length || rows[0].gallery_user_edited) return;
+  await client.query('DELETE FROM event_images WHERE event_id = $1', [eventId]);
+  for (const [position, image] of images.entries()) {
+    await client.query(
+      `INSERT INTO event_images (event_id,url,position,alt_text,source_url,origin)
+       VALUES ($1,$2,$3,$4,$5,'SEED')`,
+      [eventId, image.url, position, image.altText, image.sourceUrl ?? null],
+    );
+  }
+}
 // Older externally published events are kept as inactive reference records. Their source URLs
 // document the research; Nocturno never offers synthetic tickets for somebody else's event.
 const verifiedEvents = [
@@ -318,11 +344,17 @@ export async function seed() {
         title=EXCLUDED.title,slug=EXCLUDED.slug,description=EXCLUDED.description,event_type=EXCLUDED.event_type,
         starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,minimum_age=EXCLUDED.minimum_age,
         dress_code=EXCLUDED.dress_code,music_genres=EXCLUDED.music_genres,atmosphere=EXCLUDED.atmosphere,
-        ideal_for=EXCLUDED.ideal_for,poster_url=EXCLUDED.poster_url,status=EXCLUDED.status,is_active=TRUE,is_demo=TRUE
+        ideal_for=EXCLUDED.ideal_for,
+        poster_url=CASE WHEN events.gallery_user_edited
+          THEN events.poster_url ELSE EXCLUDED.poster_url END,
+        status=EXCLUDED.status,is_active=TRUE,is_demo=TRUE
         WHERE events.deleted_at IS NULL`,
         [id(4,i+1),id(1,venueIndex+1),id(2,promoterIndex+1),title,slugify(title),
           `Una noche de ${genres.map((genre) => genre.toLowerCase().replaceAll('_',' ')).join(' y ')} en ${venues[venueIndex][0]}. Música y comunidad en ${venues[venueIndex][3]}.`,
           eventType,start,end,18,dressCode,genres,atmosphere,['FRIENDS','DANCING'],`/posters/event-${String(i+1).padStart(2,'0')}.svg`,seededStatus]);
+      await seedGalleryIfUntouched(client, id(4,i+1), galleryImages(
+        `/posters/event-${String(i+1).padStart(2,'0')}.svg`, title, null,
+      ));
       for (let j = 0; j < 2; j++) await client.query(`INSERT INTO ticket_types
         (id,event_id,name,price,quantity,max_per_user,benefits) VALUES ($1,$2,$3,$4,$5,$6,$7)
         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,price=EXCLUDED.price,quantity=EXCLUDED.quantity,
@@ -345,11 +377,16 @@ export async function seed() {
         ON CONFLICT (id) DO UPDATE SET venue_id=EXCLUDED.venue_id,title=EXCLUDED.title,
           slug=EXCLUDED.slug,description=EXCLUDED.description,event_type=EXCLUDED.event_type,
           starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,music_genres=EXCLUDED.music_genres,
-          poster_url=EXCLUDED.poster_url,source_url=EXCLUDED.source_url,
-          image_source_url=EXCLUDED.image_source_url,status=EXCLUDED.status
+          poster_url=CASE WHEN events.gallery_user_edited
+            THEN events.poster_url ELSE EXCLUDED.poster_url END,source_url=EXCLUDED.source_url,
+          image_source_url=CASE WHEN events.gallery_user_edited
+            THEN events.image_source_url ELSE EXCLUDED.image_source_url END,status=EXCLUDED.status
         WHERE events.deleted_at IS NULL`,
         [id('c',i+1),id('b',event.venue+1),event.title,slugify(event.title),event.description,
           event.type,event.start,event.end,event.genres,event.image,event.source,event.image,status]);
+      await seedGalleryIfUntouched(client, id('c',i+1), galleryImages(
+        event.image, event.title, event.source, venuePhotos[event.venue] ?? [],
+      ));
     }
     // Preserve researched events as management reference records, outside public Discover.
     // This is independent of status and does not alter historical event titles or sources.
@@ -376,11 +413,20 @@ export async function seed() {
           event_type=EXCLUDED.event_type,starts_at=EXCLUDED.starts_at,ends_at=EXCLUDED.ends_at,
           dress_code=EXCLUDED.dress_code,music_genres=EXCLUDED.music_genres,
           atmosphere=EXCLUDED.atmosphere,ideal_for=EXCLUDED.ideal_for,
-          poster_url=EXCLUDED.poster_url,image_source_url=EXCLUDED.image_source_url,is_demo=TRUE
+          poster_url=CASE WHEN events.gallery_user_edited
+            THEN events.poster_url ELSE EXCLUDED.poster_url END,
+          image_source_url=CASE WHEN events.gallery_user_edited
+            THEN events.image_source_url ELSE EXCLUDED.image_source_url END,is_demo=TRUE
         WHERE events.deleted_at IS NULL`,
         [id('d',i+1),id('b',venueIndex+1),id(2,promoterIndex+1),title,slugify(title),
           `Evento ficticio creado por Nocturno para demostrar la experiencia de ticketing en ${venueName}. La programación, los precios y las entradas son simulados. No existe afiliación ni venta oficial del local.`,
           eventType,start,end,dressCode,genres,atmosphere,['FRIENDS','DANCING'],photoUrl,imageSourceUrl]);
+      // Venue photographs are documentation of the venue, never of the simulated event.
+      // Events without a usable venue photograph retain their own local artwork.
+      const fallbackArt = `/posters/event-${String(i % 21 + 1).padStart(2,'0')}.svg`;
+      await seedGalleryIfUntouched(client, id('d',i+1), galleryImages(
+        photoUrl ?? fallbackArt, title, imageSourceUrl, photos,
+      ));
       for (let j = 0; j < 3; j++) await client.query(`INSERT INTO ticket_types
         (id,event_id,name,price,quantity,max_per_user,benefits) VALUES ($1,$2,$3,$4,$5,6,$6)
         ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,price=EXCLUDED.price,

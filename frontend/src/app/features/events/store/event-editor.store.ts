@@ -6,11 +6,13 @@ import { PromotersApiService } from '../../../core/services/promoters-api.servic
 import { VenuesApiService } from '../../../core/services/venues-api.service';
 import { toApiProblem } from '../../../shared/utils/api-error';
 import { EventsApiService } from '../services/events-api.service';
+import { EventsStore } from './events.store';
 
 interface EditorState {
   event: Event | null;
   venues: Venue[];
   promoters: Promoter[];
+  maxImages: number;
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -20,6 +22,7 @@ const initialState: EditorState = {
   event: null,
   venues: [],
   promoters: [],
+  maxImages: 24,
   loading: false,
   saving: false,
   error: null,
@@ -43,19 +46,22 @@ export const EventEditorStore = signalStore(
       events = inject(EventsApiService),
       venues = inject(VenuesApiService),
       promoters = inject(PromotersApiService),
+      eventsList = inject(EventsStore),
     ) => ({
       async load(eventId: string | null) {
         patchState(store, { loading: true, error: null });
         try {
-          const [eventResponse, venueOptions, promoterOptions] = await Promise.all([
+          const [eventResponse, venueOptions, promoterOptions, galleryConfig] = await Promise.all([
             eventId ? events.getEventById(eventId) : Promise.resolve(null),
             loadAllPages((page) => venues.getVenues(page)),
             loadAllPages((page) => promoters.getPromoters(page)),
+            events.getGalleryConfig().catch(() => ({ data: { maxImages: 24 } })),
           ]);
           patchState(store, {
             event: eventResponse?.data ?? null,
             venues: venueOptions,
             promoters: promoterOptions,
+            maxImages: galleryConfig.data.maxImages,
             loading: false,
           });
         } catch (error) {
@@ -72,6 +78,7 @@ export const EventEditorStore = signalStore(
             ? await events.updateEvent(eventId, payload)
             : await events.createEvent(payload);
           patchState(store, { event: response.data, saving: false });
+          void eventsList.refreshEvents();
           return response.data;
         } catch (error) {
           patchState(store, {

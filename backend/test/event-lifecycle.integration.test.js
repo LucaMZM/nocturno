@@ -5,6 +5,7 @@ import { app } from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
+import { seedGalleryIfUntouched } from '../src/db/seed.js';
 
 // Uses only its own fixtures. The final SQL cleanup removes these rows and their test relations.
 test('event lifecycle keeps UUID relations and public slug visibility', { skip: !env.DATABASE_URL }, async () => {
@@ -51,6 +52,40 @@ test('event lifecycle keeps UUID relations and public slug visibility', { skip: 
     assert.equal(event.imageSourceUrl, payload.imageSourceUrl);
     assert.equal(event.updatedAt, null);
     assert.equal(event.isActive, true);
+    assert.deepEqual(event.images, []);
+    const oneImage = await call(`/api/events/${event.id}`, 'PATCH', {
+      images: [{ url: 'https://example.com/one.jpg', altText: 'Primera foto' }],
+    });
+    assert.equal(oneImage.status, 200, JSON.stringify(oneImage.body));
+    assert.equal(oneImage.body.data.posterUrl, 'https://example.com/one.jpg');
+    assert.deepEqual(oneImage.body.data.images.map((image) => image.url), ['https://example.com/one.jpg']);
+    const threeImages = [1, 2, 3].map((number) => ({ url: `https://example.com/${number}.jpg`, altText: `Foto ${number}` }));
+    const galleryUpdate = await call(`/api/events/${event.id}`, 'PATCH', { images: threeImages });
+    assert.equal(galleryUpdate.status, 200, JSON.stringify(galleryUpdate.body));
+    assert.deepEqual(galleryUpdate.body.data.images.map((image) => image.position), [0, 1, 2]);
+    const fiveImages = [5, 4, 3, 2, 1].map((number) => ({ url: `https://example.com/${number}.jpg` }));
+    assert.equal((await call(`/api/events/${event.id}`, 'PATCH', { images: fiveImages })).status, 200);
+    const reordered = await call(`/api/events/${event.id}`, 'PATCH', { images: fiveImages.slice(1, 4) });
+    assert.equal(reordered.status, 200);
+    assert.deepEqual(reordered.body.data.images.map((image) => image.url),
+      fiveImages.slice(1, 4).map((image) => image.url));
+    const persistedGallery = await getPool().query(
+      'SELECT url, position FROM event_images WHERE event_id=$1 ORDER BY position', [event.id]);
+    assert.deepEqual(persistedGallery.rows.map((row) => row.position), [0, 1, 2]);
+    assert.equal((await call(`/api/events/${event.id}`, 'PATCH', {
+      images: [{ url: 'https://example.com/repeated.jpg' }, { url: 'https://example.com/repeated.jpg' }],
+    })).status, 400);
+    assert.deepEqual((await getPool().query(
+      'SELECT url FROM event_images WHERE event_id=$1 ORDER BY position', [event.id])).rows.map((row) => row.url),
+      fiveImages.slice(1, 4).map((image) => image.url));
+    const emptied = await call(`/api/events/${event.id}`, 'PATCH', { images: [] });
+    assert.equal(emptied.status, 200);
+    assert.equal(emptied.body.data.posterUrl, null);
+    assert.deepEqual(emptied.body.data.images, []);
+    const edited = await getPool().query('SELECT gallery_user_edited FROM events WHERE id=$1', [event.id]);
+    assert.equal(edited.rows[0].gallery_user_edited, true);
+    await seedGalleryIfUntouched(getPool(), event.id, [{ url: 'https://example.com/seed.jpg', altText: 'Seed' }]);
+    assert.equal((await getPool().query('SELECT count(*)::integer AS total FROM event_images WHERE event_id=$1', [event.id])).rows[0].total, 0);
     const second = await call('/api/events', 'POST', payload);
     assert.equal(second.status, 201); ids.push(second.body.data.id);
     assert.notEqual(second.body.data.slug, event.slug);

@@ -5,6 +5,7 @@ export const routes: Routes = [
   { path: '', title: 'Descubrir · Nocturno', loadComponent: () => import('./features/events/pages/events-list.page').then((m) => m.EventsListPage) },
   { path: 'auth/login', title: 'Iniciar sesión · Nocturno', loadComponent: () => import('./features/auth/pages/login.page').then((m) => m.LoginPage) },
   { path: 'auth/register', title: 'Crear cuenta · Nocturno', loadComponent: () => import('./features/auth/pages/register.page').then((m) => m.RegisterPage) },
+  { path: 'error/:code', title: 'Incidencia · Nocturno', loadComponent: () => import('./shared/pages/error.page').then((m) => m.ErrorPage) },
   { path: 'events/new', redirectTo: 'dashboard/events/create' },
   { path: 'events/:id/edit', redirectTo: 'dashboard/events/:id/edit' },
   { path: 'events/:slug', title: 'Evento · Nocturno', loadComponent: () => import('./features/events/pages/event-detail.page').then((m) => m.EventDetailPage) },
@@ -44,5 +45,5 @@ export const routes: Routes = [
     { path: 'payments', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Pagos · Nocturno', loadComponent: () => import('./features/admin/pages/admin-payments.page').then((m) => m.AdminPaymentsPage) },
     { path: 'tickets', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Entradas · Nocturno', loadComponent: () => import('./features/admin/pages/admin-tickets.page').then((m) => m.AdminTicketsPage) },
   ] },
-  { path: '**', redirectTo: '' }
+  { path: '**', title: 'Página no encontrada · Nocturno', loadComponent: () => import('./shared/pages/error.page').then((m) => m.ErrorPage), data: { code: '404' } }
 ];

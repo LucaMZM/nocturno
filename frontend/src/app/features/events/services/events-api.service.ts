@@ -41,6 +41,12 @@ export class EventsApiService {
     );
   }
 
+  getGalleryConfig(): Promise<ApiResponse<{ maxImages: number }>> {
+    return firstValueFrom(this.http.get<ApiResponse<{ maxImages: number }>>(
+      `${environment.apiUrl}/config/events`,
+    ));
+  }
+
   async getEventBySlug(eventSlug: string): Promise<ApiResponse<Event>> {
     return firstValueFrom(
       this.http.get<ApiResponse<Event>>(

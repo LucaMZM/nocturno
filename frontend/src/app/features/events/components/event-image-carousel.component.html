@@ -1,0 +1,41 @@
+<section class="event-carousel" [attr.aria-label]="'Galería de ' + event().title" tabindex="0" (keydown)="onKeydown($event)">
+  <div class="detail-poster">
+    @if (currentImage(); as image) {
+      @if (brokenUrls().has(image.url)) {
+        <div class="detail-poster-art" role="img" [attr.aria-label]="'Imagen no disponible de ' + event().title">
+          <span>NOCTURNO. / IMAGEN NO DISPONIBLE</span><strong>{{ event().title }}</strong><span>Prueba otra imagen de la galería.</span>
+        </div>
+      } @else {
+        @if (!imageLoaded()) { <div class="carousel-loading shimmer" role="status" aria-label="Cargando imagen"></div> }
+        <img [src]="image.url" [alt]="image.altText || 'Imagen de ' + event().title" [class.carousel-image-loading]="!imageLoaded()"
+          [attr.loading]="selectedIndex() === 0 ? 'eager' : 'lazy'" (load)="imageLoaded.set(true)" (error)="onImageError(image.url)" />
+      }
+    } @else {
+      <div class="detail-poster-art">
+        <span>NOCTURNO. / {{ event().eventType.replaceAll('_', ' ') }}</span>
+        <strong>{{ event().title }}</strong><span>{{ event().municipality || event().province }}</span>
+      </div>
+    }
+    @if (images().length > 1) {
+      <button class="carousel-arrow previous" type="button" aria-label="Imagen anterior" (click)="previous()">←</button>
+      <button class="carousel-arrow next" type="button" aria-label="Imagen siguiente" (click)="next()">→</button>
+      <span class="carousel-count" aria-live="polite">{{ selectedIndex() + 1 }} / {{ images().length }}</span>
+    }
+  </div>
+  @if (currentImage(); as image) {
+    @if (image.sourceUrl; as sourceUrl) {
+      <p class="image-credit">{{ event().isDemo ? 'Fotografía del local · Evento demo' : 'Fuente de la imagen' }} ·
+        <a [href]="sourceUrl" target="_blank" rel="noopener noreferrer">Fuente ↗</a>
+      </p>
+    }
+  }
+  @if (images().length > 1) {
+    <div class="carousel-thumbnails" role="group" aria-label="Seleccionar imagen">
+      @for (image of images(); track image.id; let i = $index) {
+        <button type="button" [class.active]="selectedIndex() === i" [attr.aria-label]="'Mostrar imagen ' + (i + 1)" [attr.aria-pressed]="selectedIndex() === i" (click)="select(i)">
+          <img [src]="image.url" [alt]="image.altText || ''" loading="lazy" (error)="onImageError(image.url)" />
+        </button>
+      }
+    </div>
+  }
+</section>

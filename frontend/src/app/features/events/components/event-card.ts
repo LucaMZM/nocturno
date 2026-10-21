@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Event } from '../../../core/models/domain.model';
 import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../../shared/utils/format';
@@ -14,8 +14,8 @@ import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../.
           [attr.aria-label]="'Ver ' + event().title"
           class="poster-link"
         >
-          @if (event().posterUrl) {
-            <img [src]="event().posterUrl" [alt]="'Imagen de ' + event().title" loading="lazy" />
+          @if (coverUrl(); as imageUrl) {
+            <img [src]="imageUrl" [alt]="coverAlt()" loading="lazy" />
           } @else {
             <div
               class="poster-placeholder"
@@ -105,6 +105,9 @@ import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../.
 })
 export class EventCardComponent {
   readonly event = input.required<Event>();
+  readonly coverImage = computed(() => this.event().images?.[0] ?? null);
+  readonly coverUrl = computed(() => this.coverImage()?.url ?? this.event().posterUrl);
+  readonly coverAlt = computed(() => this.coverImage()?.altText || 'Imagen de ' + this.event().title);
   readonly isFavorite = input(false);
   readonly favoritePending = input(false);
   readonly favoriteClicked = output<Event>();

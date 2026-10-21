@@ -6,9 +6,9 @@ import { PublicVenueProfile, VenuesApiService } from '../../../core/services/ven
 import { toApiProblem } from '../../../shared/utils/api-error';
 
 interface VenueState { venues: Venue[]; selected: Venue | null; publicProfile: PublicVenueProfile | null; pagination: Pagination;
-  loading: boolean; saving: boolean; error: string | null; }
+  loading: boolean; saving: boolean; error: string | null; errorCode: string | null; }
 const initialState: VenueState = { venues: [], selected: null, publicProfile: null,
-  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }, loading: false, saving: false, error: null };
+  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }, loading: false, saving: false, error: null, errorCode: null };
 export const VenuesStore = signalStore(
   withState(initialState),
   withMethods((store, api = inject(VenuesApiService)) => ({
@@ -26,10 +26,10 @@ export const VenuesStore = signalStore(
         error: toApiProblem(error, 'No hemos podido cargar el local.').message }); }
     },
     async loadPublicProfile(slug: string) {
-      patchState(store, { loading: true, error: null, publicProfile: null });
+      patchState(store, { loading: true, error: null, errorCode: null, publicProfile: null });
       try { patchState(store, { publicProfile: (await api.getPublicProfile(slug)).data, loading: false }); }
-      catch (error) { patchState(store, { loading: false,
-        error: toApiProblem(error, 'No hemos podido cargar este local.').message }); }
+      catch (error) { const problem = toApiProblem(error, 'No hemos podido cargar este local.');
+        patchState(store, { loading: false, error: problem.message, errorCode: problem.code }); }
     },
     async save(id: string | null, payload: object): Promise<Venue | null> {
       patchState(store, { saving: true, error: null });

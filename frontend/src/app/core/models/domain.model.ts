@@ -60,6 +60,7 @@ export interface Event {
   atmosphere: string[];
   idealFor: string[];
   posterUrl: string | null;
+  images: EventImage[];
   sourceUrl?: string | null;
   imageSourceUrl?: string | null;
   isDemo?: boolean;
@@ -82,6 +83,20 @@ export interface Event {
   favoritedAt?: string;
 }
 
+export interface EventImage {
+  id: string;
+  url: string;
+  position: number;
+  altText: string | null;
+  sourceUrl: string | null;
+}
+
+export interface EventImageInput {
+  url: string;
+  altText?: string | null;
+  sourceUrl?: string | null;
+}
+
 export interface EventWritePayload {
   venueId: string;
   promoterId: string | null;
@@ -96,6 +111,7 @@ export interface EventWritePayload {
   atmosphere: string[];
   idealFor: string[];
   posterUrl: string | null;
+  images?: EventImageInput[];
   status: string;
   isActive: boolean;
 }

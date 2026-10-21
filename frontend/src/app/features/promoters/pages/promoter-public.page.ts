@@ -1,19 +1,20 @@
 import { Component, effect, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EventGridComponent } from '../../events/components/event-grid';
 import { FavoritesStore } from '../../favorites/store/favorites.store';
 import { PromotersStore } from '../store/promoters.store';
 import type { Event } from '../../../core/models/domain.model';
+import { ErrorStateComponent } from '../../../shared/components/states';
 
 @Component({
   selector: 'app-promoter-public-page',
   providers: [PromotersStore],
-  imports: [RouterLink, EventGridComponent],
+  imports: [RouterLink, EventGridComponent, ErrorStateComponent],
   template: `
     <div class="page-width public-profile">
       <a class="back-link" routerLink="/">← Descubrir eventos</a>
       @if (store.loading()) { <p role="status">Cargando organizador…</p> }
-      @else if (store.error()) { <p class="inline-alert" role="alert">{{ store.error() }}</p> }
+      @else if (store.error()) { <app-error-state [message]="store.error()!" [code]="store.errorCode() === 'NETWORK_ERROR' || store.errorCode() === 'DATABASE_UNAVAILABLE' ? '503' : '500'" (retry)="loadProfile(slug())" /> }
       @else if (store.publicProfile(); as profile) {
         <header class="public-profile-hero">
           <div><p class="eyebrow">NOCTURNO. / {{ hasDemoEvents(profile.upcomingEvents) ? 'PROMOTOR DEMO' : 'ORGANIZA' }}</p><h1>{{ profile.promoter.name }}</h1>
@@ -42,9 +43,16 @@ export class PromoterPublicPage {
   readonly slug = input<string>('');
   readonly store = inject(PromotersStore);
   readonly favorites = inject(FavoritesStore);
+  private readonly router = inject(Router);
   constructor() {
-    effect(() => { if (this.slug()) void this.store.loadPublicProfile(this.slug()); });
+    effect(() => { if (this.slug()) void this.loadProfile(this.slug()); });
     void this.favorites.load();
+  }
+  async loadProfile(slug: string) {
+    await this.store.loadPublicProfile(slug);
+    if (this.store.errorCode() === 'PROMOTER_NOT_FOUND') {
+      void this.router.navigate(['/error/404'], { replaceUrl: true });
+    }
   }
   usualVenues(events: { venueName?: string }[]) {
     return [...new Set(events.map((event) => event.venueName).filter((name): name is string => !!name))];

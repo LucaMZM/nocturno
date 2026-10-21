@@ -1036,6 +1036,20 @@ p {
 .state-panel button {
   margin-top: 14px;
 }
+.state-illustration { display: block; width: min(100%, 280px); margin: 0 auto; }
+.full-error-page { min-height: min(75vh, 720px); display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: clamp(24px, 6vw, 90px);
+  padding-block: clamp(65px, 10vw, 130px); }
+.full-error-code { display: block; color: var(--red-primary); font-size: clamp(80px, 13vw, 180px);
+  font-weight: 850; letter-spacing: -.09em; line-height: 1; }
+.full-error-copy h1 { max-width: 650px; font-size: clamp(34px, 4.5vw, 65px); line-height: 1.02; letter-spacing: -.05em; }
+.full-error-copy > p:not(.eyebrow) { max-width: 470px; margin-top: 18px; color: var(--text-secondary); }
+.full-error-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.full-error-illustration { width: 100%; height: auto; border: 1px solid var(--border); }
+@media (max-width: 700px) {
+  .full-error-page { grid-template-columns: 1fr; }
+  .full-error-illustration { max-width: 440px; }
+}
 .inline-alert {
   display: flex;
   align-items: center;
@@ -1115,6 +1129,29 @@ p {
   max-height: 700px;
   object-fit: cover;
 }
+.event-carousel { display: block; outline-offset: 5px; }
+.event-carousel .detail-poster { position: relative; }
+.event-carousel .detail-poster > img { min-height: 470px; }
+.carousel-image-loading { opacity: 0; }
+.carousel-loading { position: absolute; inset: 0; }
+.carousel-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border: 1px solid var(--border-hover);
+  border-radius: 50%; background: rgba(8,8,8,.85); color: var(--text-primary);
+  font-size: 22px; cursor: pointer;
+}
+.carousel-arrow.previous { left: 14px; }
+.carousel-arrow.next { right: 14px; }
+.carousel-arrow:hover, .carousel-arrow:focus-visible { border-color: var(--red-primary); }
+.carousel-count {
+  position: absolute; right: 16px; bottom: 16px; padding: 6px 10px;
+  background: rgba(8,8,8,.85); color: var(--text-primary); font-size: 12px;
+}
+.carousel-thumbnails { display: flex; gap: 9px; margin-top: 12px; overflow-x: auto; }
+.carousel-thumbnails button { flex: 0 0 74px; height: 58px; padding: 0; overflow: hidden;
+  border: 2px solid var(--border); border-radius: var(--radius-small); background: var(--surface); cursor: pointer; }
+.carousel-thumbnails button.active { border-color: var(--red-primary); }
+.carousel-thumbnails img { width: 100%; height: 100%; object-fit: cover; }
 .detail-poster-art {
   position: relative;
   display: flex;
@@ -1615,7 +1652,8 @@ p {
     width: 100%;
     min-width: 0;
   }
-  .detail-poster { order: -2; margin-bottom: 26px; }
+  app-event-image-carousel { order: -2; width: 100%; margin-bottom: 26px; }
+  .detail-poster { margin-bottom: 0; }
   .detail-sidebar {
     order: -1;
     position: static;
@@ -1630,6 +1668,7 @@ p {
   .detail-poster {
     min-height: 300px;
   }
+  .event-carousel .detail-poster > img { min-height: 300px; }
   .detail-poster-art {
     min-height: 390px;
     padding: 22px;
@@ -1872,6 +1911,17 @@ p {
   border-color: #47705a;
   color: #b9e6c8;
 }
+.gallery-editor > p { margin-top: -12px; margin-bottom: 22px; font-size: 13px; }
+.gallery-editor-list { display: grid; gap: 16px; margin-bottom: 20px; }
+.gallery-editor-row { padding: 18px; border: 1px solid var(--border); background: var(--surface-elevated); }
+.gallery-editor-row-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+.gallery-editor-row-head strong { color: var(--text-primary); font-size: 12px; letter-spacing: .08em; }
+.gallery-editor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.gallery-editor-actions button { min-width: 28px; }
+.gallery-editor-preview { margin-top: 14px; }
+.gallery-editor-preview img { width: min(100%, 360px); max-height: 200px; object-fit: cover; }
+.gallery-editor-preview img.is-broken { display: none; }
+.gallery-editor-preview span { color: var(--red-hover); font-size: 12px; }
 @media (max-width: 700px) {
   .controls-intro { align-items: flex-start; flex-wrap: wrap; }
   .controls-actions {

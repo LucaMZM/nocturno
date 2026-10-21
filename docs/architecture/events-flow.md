@@ -11,6 +11,18 @@
 7. `buildEventListQuery()` construye SQL parametrizado con visibilidad pública, filtros, orden, `LIMIT` y `OFFSET`. `findAll()` consulta PostgreSQL y devuelve eventos y total. El controller responde con `data` y `pagination`.
 8. De vuelta, el store actualiza sus señales. `events-list.page.html` entrega `eventsStore.events()` a `EventGridComponent`. El `@for` que dibuja cada evento está en `frontend/src/app/features/events/components/event-grid.ts`; cada `EventCardComponent` está en `frontend/src/app/features/events/components/event-card.ts`.
 
+## Formulario y galería
+
+`/dashboard/events/new` y `/dashboard/events/:id/edit` cargan `EventFormComponent`. Su plantilla está en `frontend/src/app/features/events/components/event-form.component.html`: conserva los controles y la validación visual de fechas. `EventGalleryEditorComponent` muestra tres filas iniciales, previsualiza, añade, elimina y mueve imágenes. `event-form.mapper.ts` prepara el payload: descarta campos vacíos y rechaza URLs inseguras, duplicados o exceso de imágenes. `EventEditorStore` carga datos y configuración, guarda mediante `EventsApiService` y actualiza el catálogo. El servidor vuelve a validar con Zod y comprueba permisos en sus capas de autorización y servicio.
+
+La migration `009_event_images.sql` añade la tabla ordenada `event_images` y conserva los antiguos `posterUrl` como primera imagen. `010_event_gallery_user_edits.sql` marca galerías editadas para que el seed no las reemplace, incluso si el usuario las deja vacías. El repository escribe evento e imágenes en una transacción y devuelve la galería ordenada. La primera imagen mantiene `posterUrl` compatible con clientes anteriores. El detalle usa `EventImageCarouselComponent`; las tarjetas muestran solo la portada.
+
+## Errores
+
+Los controladores asíncronos pasan sus fallos con `asyncHandler` al middleware global `backend/src/middlewares/error.middleware.js`. Ese middleware traduce validaciones, conflictos, indisponibilidad de PostgreSQL y errores inesperados a respuestas API seguras; las rutas siguen pasando por controller → service → repository → PostgreSQL. Stripe traduce respuestas inválidas del proveedor a 502 sin reintentar automáticamente una compra.
+
+En Angular, los Stores mantienen `loading` y `error`, y las páginas muestran un estado ilustrado con reintento cuando la operación es recuperable. `frontend/src/app/shared/utils/api-error.ts` convierte códigos HTTP en mensajes comprensibles. `frontend/src/app/shared/pages/error.page.ts` muestra 401, 403, 404, 500 y 503 con SVG locales. El router muestra 404 para rutas inexistentes; los guards llevan a 401/403; un error inesperado de Angular lleva a 500. Los errores de validación permanecen junto al formulario. La API puede devolver 500 sin forzar navegación si la pantalla dispone de recuperación local.
+
 Buscar, elegir un filtro o cambiar el orden sigue el mismo camino. «Ver más planes» usa `onPageChange()` y `page` en la URL. Los favoritos se delegan a `FavoritesStore.toggle()` en `frontend/src/app/features/favorites/store/favorites.store.ts`. Pulsar la tarjeta navega a `/events/:slug`: `EventDetailPage` llama a `EventsStore.loadEventBySlug()`, que usa `EventsApiService.getEventBySlug()`; el backend sigue route → controller → service → `eventRepository.findPublicBySlug()`.
 
 ## Explicación de cinco minutos

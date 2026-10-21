@@ -16,12 +16,17 @@ export const CheckoutStore = signalStore(
   withState(initialState),
   withMethods((store, api = inject(CheckoutApiService)) => ({
     async loadConfig() {
+      patchState(store, { error: null });
       try { patchState(store, { config: (await api.getPaymentConfig()).data }); }
       catch (error) { patchState(store, { error: toApiProblem(error, 'No hemos podido consultar el estado del pago.').message }); }
     },
-    async start(idempotencyKey: string): Promise<boolean> {
+    async start(): Promise<boolean> {
       patchState(store, { loading: true, error: null });
       try {
+        // Preserve one key for this cart until it changes, so a repeated click cannot
+        // create a second order after a lost response.
+        const idempotencyKey = sessionStorage.getItem('nocturno_checkout_key') ?? crypto.randomUUID();
+        sessionStorage.setItem('nocturno_checkout_key', idempotencyKey);
         const session = (await api.startCheckout(idempotencyKey)).data;
         patchState(store, { session, loading: false });
         return true;

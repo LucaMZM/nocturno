@@ -1,11 +1,26 @@
 import { z } from 'zod';
 import { id, optionalText, pageQuery, patch } from './common.js';
+import { env } from '../config/env.js';
 export const eventTypes = ['CLUB','RAVE','CONCERT','FESTIVAL','ROOFTOP','BEACH_CLUB','BOAT_PARTY','PUB','AFTER','JAZZ_CLUB','LIVE_SESSION','OTHER'];
 export const statuses = ['DRAFT','PENDING_REVIEW','PUBLISHED','SOLD_OUT','CANCELLED','FINISHED','REJECTED'];
 export const genres = ['TECHNO','HARD_TECHNO','HARDGROOVE','HOUSE','TECH_HOUSE','EDM','REGGAETON','LATIN','HIP_HOP','TRAP','POP','INDIE','ROCK','JAZZ','SOUL','LIVE'];
 export const atmospheres = ['UNDERGROUND','COMMERCIAL','UNIVERSITY','ELEGANT','INTERNATIONAL','ALTERNATIVE','CHILL'];
 export const ideals = ['FRIENDS','MEETING_PEOPLE','DANCING','DATE','GROUPS','CELEBRATIONS','DRINKS'];
 const date = z.iso.datetime({ offset: true });
+const httpUrl = z.url().max(2048).regex(/^https?:\/\//i, 'Only HTTP/HTTPS URLs are allowed');
+const imageUrl = z.union([httpUrl, z.string().regex(/^\/posters\/[a-z0-9-]+\.svg$/)]);
+const eventImage = z.object({
+  url: imageUrl,
+  altText: z.string().trim().max(240).nullable().optional(),
+  sourceUrl: httpUrl.nullable().optional(),
+}).strict();
+export const eventImages = z.array(eventImage).max(env.EVENT_GALLERY_MAX_IMAGES).superRefine((images, ctx) => {
+  const seen = new Set();
+  for (const [index, image] of images.entries()) {
+    if (seen.has(image.url)) ctx.addIssue({ code: 'custom', path: [index, 'url'], message: 'Duplicate image URL' });
+    seen.add(image.url);
+  }
+});
 export const eventCreate = z.object({
   venueId: id, promoterId: id.nullable().optional(), title: z.string().trim().min(1).max(180),
   description: optionalText,
@@ -13,8 +28,8 @@ export const eventCreate = z.object({
   dressCode: z.enum(['CASUAL','SMART_CASUAL','ELEGANT','STREETWEAR','NO_DRESS_CODE']).nullable().optional(),
   musicGenres: z.array(z.enum(genres)).max(30).default([]), atmosphere: z.array(z.enum(atmospheres)).max(20).default([]),
   idealFor: z.array(z.enum(ideals)).max(20).default([]),
-  posterUrl: z.union([z.url(), z.string().regex(/^\/posters\/[a-z0-9-]+\.svg$/)]).nullable().optional(),
-  sourceUrl: z.url().nullable().optional(), imageSourceUrl: z.url().nullable().optional(),
+  posterUrl: imageUrl.nullable().optional(), images: eventImages.optional(),
+  sourceUrl: httpUrl.nullable().optional(), imageSourceUrl: httpUrl.nullable().optional(),
   status: z.enum(statuses).default('DRAFT'), isActive: z.boolean().default(true)
 }).strict();
 export const eventPatch = patch(eventCreate);

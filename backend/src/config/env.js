@@ -11,6 +11,7 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32).optional(),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().regex(/^\d+d$/).default('30d'),
+  EVENT_GALLERY_MAX_IMAGES: z.coerce.number().int().min(1).max(100).default(24),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional()

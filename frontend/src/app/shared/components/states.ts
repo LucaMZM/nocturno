@@ -19,6 +19,6 @@ export class EmptyStateComponent {
 
 @Component({
   selector: 'app-error-state',
-  template: `<div class="state-panel error-panel" role="alert"><span class="state-symbol" aria-hidden="true">!</span><p class="eyebrow">ALGO HA FALLADO</p><h2>{{ message() }}</h2><p>Vuelve a intentarlo en un momento.</p><button class="button-outline" type="button" (click)="retry.emit()">Reintentar <span>↗</span></button></div>`
+  template: `<div class="state-panel error-panel" role="alert"><img class="state-illustration" [src]="'/errors/' + code() + '.svg'" alt="" /><p class="eyebrow">ALGO HA FALLADO</p><h2>{{ message() }}</h2><p>Vuelve a intentarlo en un momento.</p><button class="button-outline" type="button" (click)="retry.emit()">Reintentar <span>↗</span></button></div>`
 })
-export class ErrorStateComponent { readonly message = input.required<string>(); readonly retry = output<void>(); }
+export class ErrorStateComponent { readonly message = input.required<string>(); readonly code = input<'500' | '503'>('500'); readonly retry = output<void>(); }

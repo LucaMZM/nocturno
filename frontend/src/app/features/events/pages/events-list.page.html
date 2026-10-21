@@ -117,7 +117,7 @@
         } @else if (eventsStore.loading()) {
           <app-loading-skeleton />
         } @else if (eventsStore.error()) {
-          <app-error-state [message]="eventsStore.error()!" (retry)="eventsStore.refreshEvents()" />
+          <app-error-state [message]="eventsStore.error()!" [code]="eventsStore.errorCode() === 'NETWORK_ERROR' || eventsStore.errorCode() === 'DATABASE_UNAVAILABLE' ? '503' : '500'" (retry)="eventsStore.refreshEvents()" />
         } @else if (!eventsStore.hasEvents()) {
           <app-empty-state (action)="onClearFilters()" />
         } @else {

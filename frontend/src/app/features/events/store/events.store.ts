@@ -21,7 +21,9 @@ interface EventsState {
   loadingMore: boolean;
   detailLoading: boolean;
   error: string | null;
+  errorCode: string | null;
   detailError: string | null;
+  detailErrorCode: string | null;
   initialized: boolean;
 }
 const initialState: EventsState = {
@@ -38,7 +40,9 @@ const initialState: EventsState = {
   loadingMore: false,
   detailLoading: false,
   error: null,
+  errorCode: null,
   detailError: null,
+  detailErrorCode: null,
   initialized: false,
 };
 
@@ -72,6 +76,7 @@ export const EventsStore = signalStore(
         loading: !isLoadingAnotherPage,
         loadingMore: isLoadingAnotherPage,
         error: null,
+        errorCode: null,
         initialized: true,
       });
       try {
@@ -85,8 +90,10 @@ export const EventsStore = signalStore(
         });
       } catch (error) {
         if (requestId !== latestListRequestId) return;
+        const problem = toApiProblem(error, 'No hemos podido cargar los eventos.');
         patchState(store, {
-          error: toApiProblem(error, 'No hemos podido cargar los eventos.').message,
+          error: problem.message,
+          errorCode: problem.code,
           loading: false,
           loadingMore: false,
         });
@@ -147,17 +154,20 @@ export const EventsStore = signalStore(
       /** Ignore an older detail response when the user navigates to a new slug. */
       async loadEventBySlug(eventSlug: string) {
         const requestId = ++latestDetailRequestId;
-        patchState(store, { selectedEvent: null, detailLoading: true, detailError: null });
+        patchState(store, { selectedEvent: null, detailLoading: true, detailError: null, detailErrorCode: null });
         try {
           const eventResponse = await eventsApiService.getEventBySlug(eventSlug);
           if (requestId === latestDetailRequestId)
             patchState(store, { selectedEvent: eventResponse.data, detailLoading: false });
         } catch (error) {
-          if (requestId === latestDetailRequestId)
+          if (requestId === latestDetailRequestId) {
+            const problem = toApiProblem(error, 'No hemos podido cargar este evento.');
             patchState(store, {
-              detailError: toApiProblem(error, 'No hemos podido cargar este evento.').message,
+              detailError: problem.message,
+              detailErrorCode: problem.code,
               detailLoading: false,
             });
+          }
         }
       },
 

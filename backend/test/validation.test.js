@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { userCreate, userPatch } from '../src/validators/user.validator.js';
-import { eventActive, eventCreate, eventPatch, eventQuery, eventSlug } from '../src/validators/event.validator.js';
+import { eventActive, eventCreate, eventImages, eventPatch, eventQuery, eventSlug } from '../src/validators/event.validator.js';
 import { slugFromTitle } from '../src/services/event.service.js';
 import { ticketTypeCreate, ticketTypePatch } from '../src/validators/ticket-type.validator.js';
 import { checkTicketType } from '../src/services/ticket-type.service.js';
@@ -21,6 +21,10 @@ test('event validation rejects invalid enums, URLs and UUIDs', () => {
   assert.equal(eventCreate.safeParse({ ...valid, posterUrl: 'bad' }).success, false);
   assert.equal(eventCreate.safeParse({ ...valid, posterUrl: '/posters/event-01.svg' }).success, true);
   assert.equal(eventCreate.safeParse({ ...valid, posterUrl: '/posters/../secret.svg' }).success, false);
+  assert.equal(eventCreate.safeParse({ ...valid, images: [{ url: 'javascript:alert(1)' }] }).success, false);
+  assert.equal(eventCreate.safeParse({ ...valid, images: [{ url: 'https://example.com/a.jpg' }, { url: 'https://example.com/a.jpg' }] }).success, false);
+  assert.equal(eventCreate.safeParse({ ...valid, images: [{ url: '/posters/event-01.svg' }] }).success, true);
+  assert.equal(eventImages.safeParse(Array.from({ length: 101 }, (_, i) => ({ url: `https://example.com/${i}.jpg` }))).success, false);
   assert.equal(eventPatch.safeParse({}).success, false);
   assert.deepEqual(eventPatch.parse({ title: 'Changed' }), { title: 'Changed' });
   assert.equal(eventPatch.safeParse({ deletedAt: '2026-10-01T00:00:00Z' }).success, false);

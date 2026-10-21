@@ -1,6 +1,7 @@
 import { toCamel } from '../utils/mapping.js';
 export function mapEvent(row) {
   const event = toCamel(row);
+  if (event) event.images ??= [];
   if (event && 'minPrice' in event) event.minPrice = event.minPrice == null ? null : Number(event.minPrice);
   if (event && 'ticketAvailability' in event) event.ticketAvailability = Number(event.ticketAvailability);
   if (event && 'distanceKm' in event) event.distanceKm = event.distanceKm == null ? null : Number(event.distanceKm);

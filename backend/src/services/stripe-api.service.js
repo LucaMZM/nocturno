@@ -27,7 +27,12 @@ async function stripeRequest(path, { method = 'GET', fields, idempotencyKey } = 
   } catch {
     throw new AppError(502, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Payment provider is unavailable');
   }
-  const body = await response.json();
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    throw new AppError(502, 'INVALID_PAYMENT_PROVIDER_RESPONSE', 'Payment provider returned an invalid response');
+  }
   if (!response.ok)
     throw new AppError(502, 'PAYMENT_PROVIDER_ERROR', 'Payment provider rejected the request');
   return body;

@@ -24,6 +24,9 @@ import { AuthStore } from '../../auth/store/auth.store';
               <div class="checkout-buyer"><span>COMPRADOR</span><strong>{{ buyer.displayName }}</strong><small>{{ buyer.email }}</small></div>
             }
             @if (checkout.error()) { <p class="inline-alert" role="alert">{{ checkout.error() }}</p> }
+            @if (checkout.error() && !checkout.config()) {
+              <button class="button-outline" type="button" (click)="checkout.loadConfig()">Reintentar conexión ↗</button>
+            }
             @if (paymentError()) { <p class="inline-alert" role="alert">{{ paymentError() }}</p> }
             @if (!checkout.config() && !checkout.error()) {
               <p role="status">Comprobando el pago…</p>
@@ -88,9 +91,7 @@ export class CheckoutPage implements OnInit, OnDestroy {
   ngOnDestroy() { this.stripe.destroy(); }
 
   async preparePayment() {
-    const key = sessionStorage.getItem('nocturno_checkout_key') ?? crypto.randomUUID();
-    sessionStorage.setItem('nocturno_checkout_key', key);
-    if (!await this.checkout.start(key)) return;
+    if (!await this.checkout.start()) return;
     const session = this.checkout.session();
     if (session?.order.status === 'PAID')
       await this.router.navigate(['/account/orders', session.order.id]);

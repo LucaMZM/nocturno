@@ -34,6 +34,15 @@ function validateEventDates(eventData) {
   }
 }
 
+function withGalleryCover(eventData) {
+  if (eventData.images === undefined) return eventData;
+  return {
+    ...eventData,
+    posterUrl: eventData.images[0]?.url ?? null,
+    imageSourceUrl: eventData.images[0]?.sourceUrl ?? null,
+  };
+}
+
 /** The public slug follows the title, including later title changes. */
 export function slugFromTitle(title) {
   return slugFromText(title, 'evento');
@@ -80,7 +89,7 @@ export const eventService = {
   async createEvent(eventData) {
     await validateEventRelations(eventData);
     validateEventDates(eventData);
-    return writeWithGeneratedSlug(eventData);
+    return writeWithGeneratedSlug(withGalleryCover(eventData));
   },
 
   async updateEvent(eventId, changes) {
@@ -91,9 +100,10 @@ export const eventService = {
       startsAt: changes.startsAt ?? currentEvent.startsAt,
       endsAt: changes.endsAt ?? currentEvent.endsAt,
     });
+    const updatedChanges = withGalleryCover(changes);
     if (changes.title && changes.title !== currentEvent.title)
-      return writeWithGeneratedSlug(changes, eventId);
-    return sharedCrudService.update(eventId, changes);
+      return writeWithGeneratedSlug(updatedChanges, eventId);
+    return sharedCrudService.update(eventId, updatedChanges);
   },
 
   async setEventActive(eventId, isActive) {

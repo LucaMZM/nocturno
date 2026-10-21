@@ -1,20 +1,21 @@
 import { Component, effect, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { EventGridComponent } from '../../events/components/event-grid';
 import { EventMapComponent } from '../../events/components/event-map';
 import { FavoritesStore } from '../../favorites/store/favorites.store';
 import { VenuesStore } from '../store/venues.store';
 import type { Event } from '../../../core/models/domain.model';
+import { ErrorStateComponent } from '../../../shared/components/states';
 
 @Component({
   selector: 'app-venue-public-page',
   providers: [VenuesStore],
-  imports: [RouterLink, EventGridComponent, EventMapComponent],
+  imports: [RouterLink, EventGridComponent, EventMapComponent, ErrorStateComponent],
   template: `
     <div class="page-width public-profile">
       <a class="back-link" routerLink="/">← Descubrir eventos</a>
       @if (store.loading()) { <p role="status">Cargando local…</p> }
-      @else if (store.error()) { <p class="inline-alert" role="alert">{{ store.error() }}</p> }
+      @else if (store.error()) { <app-error-state [message]="store.error()!" [code]="store.errorCode() === 'NETWORK_ERROR' || store.errorCode() === 'DATABASE_UNAVAILABLE' ? '503' : '500'" (retry)="loadProfile(slug())" /> }
       @else if (store.publicProfile(); as profile) {
         <header class="public-profile-hero">
           <div><p class="eyebrow">NOCTURNO. / {{ profile.venue.isDemo ? 'LOCAL DE PRUEBA' : 'LOCAL REAL' }}</p><h1>{{ profile.venue.name }}</h1>
@@ -48,9 +49,16 @@ export class VenuePublicPage {
   readonly slug = input<string>('');
   readonly store = inject(VenuesStore);
   readonly favorites = inject(FavoritesStore);
+  private readonly router = inject(Router);
   constructor() {
-    effect(() => { if (this.slug()) void this.store.loadPublicProfile(this.slug()); });
+    effect(() => { if (this.slug()) void this.loadProfile(this.slug()); });
     void this.favorites.load();
+  }
+  async loadProfile(slug: string) {
+    await this.store.loadPublicProfile(slug);
+    if (this.store.errorCode() === 'VENUE_NOT_FOUND') {
+      void this.router.navigate(['/error/404'], { replaceUrl: true });
+    }
   }
   mapUrl(latitude: number, longitude: number) {
     return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
