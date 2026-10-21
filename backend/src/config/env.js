@@ -12,6 +12,7 @@ const schema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().regex(/^\d+d$/).default('30d'),
   EVENT_GALLERY_MAX_IMAGES: z.coerce.number().int().min(1).max(100).default(24),
+  YOMOGAN_AVATAR_PATH: z.string().regex(/^\/yomogan\/avatar\.(webp|png|jpg)$/).optional(),
   YOMOGAN_PROVIDER: z.enum(['ollama','compatible']).default('ollama'),
   YOMOGAN_CHAT_URL: z.string().url().default('http://127.0.0.1:11434'),
   YOMOGAN_MODEL: z.string().min(1).max(100).default('qwen3:4b'),

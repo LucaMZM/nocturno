@@ -12,3 +12,8 @@
 </footer>
 
 <app-cookie-preferences #cookies />
+<app-yomogan-chat [available]="!!cookies.choice()" [open]="yomogan.open()"
+  [messages]="yomogan.messages()" [pending]="yomogan.pending()" [error]="yomogan.error()"
+  [avatarUrl]="yomogan.avatarUrl()" (openChanged)="yomogan.setOpen($event)"
+  (messageSent)="yomogan.send($event)" (retryRequested)="yomogan.retry()"
+  (conversationReset)="yomogan.newConversation()" />

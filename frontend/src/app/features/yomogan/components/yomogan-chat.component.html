@@ -1,0 +1,76 @@
+@if (available()) {
+  <button #launcher type="button" class="yomogan-launcher" aria-label="Hablar con Yomogan"
+    aria-controls="yomogan-panel" [attr.aria-expanded]="open()" (click)="openChanged.emit(!open())">
+    @if (avatarUrl() && !avatarFailed()) {
+      <img [src]="avatarUrl()!" alt="" width="46" height="46" (error)="avatarFailed.set(true)" />
+    }
+    <span><strong>Yomogan</strong><small>Tu próximo plan</small></span><span aria-hidden="true">↗</span>
+  </button>
+  @if (open()) {
+    <section id="yomogan-panel" class="yomogan-panel" role="dialog" aria-modal="false"
+      aria-labelledby="yomogan-title" (keydown)="keydown($event)">
+      <header>
+        @if (avatarUrl() && !avatarFailed()) {
+          <img class="yomogan-avatar" [src]="avatarUrl()!" alt="Yomogan" width="46" height="46" (error)="avatarFailed.set(true)" />
+        }
+        <div><p>NOCTURNO · PLANES CON CRITERIO</p><h2 id="yomogan-title">Yomogan<span>.</span></h2></div>
+        <button type="button" class="yomogan-close" aria-label="Cerrar Yomogan" (click)="openChanged.emit(false)">×</button>
+      </header>
+      <div class="yomogan-toolbar"><span>Catálogo de Nocturno</span>
+        <button type="button" (click)="reset()">Nueva conversación</button></div>
+      <div #conversation class="yomogan-conversation" role="log" aria-live="polite" aria-relevant="additions" (scroll)="trackScroll()">
+        @if (!messages().length) {
+          <div class="yomogan-welcome">
+            <p class="yomogan-kicker">LA NOCHE EMPIEZA AQUÍ</p>
+            <h3>¿Qué te apetece<br />hacer hoy?</h3>
+            <p>Dime ciudad, música y presupuesto. Buscaremos un plan entre los eventos del catálogo, con los precios y entradas que haya ahora.</p>
+            <div class="yomogan-suggestions">
+              @for (suggestion of suggestions; track suggestion) {
+                <button type="button" (click)="send(suggestion)">{{ suggestion }} <span aria-hidden="true">↗</span></button>
+              }
+            </div>
+          </div>
+        }
+        @for (message of messages(); track $index) {
+          <article class="yomogan-message" [class.is-user]="message.role === 'user'">
+            @if (message.role === 'assistant') {
+              <div class="yomogan-message-label">
+                @if (avatarUrl() && !avatarFailed()) {
+                  <img [src]="avatarUrl()!" alt="" width="26" height="26" (error)="avatarFailed.set(true)" />
+                }
+                <strong>Yomogan</strong><span>{{ message.reply?.mode === 'search' ? 'Búsqueda · sin respuesta IA' : message.reply?.mode === 'clarification' ? 'Afinemos el plan' : 'IA · contexto del catálogo' }}</span>
+              </div>
+            }
+            <p class="yomogan-message-text">{{ message.content }}</p>
+            @for (event of message.reply?.events ?? []; track event.id) {
+              <a class="yomogan-event" [routerLink]="event.href" (click)="openChanged.emit(false)">
+                @if (event.posterUrl) { <img [src]="event.posterUrl" [alt]="event.venueName" loading="lazy" (error)="hideImage($event)" /> }
+                <div><span class="yomogan-demo">{{ event.isDemo ? 'EVENTO DEMO' : 'CATÁLOGO' }}</span>
+                  <h3>{{ event.title }}</h3><p>{{ event.venueName }} · {{ event.municipality }}</p>
+                  <p>{{ when(event.startsAt) }} · hora peninsular</p>
+                  <strong>Desde {{ price(event.minPrice) }}</strong><small>{{ event.availability }} entradas disponibles al consultar</small>
+                  @if (event.reason) { <p class="yomogan-reason">{{ event.reason }}</p> }
+                </div><span aria-hidden="true">↗</span>
+              </a>
+            }
+            @if (message.reply?.events?.length) {
+              <p class="yomogan-disclaimer">{{ message.reply?.disclaimer }}</p>
+            }
+          </article>
+        }
+        @if (pending()) { <div class="yomogan-thinking" role="status"><span></span><span></span><span></span>Consultando el catálogo…</div> }
+        @if (error()) {
+          <div class="yomogan-error" role="alert"><p>{{ error() }}</p>
+            <button type="button" (click)="retryRequested.emit()">Reintentar</button></div>
+        }
+      </div>
+      <form class="yomogan-composer" (submit)="$event.preventDefault(); send()">
+        <label class="yomogan-input-label" for="yomogan-message">Cuéntame tu plan</label>
+        <div><textarea #composer id="yomogan-message" rows="2" maxlength="1200" [value]="draft()"
+          (input)="draft.set($any($event.target).value)" placeholder="Ciudad, música, presupuesto…"></textarea>
+          <button type="submit" aria-label="Enviar mensaje a Yomogan" [disabled]="pending() || !!error() || !draft().trim()">↗</button></div>
+        <small>Enter para enviar · Shift + Enter para nueva línea. Evita compartir datos personales.</small>
+      </form>
+    </section>
+  }
+}

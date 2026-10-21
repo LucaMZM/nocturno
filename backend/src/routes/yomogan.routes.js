@@ -19,4 +19,5 @@ export function createChatLimit({limit=12,windowMs=60000,concurrency=2}={}){
   };
 }
 export const yomoganRoutes=Router();
+yomoganRoutes.get('/config',yomoganController.config);
 yomoganRoutes.post('/chat',validate(chatInput),createChatLimit(),yomoganController.chat);

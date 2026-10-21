@@ -295,3 +295,6 @@ swaggerSpec.paths['/api/yomogan/chat']={post:{
   responses:{'200':{description:'Mode (assistant/search/clarification), message, question, verified event references, applied filters, retrieval method and DEMO disclaimer'},
     '400':{description:'Invalid conversation'},'429':{description:'Usage limit; Retry-After header'},'503':{description:'Catalogue unavailable'}}
 }};
+
+swaggerSpec.paths['/api/yomogan/config']={get:{tags:['Yomogan'],summary:'Public avatar asset path, never provider credentials',
+  responses:{'200':{description:'Configured avatarUrl or null if the official photograph is unavailable'}}}};

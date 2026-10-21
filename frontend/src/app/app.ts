@@ -9,16 +9,19 @@ import { FavoritesStore } from './features/favorites/store/favorites.store';
 import { CartStore } from './features/cart/store/cart.store';
 import { OrdersStore } from './features/orders/store/orders.store';
 import { TicketsStore } from './features/tickets/store/tickets.store';
+import { YomoganChatComponent } from './features/yomogan/components/yomogan-chat.component';
+import { YomoganStore } from './features/yomogan/store/yomogan.store';
 import { CookiePreferencesComponent } from './features/cookies/components/cookie-preferences.component';
 import { DashboardStore } from './features/dashboard/store/dashboard.store';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, HeaderComponent, CookiePreferencesComponent],
+  imports: [RouterOutlet, HeaderComponent, CookiePreferencesComponent, YomoganChatComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App {
+  readonly yomogan = inject(YomoganStore);
   readonly year = new Date().getFullYear();
   readonly location = inject(LocationStore);
   private readonly auth = inject(AuthStore);
@@ -31,6 +34,7 @@ export class App {
   private readonly router = inject(Router);
 
   constructor() {
+    void this.yomogan.loadConfig();
     void this.location.loadMunicipalities();
     void this.auth.bootstrap();
     let previousUserId: string | undefined;
