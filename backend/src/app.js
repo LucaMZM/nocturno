@@ -19,6 +19,7 @@ import { checkoutRoutes, orderRoutes } from './routes/checkout.routes.js';
 import { stripeController } from './controllers/stripe.controller.js';
 import { paymentRoutes } from './routes/payment.routes.js';
 import { ticketRoutes } from './routes/ticket.routes.js';
+import { yomoganRoutes } from './routes/yomogan.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 
 export const app = express();
@@ -54,6 +55,7 @@ app.get('/api/config/events', (_req, res) => res.json({ data: {
 } }));
 app.get('/api/openapi.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/yomogan',yomoganRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);

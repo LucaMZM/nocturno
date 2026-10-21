@@ -13,6 +13,7 @@ import { venueRoutes } from '../src/routes/venue.routes.js';
 import { eventRoutes } from '../src/routes/event.routes.js';
 import { ticketTypeRoutes } from '../src/routes/ticket-type.routes.js';
 import { favoriteRoutes, myFavoriteRoutes } from '../src/routes/favorite.routes.js';
+import { yomoganRoutes } from '../src/routes/yomogan.routes.js';
 import { authRoutes } from '../src/routes/auth.routes.js';
 import { cartRoutes } from '../src/routes/cart.routes.js';
 import { checkoutRoutes, orderRoutes } from '../src/routes/checkout.routes.js';
@@ -83,7 +84,7 @@ test('OpenAPI documents every registered resource method', () => {
     ['/api/users', userRoutes], ['/api/users', favoriteRoutes], ['/api/promoters', promoterRoutes],
     ['/api/venues', venueRoutes], ['/api/events', eventRoutes], ['/api/ticket-types', ticketTypeRoutes],
     ['/api/me', myFavoriteRoutes], ['/api/auth', authRoutes], ['/api/cart', cartRoutes],
-    ['/api/checkout', checkoutRoutes], ['/api/orders', orderRoutes],
+    ['/api/yomogan', yomoganRoutes], ['/api/checkout', checkoutRoutes], ['/api/orders', orderRoutes],
     ['/api/payments', paymentRoutes], ['/api/tickets', ticketRoutes], ['/api/dashboard', dashboardRoutes]
   ]) {
     for (const layer of router.stack) {
@@ -96,7 +97,7 @@ test('OpenAPI documents every registered resource method', () => {
 });
 
 test('migration runner discovers the initial SQL migration', async () => {
-  assert.deepEqual(await listMigrationFiles(), ['001_initial_schema.sql', '002_event_lifecycle.sql', '003_identity_commerce.sql', '004_venue_postal_code.sql', '005_event_soft_delete_invariant.sql', '006_portfolio_domain.sql', '007_event_sources.sql', '008_demo_catalogue_provenance.sql', '009_event_images.sql', '010_event_gallery_user_edits.sql']);
+  assert.deepEqual(await listMigrationFiles(), ['001_initial_schema.sql', '002_event_lifecycle.sql', '003_identity_commerce.sql', '004_venue_postal_code.sql', '005_event_soft_delete_invariant.sql', '006_portfolio_domain.sql', '007_event_sources.sql', '008_demo_catalogue_provenance.sql', '009_event_images.sql', '010_event_gallery_user_edits.sql', '011_yomogan_embeddings.sql']);
 });
 
 test('event routes keep slug lookup separate from UUID and document lifecycle operations', () => {
