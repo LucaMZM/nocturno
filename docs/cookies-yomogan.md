@@ -44,7 +44,10 @@ Si falta una ciudad se pide aclaración. No hay respuestas de IA simuladas en pr
    público y del proveedor/modelo de embeddings. No se regeneran documentos intactos.
    Cambios en título, descripción o atributos del documento se refrescan al recuperarlos.
    Precio, fechas y stock se consultan en vivo y no se congelan en el vector.
-7. Generación estructurada; IDs inventados, duplicados, HTML o URLs en la salida se
+7. La IA elige IDs y códigos de motivo; el texto factual de esos motivos (música,
+   ambiente, precio, local, público o tipo) se construye desde la fila actual de PostgreSQL.
+   Introducción y pregunta siguen generándose con IA, sin cifras ni datos de eventos.
+   Generación estructurada; IDs inventados, duplicados, HTML o URLs en la salida se
    rechazan y dan paso al modo búsqueda. Los enlaces se construyen desde slugs de la BD.
    Estado y stock se vuelven a consultar después de la inferencia.
 8. Los documentos son datos no confiables: el prompt prohíbe seguir sus instrucciones.

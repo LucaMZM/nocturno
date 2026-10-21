@@ -19,6 +19,7 @@ export const preferenceSchema=z.object({
   date:z.iso.date().nullable(),
 }).strict();
 export const replySchema=z.object({
-  message:z.string().trim().min(1).max(900),question:z.string().trim().max(200).nullable(),
-  recommendations:z.array(z.object({id:z.uuid(),reason:z.string().trim().min(1).max(240)}).strict()).max(3),
+  message:z.string().trim().min(1).max(500).regex(/^[^0-9€$£<>]+$/),
+  question:z.string().trim().max(160).regex(/^[^0-9€$£<>]*$/).nullable(),
+  recommendations:z.array(z.object({id:z.uuid(),reasons:z.array(z.enum(['MUSIC','ATMOSPHERE','PRICE','VENUE','AUDIENCE','TYPE'])).min(1).max(3)}).strict()).max(3),
 }).strict();

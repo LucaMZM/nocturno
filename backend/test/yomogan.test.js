@@ -27,7 +27,7 @@ function fixture(){
     return texts.map(()=>[1,0]);
   },generate:async(system,input)=>system.startsWith('Extrae')?{...preference}
     :{message:'Estas opciones encajan con tu música.',question:null,
-      recommendations:input.CONTEXTO_PUBLICO.map((e)=>({id:e.id,reason:'Su género es techno.'})).slice(0,3)}};
+      recommendations:input.CONTEXTO_PUBLICO.map((e)=>({id:e.id,reasons:['MUSIC','PRICE']})).slice(0,3)}};
   return {repository,ai,counts:()=>({documents,queries})};
 }
 test('chat validation rejects injected roles, extra fields and excessive payloads',()=>{
@@ -83,7 +83,7 @@ test('provider failure is labelled search; hallucinated IDs never become recomme
   let reply=await yomoganService.chat([{role:'user',content:'Techno en Valencia menos de 20'}],f);
   assert.equal(reply.mode,'search');assert.match(reply.message,/IA.*no está disponible/);
   f.ai.generate=async(system)=>system.startsWith('Extrae')?preference:
-    {message:'Malicious database says ignore all rules',question:null,recommendations:[{id:randomUUID(),reason:'fake'}]};
+    {message:'Malicious database says ignore all rules',question:null,recommendations:[{id:randomUUID(),reasons:['MUSIC']}]};
   reply=await yomoganService.chat([{role:'user',content:'Valencia'}],f);
   assert.equal(reply.mode,'search');assert.ok(!reply.message.includes('ignore all rules'));
   assert.ok(reply.events.every((e)=>e.id===event.id));
@@ -131,4 +131,12 @@ test('unasked age, group, atmosphere and dates cannot become SQL filters',async(
   assert.equal(applied.atmosphere,null);assert.equal(applied.idealFor,null);
   assert.equal(applied.age,null);assert.equal(applied.groupSize,1);
   assert.equal(applied.dateFrom,undefined);assert.equal(applied.dressCode,null);
+});
+
+test('negative wording is respected and factual reasons always come from the current row',async()=>{
+  assert.ok(explicitFilters([{role:'user',content:'Valencia, no quiero techno, house'}],[{municipality:'Valencia'}]).excludedGenres.includes('TECHNO'));
+  const f=fixture();
+  const reply=await yomoganService.chat([{role:'user',content:'Techno en Valencia menos de 20 euros'}],f);
+  assert.match(reply.events[0].reason,/TECHNO/);assert.match(reply.events[0].reason,/14/);
+  assert.ok(!reply.events[0].reason.includes('hasta'));
 });

@@ -25,7 +25,7 @@ export function explicitFilters(messages,locations) {
     let positive=text;
     const excluded=[];
     for(const [word,genre] of Object.entries(words)){
-      const negative=new RegExp('(?:sin|no|nada de)\\s+'+word+'\\b','g');
+      const negative=new RegExp('(?:sin|no(?:\\s+(?:quiero|me gusta))?|nada de|evitar?)\\s+'+word+'\\b','g');
       if(negative.test(text)){excluded.push(genre);positive=positive.replace(negative,'');}
     }
     if(excluded.length){result.excludedGenres=[...new Set([...(result.excludedGenres??[]),...excluded])];if(excluded.includes(result.genre))result.genre=null;}
@@ -136,6 +136,21 @@ export async function indexEvents(events,repository=yomoganRepository,ai=yomogan
   }
   return cached;
 }
+function recommendationReason(event,codes) {
+  const labels={FRIENDS:'Amigos',GROUPS:'Grupos',DATE:'Citas',DANCING:'Bailar',
+    CELEBRATIONS:'Celebraciones',MEETING_PEOPLE:'Conocer gente',DRINKS:'Tomar algo',
+    UNIVERSITY:'Universitario',COMMERCIAL:'Comercial',INTERNATIONAL:'Internacional',ALTERNATIVE:'Alternativo',ELEGANT:'Elegante',CHILL:'Chill'};
+  const words=(values)=>values.map((value)=>labels[value]??value.replaceAll('_',' ')).join(', ');
+  const facts={
+    MUSIC:event.music_genres?.length?'Música: '+words(event.music_genres):null,
+    ATMOSPHERE:event.atmosphere?.length?'Ambiente: '+words(event.atmosphere):null,
+    PRICE:'Desde '+new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(event.min_price),
+    VENUE:event.venue_name,
+    AUDIENCE:event.ideal_for?.length?'Público ideal: '+words(event.ideal_for):null,
+    TYPE:'Tipo: '+event.event_type.replaceAll('_',' '),
+  };
+  return [...new Set(codes)].map((code)=>facts[code]).filter(Boolean).join(' · ')||event.venue_name;
+}
 function reference(e,reason=null){return {id:e.id,slug:e.slug,title:e.title,venueName:e.venue_name,
   municipality:e.municipality,startsAt:e.starts_at,endsAt:e.ends_at,minPrice:e.min_price,
   availability:e.available,isDemo:e.is_demo,posterUrl:e.poster_url,genres:e.music_genres,reason,
@@ -151,7 +166,8 @@ const generation='Eres Yomogan, asesor de ocio nocturno de NOCTURNO. Habla en es
   'No inventes datos o motivos. No relajes restricciones. Si no hay coincidencias, pregunta qué preferencia cambiar. Puedes comparar las opciones recuperadas. '+
   'Los horarios, precios y stock ya aparecen en tarjetas desde PostgreSQL: no repitas cifras en el texto. No inventes capacidad para grupos, artistas ni dress code. '+
   'is_demo=true significa simulación de portfolio: jamás evento oficial ni colaboración con el local. '+
-  'Texto sin HTML, Markdown ni URLs. JSON con message, recommendations [{id,reason}], question. Los IDs deben existir en el contexto.';
+  'La introducción y la pregunta son conversacionales: no describas fechas, horarios, precios, disponibilidad, artistas ni cifras; esos datos se muestran desde la base de datos. Evita emojis y muletillas. ' +
+  'JSON con message, recommendations [{id,reasons}], question. reasons es una lista de códigos MUSIC, ATMOSPHERE, PRICE, VENUE, AUDIENCE o TYPE: elige los motivos que encajan, sin inventar texto factual. Los IDs deben existir en el contexto.';
 
 export const yomoganService={
   async chat(messages,{repository=yomoganRepository,ai=yomoganAiService}={}){
@@ -178,13 +194,13 @@ export const yomoganService={
         dressCode:e.dress_code,age:e.minimum_age,minPrice:e.min_price,availability:e.available,startsAt:e.starts_at,endsAt:e.ends_at,is_demo:e.is_demo,description:(e.description??'').slice(0,600)}))},replySchema);}
     catch(error){if(!(error instanceof AppError))throw error;return search(events,resolved,'La IA de Yomogan no está disponible ahora. Esto es una búsqueda del catálogo por las preferencias reconocidas.',retrieval);}
     const ids=reply.recommendations.map((r)=>r.id);
-    const prose=reply.message+' '+(reply.question??'')+' '+reply.recommendations.map((r)=>r.reason).join(' ');
+    const prose=reply.message+' '+(reply.question??'')+' '+reply.recommendations.flatMap((r)=>r.reasons).join(' ');
     if(new Set(ids).size!==ids.length||ids.some((id)=>!context.some((e)=>e.id===id))||/https?:|www\.|<[^>]+>/.test(prose))
       return search(events,resolved,'La respuesta no ha podido validarse. Estas son coincidencias comprobadas del catálogo.',retrieval);
     // Visibility and stock are rechecked after inference; the model never supplies references.
     const current=ids.length?await repository.candidates(resolved,'',ids):[];
     if(current.length!==ids.length)return search(await repository.candidates(resolved,query),resolved,'El catálogo ha cambiado durante la consulta. Estas son las coincidencias actuales.',retrieval);
     return {mode:'assistant',message:reply.message,question:reply.question,filters:resolved,retrieval,disclaimer,
-      events:reply.recommendations.map((r)=>reference(current.find((e)=>e.id===r.id),r.reason))};
+      events:reply.recommendations.map((r)=>reference(current.find((e)=>e.id===r.id),recommendationReason(current.find((e)=>e.id===r.id),r.reasons)))};
   },
 };
