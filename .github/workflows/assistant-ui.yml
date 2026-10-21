@@ -30,6 +30,7 @@ jobs:
           --health-timeout 3s
           --health-retries 15
     env:
+      YOMOGAN_TIMEOUT_MS: '180000'
       NODE_ENV: development
       DATABASE_URL: postgresql://nocturno_capture:capture_only_password@localhost:5432/nocturno_capture
       CORS_ORIGIN: http://localhost:4200
@@ -115,6 +116,9 @@ jobs:
         env:
           YOMOGAN_TIMEOUT_MS: '180000'
         run: node tools/verify-yomogan-live.js
+      - name: Test real AI through Angular and HTTP
+        working-directory: frontend
+        run: node tools/test-assistant-ui.mjs --live
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4

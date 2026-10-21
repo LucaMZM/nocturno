@@ -5,6 +5,31 @@ const browser = await chromium.launch({ headless: true });
 const output = '../docs/screenshots/assistant';
 await mkdir(output, { recursive: true });
 try {
+  if (process.argv.includes('--live')) {
+    const context = await browser.newContext({baseURL:'http://localhost:4200',viewport:{width:390,height:844},locale:'es-ES'});
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.getByRole('button',{name:'Rechazar opcionales',exact:true}).click();
+    await page.getByRole('button',{name:'Hablar con Yomogan'}).click();
+    await page.getByLabel('Cuéntame tu plan').fill('Techno en Valencia por menos de 20 euros');
+    const response = page.waitForResponse((res)=>res.url().endsWith('/api/yomogan/chat')&&res.request().method()==='POST',{timeout:240000});
+    await page.getByRole('button',{name:'Enviar mensaje a Yomogan'}).click();
+    const {data} = await (await response).json();
+    assert.equal(data.mode,'assistant');
+    assert.equal(data.retrieval,'hybrid');
+    await page.getByText('IA · contexto del catálogo',{exact:true}).waitFor();
+    assert.ok(data.events.length>=1 && data.events.length<=3);
+    await page.locator('.yomogan-event').first().waitFor();
+    assert.equal(await page.locator('.yomogan-event').count(),data.events.length);
+    for (const event of data.events) {
+      assert.equal(event.municipality,'Valencia');assert.ok(event.minPrice<20);
+      assert.ok(event.availability>0);assert.ok(event.genres.includes('TECHNO'));
+      assert.equal(await page.locator('.yomogan-event').filter({hasText:event.title}).getAttribute('href'),event.href);
+    }
+    await page.screenshot({path:output+'/yomogan-real-ai-mobile.png'});
+    console.log('REAL_BROWSER_AI_VERIFIED: Angular → HTTP → Express → hybrid RAG → real Ollama → verified event cards.');
+    await context.close();
+  } else {
   const context = await browser.newContext({ baseURL: 'http://localhost:4200',
     viewport: { width: 1280, height: 900 }, locale: 'es-ES' });
   const page = await context.newPage();
@@ -110,4 +135,5 @@ try {
   assert.deepEqual(errors, []);
   console.log('Cookie demo: first visit, accept, reject, configure, save, reload, reopen, keyboard and 390px passed.');
   await context.close();
+  }
 } finally { await browser.close(); }
