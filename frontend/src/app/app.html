@@ -7,5 +7,8 @@
 <footer class="site-footer">
   <div class="page-width footer-inner">
     <strong>NOCTURNO.</strong><span>Descubre la noche a tu manera.</span><span>© {{ year }}</span>
+    <button type="button" class="footer-cookie-button" (click)="cookies.openPreferences()">Preferencias de cookies</button>
   </div>
 </footer>
+
+<app-cookie-preferences #cookies />

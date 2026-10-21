@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: true });
+const output = '../docs/screenshots/assistant';
+await mkdir(output, { recursive: true });
+try {
+  const context = await browser.newContext({ baseURL: 'http://localhost:4200',
+    viewport: { width: 1280, height: 900 }, locale: 'es-ES' });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  const banner = page.locator('.cookie-banner');
+  await banner.waitFor();
+  await page.getByRole('button', { name: 'Configurar', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Tú eliges el ritmo.' });
+  await dialog.waitFor();
+  assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
+  assert.equal(await page.getByRole('switch', { name: /necesarias/ }).isDisabled(), true);
+  await page.getByRole('switch', { name: 'Preferencias', exact: true }).click();
+  await page.screenshot({ path: `${output}/cookie-desktop.png` });
+  await page.getByRole('button', { name: 'Guardar preferencias' }).click();
+  await banner.waitFor({ state: 'detached' });
+  await page.reload();
+  assert.equal(await banner.count(), 0);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('nocturno_cookie_demo_v1')));
+  assert.equal(stored.preferences, true);
+  assert.equal(stored.analytics, false);
+  assert.equal(stored.marketing, false);
+  const reopen = page.getByRole('button', { name: 'Preferencias de cookies', exact: true });
+  await reopen.click();
+  await dialog.waitFor();
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'hidden' });
+  assert.equal(await reopen.evaluate((button) => button === document.activeElement), true);
+  for (const [name, expected] of [['Aceptar todas', true], ['Rechazar opcionales', false]]) {
+    await page.evaluate(() => localStorage.removeItem('nocturno_cookie_demo_v1'));
+    await page.reload();
+    await page.getByRole('button', { name, exact: true }).click();
+    const choice = await page.evaluate(() => JSON.parse(localStorage.getItem('nocturno_cookie_demo_v1')));
+    assert.equal(choice.necessary, true);
+    assert.equal(choice.analytics, expected);
+    assert.equal(choice.marketing, expected);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await banner.waitFor();
+  await page.screenshot({ path: `${output}/cookie-mobile.png` });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole('button', { name: 'Configurar', exact: true }).click();
+  await dialog.waitFor();
+  await page.keyboard.press('Shift+Tab');
+  assert.equal(await page.getByRole('button', { name: 'Guardar preferencias' }).evaluate((button) => button === document.activeElement), true);
+  await page.keyboard.press('Tab');
+  assert.equal(await page.getByRole('button', { name: 'Cerrar preferencias de cookies' }).evaluate((button) => button === document.activeElement), true);
+  await page.screenshot({ path: `${output}/cookie-preferences-mobile.png` });
+  await page.keyboard.press('Escape');
+  assert.deepEqual(errors, []);
+  console.log('Cookie demo: first visit, accept, reject, configure, save, reload, reopen, keyboard and 390px passed.');
+  await context.close();
+} finally { await browser.close(); }

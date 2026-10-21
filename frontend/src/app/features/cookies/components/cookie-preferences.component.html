@@ -1,0 +1,40 @@
+@if (!choice()) {
+  <aside class="cookie-banner" aria-labelledby="cookie-banner-title">
+    <div class="cookie-copy">
+      <p class="cookie-eyebrow">TU NOCHE. TUS PREFERENCIAS.</p>
+      <h2 id="cookie-banner-title">Antes de seguir el ritmo<span>.</span></h2>
+      <p>Esta es una demo visual de cookies. Guardamos tu elección en este navegador;
+        no activamos analítica ni publicidad y no modificamos tus cookies de acceso.</p>
+    </div>
+    <div class="cookie-actions">
+      <button type="button" class="cookie-primary" (click)="chooseAll(true)">Aceptar todas</button>
+      <button type="button" class="cookie-secondary" (click)="chooseAll(false)">Rechazar opcionales</button>
+      <button type="button" class="cookie-link" (click)="openPreferences()">Configurar</button>
+    </div>
+  </aside>
+}
+<dialog #preferencesDialog class="cookie-dialog" aria-labelledby="cookie-dialog-title"
+  aria-describedby="cookie-demo-description" (close)="onClose()" (click)="outsideClick($event)">
+  <div class="cookie-dialog-heading">
+    <p class="cookie-eyebrow">NOCTURNO · PREFERENCIAS</p>
+    <button type="button" class="cookie-close" aria-label="Cerrar preferencias de cookies" autofocus (click)="close()">×</button>
+  </div>
+  <h2 id="cookie-dialog-title">Tú eliges el ritmo<span>.</span></h2>
+  <p id="cookie-demo-description">Demostración de preferencias. Ninguna de estas opciones instala scripts
+    ni constituye un sistema completo de consentimiento legal.</p>
+  <div class="cookie-category">
+    <div><h3>Necesarias</h3><p>La autenticación y las funciones técnicas de Nocturno siguen funcionando.</p></div>
+    <button type="button" role="switch" aria-checked="true" aria-label="Cookies necesarias, siempre activas" disabled
+      class="cookie-switch is-on"><span></span></button>
+  </div>
+  @for (category of categories; track category.key) {
+    <div class="cookie-category">
+      <div><h3>{{ category.title }}</h3><p>{{ category.description }}</p></div>
+      <button type="button" role="switch" [attr.aria-checked]="draft()[category.key]"
+        [attr.aria-label]="category.title" class="cookie-switch"
+        [class.is-on]="draft()[category.key]" (click)="toggle(category.key)"><span></span></button>
+    </div>
+  }
+  <p class="cookie-note">Solo se recuerda esta elección visual en localStorage. Puedes cambiarla desde el pie de página.</p>
+  <button type="button" class="cookie-primary cookie-save" (click)="save()">Guardar preferencias</button>
+</dialog>
