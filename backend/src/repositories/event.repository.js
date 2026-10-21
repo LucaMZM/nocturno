@@ -179,18 +179,18 @@ export const eventRepository = {
       .map(
         ([field], index) =>
           `${field.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`)} = $${index + 2}`,
-      )
-      .join(', ');
+      );
+    if (changes.images !== undefined) set.push('gallery_user_edited = TRUE');
+    if (!set.length) return eventRepository.findById(eventId);
     const client = await getPool().connect();
     try {
       await client.query('BEGIN');
       const { rowCount } = await client.query(
-        `UPDATE events SET ${set} WHERE id = $1 AND deleted_at IS NULL`,
+        `UPDATE events SET ${set.join(', ')} WHERE id = $1 AND deleted_at IS NULL`,
         [eventId, ...entries.map(([, value]) => value)],
       );
       if (rowCount && changes.images !== undefined) {
         await replaceImages(client, eventId, changes.images);
-        await client.query('UPDATE events SET gallery_user_edited = TRUE WHERE id = $1', [eventId]);
       }
       await client.query('COMMIT');
       return rowCount ? eventRepository.findById(eventId) : null;

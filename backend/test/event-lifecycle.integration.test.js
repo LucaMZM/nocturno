@@ -6,6 +6,7 @@ import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
 import { seedGalleryIfUntouched } from '../src/db/seed.js';
+import { eventRepository } from '../src/repositories/event.repository.js';
 
 // Uses only its own fixtures. The final SQL cleanup removes these rows and their test relations.
 test('event lifecycle keeps UUID relations and public slug visibility', { skip: !env.DATABASE_URL }, async () => {
@@ -78,6 +79,17 @@ test('event lifecycle keeps UUID relations and public slug visibility', { skip: 
     assert.deepEqual((await getPool().query(
       'SELECT url FROM event_images WHERE event_id=$1 ORDER BY position', [event.id])).rows.map((row) => row.url),
       fiveImages.slice(1, 4).map((image) => image.url));
+    const galleryOnly = await eventRepository.update(event.id, { images: [
+      { url: 'https://example.com/gallery-only.jpg', altText: 'Cambio aislado' },
+    ] });
+    assert.equal(galleryOnly.title, event.title);
+    assert.deepEqual(galleryOnly.images.map((image) => image.url), ['https://example.com/gallery-only.jpg']);
+    assert.ok(galleryOnly.updatedAt);
+    await assert.rejects(eventRepository.update(event.id, { images: [
+      { url: 'https://example.com/duplicate.jpg' }, { url: 'https://example.com/duplicate.jpg' },
+    ] }), { code: '23505' });
+    assert.deepEqual((await eventRepository.findById(event.id)).images.map((image) => image.url),
+      ['https://example.com/gallery-only.jpg']);
     const emptied = await call(`/api/events/${event.id}`, 'PATCH', { images: [] });
     assert.equal(emptied.status, 200);
     assert.equal(emptied.body.data.posterUrl, null);
