@@ -11,7 +11,7 @@ try{
   const generate=yomoganAiService.generate;
   yomoganAiService.generate=async(...args)=>{
     try{return await generate(...args);}
-    catch(error){console.log('AI_DIAGNOSTIC',{code:error.code,cause:error.cause?.code,nested:error.cause?.cause?.code});throw error;}
+    catch(error){console.log('AI_DIAGNOSTIC',JSON.stringify({code:error.code,cause:error.cause,nested:error.cause?.cause?.code}));throw error;}
   };
   const conversation=[{role:'user',content:'Quiero techno en Valencia por menos de 20 euros.'}];
   const first=await yomoganService.chat(conversation);

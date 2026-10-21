@@ -25,8 +25,15 @@ export const yomoganAiService={
       :{model:env.YOMOGAN_MODEL,messages,temperature:0.2,max_tokens:600,
         response_format:{type:'json_schema',json_schema:{name:'yomogan',strict:true,schema:format}}};
     const result=await request(env.YOMOGAN_CHAT_URL,ollama?'/api/chat':'/chat/completions',env.YOMOGAN_API_KEY,body);
-    try {return schema.parse(JSON.parse(ollama?result.message.content:result.choices[0].message.content));}
-    catch {throw Object.assign(unavailable(),{cause:{code:'AI_RESPONSE_SCHEMA'}});}
+    const content=ollama?result.message?.content:result.choices?.[0]?.message?.content;
+    const diagnostic={finish:result.done_reason??result.choices?.[0]?.finish_reason,characters:content?.length??0};
+    let parsed;
+    try{parsed=JSON.parse(content);}
+    catch{throw Object.assign(unavailable(),{cause:{code:'AI_RESPONSE_JSON',...diagnostic}});}
+    const checked=schema.safeParse(parsed);
+    if(!checked.success)throw Object.assign(unavailable(),{cause:{code:'AI_RESPONSE_SCHEMA',...diagnostic,
+      fields:checked.error.issues.map(({path,code})=>({path:path.join('.'),code}))}});
+    return checked.data;
   },
   async embed(texts) {
     if(env.YOMOGAN_EMBED_PROVIDER==='disabled')throw unavailable();
