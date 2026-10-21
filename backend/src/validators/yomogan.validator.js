@@ -15,7 +15,7 @@ export const preferenceSchema=z.object({
   maxPrice:z.number().min(0).max(10000).nullable(),exclusivePrice:z.boolean(),
   groupSize:z.number().int().min(1).max(10),age:z.number().int().min(0).max(120).nullable(),
   day:z.enum(['any','tonight','tomorrow','weekend','monday','tuesday','wednesday','thursday','friday','saturday','sunday']).nullable(),
-  date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  date:z.iso.date().nullable(),
 }).strict();
 export const replySchema=z.object({
   message:z.string().trim().min(1).max(900),question:z.string().trim().max(200).nullable(),

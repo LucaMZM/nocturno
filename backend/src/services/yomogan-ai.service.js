@@ -21,7 +21,7 @@ export const yomoganAiService={
     const ollama=env.YOMOGAN_PROVIDER==='ollama';
     const body=ollama
       ?{model:env.YOMOGAN_MODEL,messages,format,stream:false,think:false,keep_alive:0,
-        options:{temperature:0.2,num_predict:600,num_ctx:4096}}
+        options:{temperature:0.2,num_predict:600,num_ctx:8192}}
       :{model:env.YOMOGAN_MODEL,messages,temperature:0.2,max_tokens:600,
         response_format:{type:'json_schema',json_schema:{name:'yomogan',strict:true,schema:format}}};
     const result=await request(env.YOMOGAN_CHAT_URL,ollama?'/api/chat':'/chat/completions',env.YOMOGAN_API_KEY,body);

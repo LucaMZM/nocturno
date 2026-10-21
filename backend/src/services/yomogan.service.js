@@ -147,7 +147,7 @@ export const yomoganService={
     try{reply=await ai.generate(generation,{conversation:messages,filters:resolved,
       CONTEXTO_PUBLICO:context.map((e)=>({id:e.id,title:e.title,venue:e.venue_name,city:e.municipality,
         genres:e.music_genres,atmosphere:e.atmosphere,type:e.event_type,idealFor:e.ideal_for,
-        dressCode:e.dress_code,age:e.minimum_age,is_demo:e.is_demo,description:(e.description??'').slice(0,600)}))},replySchema);}
+        dressCode:e.dress_code,age:e.minimum_age,minPrice:e.min_price,availability:e.available,startsAt:e.starts_at,endsAt:e.ends_at,is_demo:e.is_demo,description:(e.description??'').slice(0,600)}))},replySchema);}
     catch(error){if(!(error instanceof AppError))throw error;return search(events,resolved,'Yomogan no ha podido completar su respuesta. Mostramos coincidencias en modo búsqueda.',retrieval);}
     const ids=reply.recommendations.map((r)=>r.id);
     const prose=reply.message+' '+(reply.question??'')+' '+reply.recommendations.map((r)=>r.reason).join(' ');
