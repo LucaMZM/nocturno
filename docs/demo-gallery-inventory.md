@@ -42,10 +42,10 @@ Generado desde PostgreSQL local el 21 de octubre de 2026 tras aplicar migrations
 | Noche de Sala | DEMO | 1 | 0 |
 | NOCTURNO SESSION · Alameda | DEMO | 3 | 3 |
 | Órbita MON | DEMO | 1 | 0 |
-| Poblenou en Directo | DEMO | 1 | 0 |
+| Poblenou en Directo | DEMO | 2 | 2 |
 | Pop Después de Medianoche | DEMO | 1 | 0 |
 | Pulso en Ruzafa | DEMO | 1 | 0 |
-| Razz en Rojo | DEMO | 1 | 0 |
+| Razz en Rojo | DEMO | 2 | 2 |
 | Río Eléctrico | DEMO | 3 | 3 |
 | Ritmo Central | DEMO | 1 | 0 |
 | Ritmo del Puerto | DEMO | 1 | 0 |
@@ -83,4 +83,4 @@ Generado desde PostgreSQL local el 21 de octubre de 2026 tras aplicar migrations
 | Tardeo con Vicente Buitrón · 24 de octubre | Referencia inactiva | 4 | 4 |
 | Tardeo en Àtic · 9 de octubre | Referencia inactiva | 4 | 4 |
 
-Total: 78 eventos, 159 imágenes. De ellos, 56 eventos DEMO.
+Total: 78 eventos, 161 imágenes. De ellos, 56 eventos DEMO.

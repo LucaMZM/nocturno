@@ -70,7 +70,7 @@ const verifiedVenues = [
   ['La Fábrica de Hielo','CONCERT_HALL','Valencia','Valencia','Calle José Ballester Gozalvo 37','46011',null,null,'https://www.lafabricadehielo.net/'],
   ['Radio City Valencia','BAR','Valencia','Valencia','Calle Santa Teresa 19',null,null,null,'https://radiocityvalencia.es/'],
 ];
-// Remote photos stay on official venue servers for this local demo. No media is packaged.
+// Remote venue photos are linked from their documented source; no media is packaged.
 const venuePhotos = {
   0: [
     ['https://palaualameda.com/wp-content/uploads/2025/08/palau-alameda-azza-medium.jpg','https://palaualameda.com/'],
@@ -87,6 +87,10 @@ const venuePhotos = {
     ['https://salariviera.com/wp-content/uploads/2023/08/DSC05213-scaled-1-400x516.jpg','https://salariviera.com/galeria/'],
   ],
   4: [['https://www.sala-apolo.com/uploads/media/default/0001/01/thumb_319_default_wide.jpeg','https://www.sala-apolo.com/es/nosotros']],
+  5: [
+    ['https://commons.wikimedia.org/wiki/Special:Redirect/file/Barcelona_-_Sala_Razzmatazz.jpg','https://commons.wikimedia.org/wiki/File:Barcelona_-_Sala_Razzmatazz.jpg'],
+    ['https://commons.wikimedia.org/wiki/Special:Redirect/file/Salida_de_Razzmatazz.JPG','https://commons.wikimedia.org/wiki/File:Salida_de_Razzmatazz.JPG'],
+  ],
   16: [
     ['https://tulumvalencia.es/wp-content/uploads/2024/09/06_10_2023-TULUM-10-1-1-scaled-1.jpg','https://tulumvalencia.es/'],
     ['https://tulumvalencia.es/wp-content/uploads/2024/09/Terraza-Tulum-1-1.png','https://tulumvalencia.es/'],

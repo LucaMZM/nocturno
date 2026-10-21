@@ -175,7 +175,11 @@ try {
   missingImage);
   await gallery.getByRole('button', { name: 'Eliminar imagen 4' }).click();
   await gallery.locator('.gallery-editor-row').nth(3).waitFor({ state: 'detached' });
+  const galleryPatch = admin.waitForRequest((request) =>
+    request.method() === 'PATCH' && request.url().endsWith(`/api/events/${sampleEventId}`));
   await admin.getByRole('button', { name: /Guardar cambios/ }).click();
+  assert.deepEqual(Object.keys((await galleryPatch).postDataJSON()), ['images'],
+    'Editing only the gallery sends only images in the event PATCH');
   await admin.getByText('Evento guardado correctamente.').waitFor({ timeout: 15000 });
   await admin.reload();
   await gallery.waitFor({ timeout: 15000 });
