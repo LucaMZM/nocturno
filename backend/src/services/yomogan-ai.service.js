@@ -7,11 +7,11 @@ async function request(base,path,key,body) {
     const response=await fetch(base.replace(/\/$/,'')+path,{method:'POST',redirect:'error',
       headers:{'content-type':'application/json',...(key?{authorization:'Bearer '+key}:{})},
       body:JSON.stringify(body),signal:AbortSignal.timeout(env.YOMOGAN_TIMEOUT_MS)});
-    if(!response.ok)throw unavailable();
+    if(!response.ok)throw Object.assign(new Error('AI provider request failed'),{code:'AI_HTTP_'+response.status});
     const text=await response.text();
     if(text.length>3000000)throw unavailable();
     return JSON.parse(text);
-  } catch {throw unavailable();}
+  } catch(cause) {const error=unavailable();error.cause=cause;throw error;}
 }
 export const yomoganAiService={
   get modelKey(){return [env.YOMOGAN_EMBED_PROVIDER,env.YOMOGAN_EMBED_URL,env.YOMOGAN_EMBED_MODEL].join('|');},
@@ -26,7 +26,7 @@ export const yomoganAiService={
         response_format:{type:'json_schema',json_schema:{name:'yomogan',strict:true,schema:format}}};
     const result=await request(env.YOMOGAN_CHAT_URL,ollama?'/api/chat':'/chat/completions',env.YOMOGAN_API_KEY,body);
     try {return schema.parse(JSON.parse(ollama?result.message.content:result.choices[0].message.content));}
-    catch {throw unavailable();}
+    catch {throw Object.assign(unavailable(),{cause:{code:'AI_RESPONSE_SCHEMA'}});}
   },
   async embed(texts) {
     if(env.YOMOGAN_EMBED_PROVIDER==='disabled')throw unavailable();

@@ -54,7 +54,7 @@
               </a>
             }
             @if (message.reply?.events?.length) {
-              <p class="yomogan-disclaimer">{{ message.reply?.disclaimer }}</p>
+              <p class="yomogan-disclaimer">{{ message.reply!.disclaimer }}</p>
             }
           </article>
         }

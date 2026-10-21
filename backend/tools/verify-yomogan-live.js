@@ -5,6 +5,14 @@ import { yomoganAiService } from '../src/services/yomogan-ai.service.js';
 import { getPool,closePool } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 try{
+  const readiness=await fetch(env.YOMOGAN_CHAT_URL+'/api/tags');
+  console.log('OLLAMA_READINESS',readiness.status);
+  assert.equal(readiness.status,200);
+  const generate=yomoganAiService.generate;
+  yomoganAiService.generate=async(...args)=>{
+    try{return await generate(...args);}
+    catch(error){console.log('AI_DIAGNOSTIC',{code:error.code,cause:error.cause?.code,nested:error.cause?.cause?.code});throw error;}
+  };
   const conversation=[{role:'user',content:'Quiero techno en Valencia por menos de 20 euros.'}];
   const first=await yomoganService.chat(conversation);
   console.log('Real Ollama first reply:',JSON.stringify(first));
