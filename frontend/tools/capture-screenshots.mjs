@@ -54,6 +54,13 @@ try {
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
 
+  await page.goto('/this-page-does-not-exist');
+  await page.getByText('404', { exact: true }).waitFor();
+  assert.equal(await page.locator('.full-error-illustration').evaluate((image) => image.complete && image.naturalWidth > 0), true);
+  await page.goto('/dashboard');
+  await page.waitForURL((url) => url.pathname === '/error/401');
+  await page.getByRole('link', { name: /Iniciar sesión/ }).waitFor();
+
   await page.goto('/?municipality=Valencia');
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await page.evaluate(() => window.scrollTo(0, 560));
@@ -81,6 +88,12 @@ try {
   await page.goto(`/events/${sampleEvent.slug}`);
   await page.locator('.detail-sidebar h1').getByText(sampleEvent.title).waitFor({ timeout: 20000 });
   await page.locator('app-ticket-type-card').first().waitFor({ timeout: 20000 });
+  assert.equal(sampleEvent.images.length, 3, 'Seeded sample has a three-image gallery');
+  await page.getByRole('button', { name: 'Imagen siguiente' }).click();
+  await page.locator('.carousel-count').getByText('2 / 3').waitFor();
+  await page.locator('.event-carousel').focus();
+  await page.keyboard.press('ArrowLeft');
+  await page.locator('.carousel-count').getByText('1 / 3').waitFor();
   await capture(page, '04-event-detail.png');
 
   const general = page.locator('app-ticket-type-card').filter({ hasText: 'General' });
@@ -90,6 +103,9 @@ try {
   await capture(page, '05-ticket-selection.png');
 
   await login(page, process.env.DEMO_USER_EMAIL, process.env.DEMO_USER_PASSWORD);
+  await page.goto('/dashboard');
+  await page.waitForURL((url) => url.pathname === '/error/403');
+  await page.getByText('403', { exact: true }).waitFor();
   await page.goto(`/events/${sampleEvent.slug}`);
   const buyerGeneral = page.locator('app-ticket-type-card').filter({ hasText: 'General' });
   await buyerGeneral.waitFor({ timeout: 20000 });
@@ -131,6 +147,28 @@ try {
   await admin.getByRole('button', { name: 'Validar entrada' }).click();
   await admin.getByText('ACCESO NO CONCEDIDO').waitFor({ timeout: 15000 });
   console.log('Published demo QR was invalidated; duplicate check-in rejected.');
+
+  await admin.goto(`/dashboard/events/${sampleEventId}/edit`);
+  const gallery = admin.locator('app-event-gallery-editor');
+  await gallery.waitFor({ timeout: 15000 });
+  assert.equal(await gallery.locator('.gallery-editor-row').count(), 3);
+  await gallery.getByRole('button', { name: '+ Añadir imagen' }).click();
+  assert.equal(await gallery.locator('.gallery-editor-row').count(), 4);
+  const missingImage = '/posters/nocturno-missing-image.svg';
+  await gallery.locator('.gallery-editor-row').last().locator('input').first().fill(missingImage);
+  await gallery.getByRole('button', { name: 'Subir imagen 4' }).click();
+  assert.equal(await gallery.locator('.gallery-editor-row').nth(2).locator('input').first().inputValue(), missingImage);
+  await gallery.getByRole('button', { name: 'Eliminar imagen 4' }).click();
+  assert.equal(await gallery.locator('.gallery-editor-row').count(), 3);
+  await admin.getByRole('button', { name: /Guardar cambios/ }).click();
+  await admin.getByText('Evento guardado correctamente.').waitFor({ timeout: 15000 });
+  await admin.reload();
+  await gallery.waitFor({ timeout: 15000 });
+  assert.equal(await gallery.locator('.gallery-editor-row').nth(2).locator('input').first().inputValue(), missingImage);
+  await admin.goto(`/events/${sampleEvent.slug}`);
+  await admin.getByRole('button', { name: 'Mostrar imagen 3' }).click();
+  await admin.getByText('IMAGEN NO DISPONIBLE').waitFor({ timeout: 15000 });
+  console.log('Gallery editor add, move, remove and save persisted; carousel image fallback rendered.');
   await adminContext.close();
   await publicContext.close();
 } finally {
