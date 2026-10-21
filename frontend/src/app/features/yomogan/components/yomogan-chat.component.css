@@ -1,1 +1,390 @@
-:host{font:inherit;color:#f5f2ec}button,a,textarea{-webkit-tap-highlight-color:transparent}button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid #f5f2ec;outline-offset:3px}.yomogan-launcher{position:fixed;right:24px;bottom:24px;z-index:80;display:flex;align-items:center;gap:12px;padding:10px 16px;background:#171717;color:#f5f2ec;border:1px solid #55423e;box-shadow:0 8px 40px #0008}.yomogan-launcher img,.yomogan-avatar,.yomogan-message-label img{object-fit:contain;border-radius:50%;background:#080808;flex-shrink:0}.yomogan-launcher span{text-align:left}.yomogan-launcher strong{display:block;font-size:16px;letter-spacing:-.03em}.yomogan-launcher small{display:block;color:#aaa6a0;font-size:10px;letter-spacing:.05em}.yomogan-launcher>span:last-child{font-size:22px;color:#e50914;margin-left:12px}.yomogan-panel{position:fixed;right:24px;bottom:104px;z-index:81;width:min(420px,calc(100vw - 32px));height:min(690px,calc(100dvh - 130px));display:flex;flex-direction:column;background:#101010;border:1px solid #49413b;box-shadow:0 24px 90px #000b;animation:yomogan-enter .18s ease-out}.yomogan-panel header{display:flex;align-items:center;gap:12px;padding:20px 20px 16px;border-bottom:1px solid #312c28}.yomogan-panel header p{font-size:9px;letter-spacing:.16em;color:#aaa6a0;margin:0 0 5px}.yomogan-panel h2{font-size:28px;line-height:1;letter-spacing:-.05em;margin:0}.yomogan-panel h2 span{color:#e50914}.yomogan-close{margin-left:auto;background:none;border:0;font-size:28px;line-height:1;color:#f5f2ec;width:36px;height:36px}.yomogan-toolbar{display:flex;justify-content:space-between;gap:8px;padding:10px 20px;font-size:10px;color:#aaa6a0;background:#171717}.yomogan-toolbar button{background:none;border:0;color:#f5f2ec;text-decoration:underline;text-underline-offset:3px;font-size:10px}.yomogan-conversation{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px;scrollbar-width:thin;scrollbar-color:#51413a #101010}.yomogan-welcome{padding:8px 0}.yomogan-kicker{font-size:9px;letter-spacing:.16em;color:#e50914;margin:0 0 14px}.yomogan-welcome h3{font-size:35px;letter-spacing:-.045em;line-height:1.08;margin:0 0 16px}.yomogan-welcome>p:last-of-type{color:#aaa6a0;font-size:13px;line-height:1.6}.yomogan-suggestions{display:grid;gap:8px;margin-top:24px}.yomogan-suggestions button{display:flex;justify-content:space-between;gap:14px;text-align:left;padding:12px;border:1px solid #39322d;background:#171717;color:#f5f2ec;font-size:12px;line-height:1.4}.yomogan-suggestions button:hover{border-color:#e50914}.yomogan-suggestions span{color:#e50914}.yomogan-message{margin:0 0 24px;overflow-wrap:anywhere}.yomogan-message.is-user{background:#27201e;margin-left:28px;padding:12px 14px;border-left:2px solid #e50914}.yomogan-message-label{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px}.yomogan-message-label>span{font-size:9px;color:#aaa6a0}.yomogan-message-text{font-size:13px;line-height:1.7;margin:0;white-space:pre-wrap}.yomogan-event{display:flex;gap:12px;align-items:flex-start;padding:14px 0;margin-top:12px;border-top:1px solid #39322d;color:#f5f2ec;text-decoration:none}.yomogan-event>img{width:58px;height:82px;object-fit:cover;flex-shrink:0;background:#171717}.yomogan-event>div{min-width:0;flex:1}.yomogan-event>span{color:#e50914}.yomogan-demo{font-size:8px;color:#aaa6a0;letter-spacing:.12em}.yomogan-event h3{font-size:15px;line-height:1.3;margin:4px 0 6px}.yomogan-event p{font-size:11px;color:#aaa6a0;margin:4px 0;line-height:1.5}.yomogan-event strong{display:block;font-size:13px;margin-top:8px}.yomogan-event small{display:block;font-size:9px;color:#aaa6a0;margin-top:4px}.yomogan-event .yomogan-reason{color:#f5f2ec;margin-top:8px}.yomogan-disclaimer{font-size:9px;line-height:1.6;color:#aaa6a0;margin:12px 0 0}.yomogan-thinking{display:flex;align-items:center;gap:4px;font-size:11px;color:#aaa6a0;margin:10px 0}.yomogan-thinking span{width:4px;height:4px;border-radius:50%;background:#e50914;animation:yomogan-pulse 1s infinite alternate}.yomogan-thinking span:nth-child(2){animation-delay:.2s}.yomogan-thinking span:nth-child(3){animation-delay:.4s;margin-right:6px}.yomogan-error{padding:12px;background:#291216;border:1px solid #6b2228;font-size:12px;line-height:1.5}.yomogan-error button{background:none;color:#f5f2ec;border:0;text-decoration:underline;padding:0}.yomogan-composer{border-top:1px solid #39322d;padding:12px 16px;background:#171717}.yomogan-input-label{font-size:10px;color:#aaa6a0;display:block;margin-bottom:7px}.yomogan-composer>div{display:flex;gap:10px}.yomogan-composer textarea{min-width:0;flex:1;resize:none;background:#101010;border:1px solid #49413b;color:#f5f2ec;padding:10px;font:inherit;font-size:12px;line-height:1.5;border-radius:0}.yomogan-composer button{border:0;width:42px;background:#e50914;color:#fff;font-size:24px;flex-shrink:0}.yomogan-composer button:disabled{opacity:.35;cursor:default}.yomogan-composer>small{display:block;font-size:8px;color:#aaa6a0;line-height:1.5;margin-top:8px}@keyframes yomogan-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes yomogan-pulse{to{opacity:.25}}@media(max-width:600px){.yomogan-launcher{right:16px;bottom:16px;padding:8px 12px}.yomogan-panel{right:12px;bottom:92px;width:calc(100vw - 24px);height:calc(100dvh - 108px)}.yomogan-panel header{padding:16px}.yomogan-conversation{padding:16px}.yomogan-launcher img{width:40px;height:40px}}@media(prefers-reduced-motion:reduce){.yomogan-panel,.yomogan-thinking span{animation:none}}
+:host {
+  font: inherit;
+  color: #f5f2ec;
+}
+button,
+a,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+button:focus-visible,
+a:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #f5f2ec;
+  outline-offset: 3px;
+}
+.yomogan-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #171717;
+  color: #f5f2ec;
+  border: 1px solid #55423e;
+  box-shadow: 0 8px 40px #0008;
+}
+.yomogan-launcher img,
+.yomogan-avatar,
+.yomogan-message-label img {
+  object-fit: contain;
+  border-radius: 50%;
+  background: #080808;
+  flex-shrink: 0;
+}
+.yomogan-launcher span {
+  text-align: left;
+}
+.yomogan-launcher strong {
+  display: block;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+}
+.yomogan-launcher small {
+  display: block;
+  color: #aaa6a0;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.yomogan-launcher > span:last-child {
+  font-size: 22px;
+  color: #e50914;
+  margin-left: 12px;
+}
+.yomogan-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 104px;
+  z-index: 81;
+  width: min(420px, calc(100vw - 32px));
+  height: min(690px, calc(100dvh - 130px));
+  display: flex;
+  flex-direction: column;
+  background: #101010;
+  border: 1px solid #49413b;
+  box-shadow: 0 24px 90px #000b;
+  animation: yomogan-enter 0.18s ease-out;
+}
+.yomogan-panel header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #312c28;
+}
+.yomogan-panel header p {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: #aaa6a0;
+  margin: 0 0 5px;
+}
+.yomogan-panel h2 {
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  margin: 0;
+}
+.yomogan-panel h2 span {
+  color: #e50914;
+}
+.yomogan-close {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  font-size: 28px;
+  line-height: 1;
+  color: #f5f2ec;
+  width: 36px;
+  height: 36px;
+}
+.yomogan-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 10px;
+  color: #aaa6a0;
+  background: #171717;
+}
+.yomogan-toolbar button {
+  background: none;
+  border: 0;
+  color: #f5f2ec;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 10px;
+}
+.yomogan-conversation {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #51413a #101010;
+}
+.yomogan-welcome {
+  padding: 8px 0;
+}
+.yomogan-kicker {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: #e50914;
+  margin: 0 0 14px;
+}
+.yomogan-welcome h3 {
+  font-size: 35px;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+  margin: 0 0 16px;
+}
+.yomogan-welcome > p:last-of-type {
+  color: #aaa6a0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.yomogan-suggestions {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+.yomogan-suggestions button {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  text-align: left;
+  padding: 12px;
+  border: 1px solid #39322d;
+  background: #171717;
+  color: #f5f2ec;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.yomogan-suggestions button:hover {
+  border-color: #e50914;
+}
+.yomogan-suggestions span {
+  color: #e50914;
+}
+.yomogan-message {
+  margin: 0 0 24px;
+  overflow-wrap: anywhere;
+}
+.yomogan-message.is-user {
+  background: #27201e;
+  margin-left: 28px;
+  padding: 12px 14px;
+  border-left: 2px solid #e50914;
+}
+.yomogan-message-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.yomogan-message-label > span {
+  font-size: 9px;
+  color: #aaa6a0;
+}
+.yomogan-message-text {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.yomogan-event {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
+  margin-top: 12px;
+  border-top: 1px solid #39322d;
+  color: #f5f2ec;
+  text-decoration: none;
+}
+.yomogan-event > img {
+  width: 58px;
+  height: 82px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #171717;
+}
+.yomogan-event > div {
+  min-width: 0;
+  flex: 1;
+}
+.yomogan-event > span {
+  color: #e50914;
+}
+.yomogan-demo {
+  font-size: 8px;
+  color: #aaa6a0;
+  letter-spacing: 0.12em;
+}
+.yomogan-event h3 {
+  font-size: 15px;
+  line-height: 1.3;
+  margin: 4px 0 6px;
+}
+.yomogan-event p {
+  font-size: 11px;
+  color: #aaa6a0;
+  margin: 4px 0;
+  line-height: 1.5;
+}
+.yomogan-event strong {
+  display: block;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.yomogan-event small {
+  display: block;
+  font-size: 9px;
+  color: #aaa6a0;
+  margin-top: 4px;
+}
+.yomogan-event .yomogan-reason {
+  color: #f5f2ec;
+  margin-top: 8px;
+}
+.yomogan-disclaimer {
+  font-size: 9px;
+  line-height: 1.6;
+  color: #aaa6a0;
+  margin: 12px 0 0;
+}
+.yomogan-thinking {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #aaa6a0;
+  margin: 10px 0;
+}
+.yomogan-thinking span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #e50914;
+  animation: yomogan-pulse 1s infinite alternate;
+}
+.yomogan-thinking span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.yomogan-thinking span:nth-child(3) {
+  animation-delay: 0.4s;
+  margin-right: 6px;
+}
+.yomogan-error {
+  padding: 12px;
+  background: #291216;
+  border: 1px solid #6b2228;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.yomogan-error button {
+  background: none;
+  color: #f5f2ec;
+  border: 0;
+  text-decoration: underline;
+  padding: 0;
+}
+.yomogan-composer {
+  border-top: 1px solid #39322d;
+  padding: 12px 16px;
+  background: #171717;
+}
+.yomogan-input-label {
+  font-size: 10px;
+  color: #aaa6a0;
+  display: block;
+  margin-bottom: 7px;
+}
+.yomogan-composer > div {
+  display: flex;
+  gap: 10px;
+}
+.yomogan-composer textarea {
+  min-width: 0;
+  flex: 1;
+  resize: none;
+  background: #101010;
+  border: 1px solid #49413b;
+  color: #f5f2ec;
+  padding: 10px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  border-radius: 0;
+}
+.yomogan-composer button {
+  border: 0;
+  width: 42px;
+  background: #e50914;
+  color: #fff;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.yomogan-composer button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.yomogan-composer > small {
+  display: block;
+  font-size: 8px;
+  color: #aaa6a0;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+@keyframes yomogan-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes yomogan-pulse {
+  to {
+    opacity: 0.25;
+  }
+}
+@media (max-width: 600px) {
+  .yomogan-launcher {
+    right: 16px;
+    bottom: 16px;
+    padding: 8px 12px;
+  }
+  .yomogan-panel {
+    right: 12px;
+    bottom: 92px;
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 108px);
+  }
+  .yomogan-panel header {
+    padding: 16px;
+  }
+  .yomogan-conversation {
+    padding: 16px;
+  }
+  .yomogan-launcher img {
+    width: 40px;
+    height: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yomogan-panel,
+  .yomogan-thinking span {
+    animation: none;
+  }
+}

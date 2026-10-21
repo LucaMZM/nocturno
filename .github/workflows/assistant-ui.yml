@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: assistant-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   capture:
     runs-on: ubuntu-latest
@@ -64,28 +68,6 @@ jobs:
           npm ci
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
-      - name: Prepare readable formatting of new feature sources
-        run: |
-          node --input-type=module <<'JS'
-          import { readFile } from 'node:fs/promises';
-          import { glob } from 'node:fs/promises';
-          import * as prettier from './frontend/node_modules/prettier/index.mjs';
-          const patterns = [
-            'frontend/src/app/features/cookies/**/*.{ts,html,css}',
-            'frontend/src/app/features/yomogan/**/*.{ts,html,css}',
-            'frontend/test/{cookie-choice,yomogan-store}.test.mjs',
-            'frontend/tools/test-assistant-ui.mjs',
-            'backend/src/{controllers,routes,repositories,services,validators}/yomogan*.js',
-            'backend/test/yomogan*.js',
-            'backend/tools/{index,verify}-yomogan*.js',
-          ];
-          const files = {};
-          for (const pattern of patterns) for await (const file of glob(pattern)) {
-            const source = await readFile(file, 'utf8');
-            files[file] = await prettier.format(source, { filepath: file, singleQuote: true, printWidth: 100 });
-          }
-          console.log('FORMATTED_FEATURE_SOURCES=' + JSON.stringify(files));
-          JS
       - name: Start API and Angular in runner
         run: |
           npm --prefix backend start > /tmp/nocturno-api.log 2>&1 &
