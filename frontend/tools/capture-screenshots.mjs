@@ -35,6 +35,8 @@ async function login(page, email, password) {
   await page.goto('/auth/login');
   await page.locator('input[formcontrolname="email"]').fill(email);
   await page.locator('input[formcontrolname="password"]').fill(password);
+  const cookieChoice = page.getByRole('button', { name: 'Rechazar opcionales', exact: true });
+  if (await cookieChoice.isVisible()) await cookieChoice.click();
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/auth/login'));
   await assertNoAppError(page);

@@ -57,7 +57,7 @@ y puede pedir aclaración. Los precios/disponibilidad siempre proceden de Postgr
 Las recomendaciones no reservan stock.
 
 ## Activar Ollama
-Requiere Ollama 0.11.10 o posterior (soporte de EmbeddingGemma).
+EmbeddingGemma requiere como mínimo Ollama 0.11.10. Para esta integración se recomienda una versión actual; el runner usa Ollama 0.40.7 con una sola inferencia paralela y un modelo cargado.
 Modelos verificados en el catálogo oficial:
 - https://ollama.com/library/qwen3:4b (generación)
 - https://ollama.com/library/embeddinggemma (embeddings)
