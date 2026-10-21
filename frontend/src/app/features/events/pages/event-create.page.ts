@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Event } from '../../../core/models/domain.model';
-import { EventFormComponent } from '../components/event-form.component';
+import { EventEditorPage } from './event-editor.page';
 
 @Component({
   selector: 'app-event-create-page',
-  imports: [EventFormComponent],
-  template: '<app-event-form (eventSaved)="created($event)" />',
+  imports: [EventEditorPage],
+  template: '<app-event-editor (eventSaved)="created($event)" />',
 })
 export class EventCreatePage {
   private readonly router = inject(Router);
