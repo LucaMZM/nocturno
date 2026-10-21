@@ -190,6 +190,28 @@ try {
   await admin.getByRole('button', { name: 'Mostrar imagen 3' }).click();
   await admin.getByText('IMAGEN NO DISPONIBLE').waitFor({ timeout: 15000 });
   console.log('Gallery editor add, move, remove and save persisted; carousel image fallback rendered.');
+
+  await admin.goto('/dashboard/events/create');
+  await admin.locator('input[formcontrolname="title"]').waitFor({ timeout: 15000 });
+  await admin.locator('input[formcontrolname="title"]').fill('Noche de prueba Nocturno');
+  await admin.locator('select[formcontrolname="eventType"]').selectOption('CLUB');
+  await admin.locator('select[formcontrolname="venueId"]').selectOption({ index: 1 });
+  await admin.locator('input[formcontrolname="startsAt"]').fill('2030-01-01T20:00');
+  await admin.locator('input[formcontrolname="endsAt"]').fill('2030-01-01T22:00');
+  const createdResponse = admin.waitForResponse((response) =>
+    response.request().method() === 'POST' && response.url().endsWith('/api/events'));
+  await admin.getByRole('button', { name: 'Crear evento' }).click();
+  const created = await createdResponse;
+  assert.equal(created.status(), 201, 'Create page saves an event');
+  await admin.waitForURL(/\/dashboard\/events\/[0-9a-f-]+\/edit/);
+  await admin.locator('input[formcontrolname="title"]').fill('Noche de prueba revisada');
+  const editedResponse = admin.waitForResponse((response) =>
+    response.request().method() === 'PATCH' && response.url().includes('/api/events/'));
+  await admin.getByRole('button', { name: /Guardar cambios/ }).click();
+  const edited = await editedResponse;
+  assert.equal(edited.status(), 200, 'Edit page saves an event');
+  assert.equal((await edited.json()).data.slug, 'noche-de-prueba-revisada');
+  console.log('Existing create and edit pages saved; changing title regenerated the slug.');
   await adminContext.close();
   await publicContext.close();
 } finally {
