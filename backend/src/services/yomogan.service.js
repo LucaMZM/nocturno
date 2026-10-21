@@ -29,8 +29,8 @@ export function explicitFilters(messages,locations) {
       if(negative.test(text)){excluded.push(genre);positive=positive.replace(negative,'');}
     }
     if(excluded.length){result.excludedGenres=[...new Set([...(result.excludedGenres??[]),...excluded])];if(excluded.includes(result.genre))result.genre=null;}
-    const genre=Object.entries(words).find(([word])=>positive.includes(word));
-    if(genre){result.genre=genre[1];result.excludedGenres=(result.excludedGenres??[]).filter((value)=>value!==genre[1]);}
+    const genre=Object.entries(words).find(([word])=>new RegExp('\\b'+word+'\\b').test(positive));
+    if(genre){result.genre=genre[1];if(result.excludedGenres)result.excludedGenres=result.excludedGenres.filter((value)=>value!==genre[1]);}
     if(/cualquier (genero|musica)|da igual la musica/.test(text)){result.genre=null;result.excludedGenres=[];}
     const price=text.match(/(menos de|hasta|maximo|como mucho|no mas de|por debajo de)\s*(\d+(?:[.,]\d{1,2})?)/);
     if(price){result.maxPrice=Number(price[2].replace(',','.'));result.exclusivePrice=/menos|debajo/.test(price[1]);}
@@ -138,7 +138,9 @@ export const yomoganService={
     let filters=defaults(),available=true;
     try{filters=await ai.generate(extraction,{today:todayMadrid(new Date()),locations,conversation:messages},preferenceSchema);}
     catch(error){if(!(error instanceof AppError))throw error;available=false;}
-    filters=preferenceSchema.parse({...filters,...explicitFilters(available?messages.slice(-1):messages,locations)});
+    const explicit=explicitFilters(available?messages.slice(-1):messages,locations);
+    filters=preferenceSchema.parse({...filters,...explicit});
+    if(explicit.genre)filters.excludedGenres=filters.excludedGenres.filter((genre)=>genre!==explicit.genre);
     const resolved=withDateWindow(filters);
     if(!filters.municipality&&!filters.province)return {mode:'clarification',
       message:'¿En qué ciudad te apetece salir? Cuéntame también qué música buscas y cuánto quieres gastar.',

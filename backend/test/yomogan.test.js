@@ -113,3 +113,10 @@ test('fallback respects unknown municipality and explicit rejected genres',()=>{
   assert.ok(result.excludedGenres.includes('TECHNO'));
   assert.match(buildRecommendationQuery(result).sql,/NOT \(e.music_genres &&/);
 });
+
+test('follow-ups retain rejected genres and do not infer POP from popular',()=>{
+  const filters=explicitFilters([{role:'user',content:'Valencia sin techno'},
+    {role:'user',content:'Mejor house'}],[{municipality:'Valencia'}]);
+  assert.equal(filters.genre,'HOUSE');assert.ok(filters.excludedGenres.includes('TECHNO'));
+  assert.equal(explicitFilters([{role:'user',content:'Un sitio popular en Valencia'}],[{municipality:'Valencia'}]).genre,undefined);
+});

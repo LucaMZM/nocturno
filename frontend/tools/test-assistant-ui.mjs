@@ -95,6 +95,17 @@ try {
   await chat.waitFor();
   await page.keyboard.press('Escape');
   await chat.waitFor({ state:'detached' });
+  for (const width of [768,1280]) {
+    await page.setViewportSize({width,height:900});
+    await page.getByRole('button',{name:'Hablar con Yomogan'}).click();
+    await chat.waitFor();
+    const box=await chat.boundingBox();
+    assert.ok(box.x>=0 && box.x+box.width<=width && box.y>=0 && box.y+box.height<=900);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+    await page.screenshot({path:output+'/yomogan-'+width+'.png'});
+    await page.getByRole('button',{name:'Cerrar Yomogan'}).click();
+    await chat.waitFor({state:'detached'});
+  }
   console.log('Yomogan UI: open/close, real search fallback, follow-up, links, reset, no-results, network error and retry passed.');
   assert.deepEqual(errors, []);
   console.log('Cookie demo: first visit, accept, reject, configure, save, reload, reopen, keyboard and 390px passed.');
