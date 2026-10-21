@@ -53,7 +53,7 @@ test('AI adapter uses both protocols, validates structured output and redacts pr
     assert.equal(requests[0].body.stream, false);
     assert.equal(requests[0].body.format.type, 'object');
     assert.equal(requests[2].body.response_format.type, 'json_schema');
-    assert.equal(requests[0].key, '***');
+    assert.equal(requests[0].key, 'Bearer ' + env.YOMOGAN_API_KEY);
     env.YOMOGAN_MODEL = 'bad';
     await assert.rejects(
       yomoganAiService.generate('test', {}, z.object({ answer: z.string() })),
