@@ -120,3 +120,15 @@ test('follow-ups retain rejected genres and do not infer POP from popular',()=>{
   assert.equal(filters.genre,'HOUSE');assert.ok(filters.excludedGenres.includes('TECHNO'));
   assert.equal(explicitFilters([{role:'user',content:'Un sitio popular en Valencia'}],[{municipality:'Valencia'}]).genre,undefined);
 });
+
+test('unasked age, group, atmosphere and dates cannot become SQL filters',async()=>{
+  const f=fixture();let applied;
+  const query=f.repository.candidates;
+  f.repository.candidates=async(filters,...rest)=>{applied=filters;return query(filters,...rest);};
+  const reply=await yomoganService.chat([{role:'user',content:'Techno en Valencia menos de 20 euros'}],f);
+  assert.equal(reply.mode,'assistant');
+  assert.equal(applied.municipality,'Valencia');assert.equal(applied.genre,'TECHNO');
+  assert.equal(applied.atmosphere,null);assert.equal(applied.idealFor,null);
+  assert.equal(applied.age,null);assert.equal(applied.groupSize,1);
+  assert.equal(applied.dateFrom,undefined);assert.equal(applied.dressCode,null);
+});

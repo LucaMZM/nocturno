@@ -26,8 +26,11 @@ Si falta una ciudad se pide aclaración. No hay respuestas de IA simuladas en pr
 
 ### Recuperación y seguridad
 1. Zod limita mensajes (11, 1200 caracteres por mensaje, 8000 totales), roles y salida.
-2. El modelo interpreta restricciones y contexto conversacional en JSON validado.
-   Ciudad, géneros, presupuesto y fecha explícitos se refuerzan con lectura determinista.
+2. La interpretación determinista extrae restricciones explícitas de los mensajes del usuario.
+   El modelo no genera filtros SQL: no puede añadir una edad, fecha, dress code o ambiente
+   que no se haya pedido. Los embeddings y la generación interpretan la afinidad semántica
+   y ayudan a comparar las coincidencias. Las preferencias reconocidas se conservan en
+   los seguimientos; una petición ambigua puede requerir aclaración.
 3. SQL parametrizado comprueba municipio/provincia, género, ambiente, tipo, público,
    dress code, edad, fechas, precio y cantidad del grupo.
 4. Solo PUBLISHED, activos, no eliminados y no terminados. Los tipos de entrada deben
