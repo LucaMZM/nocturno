@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 const browser = await chromium.launch({ headless: true });
 const output = '../docs/screenshots/assistant';
@@ -129,6 +129,31 @@ try {
       .getByText('Búsqueda · sin respuesta IA', { exact: true })
       .waitFor({ timeout: 30000 });
     assert.ok((await page.locator('.yomogan-event').count()) > 0);
+
+    const avatarResponse = await page.request.get('/yomogan/avatar.png');
+    assert.equal(avatarResponse.status(), 200);
+    assert.match(avatarResponse.headers()['content-type'], /image\/png/);
+    const avatarBytes = await readFile('public/yomogan/avatar.png');
+    assert.deepEqual(await avatarResponse.body(), avatarBytes);
+    for (const selector of [
+      '.yomogan-launcher img',
+      '.yomogan-panel header img',
+      '.yomogan-message-label img',
+    ]) {
+      const image = page.locator(selector).first();
+      await image.waitFor();
+      await image.evaluate((img) => img.decode());
+      assert.equal(await image.getAttribute('src'), '/yomogan/avatar.png');
+      const actual = await image.evaluate((img) => ({
+        width: img.naturalWidth, height: img.naturalHeight,
+        fit: getComputedStyle(img).objectFit,
+      }));
+      assert.equal(actual.width, avatarBytes.readUInt32BE(16));
+      assert.equal(actual.height, avatarBytes.readUInt32BE(20));
+      assert.equal(actual.fit, 'contain');
+    }
+    console.log('YOMOGAN_AVATAR_VERIFIED: original PNG bytes, launcher, header and assistant message; loaded with original proportions.');
+
     const link = page.locator('.yomogan-event').first();
     assert.match(await link.getAttribute('href'), /^\/events\/[a-z0-9-]+$/);
     await page.screenshot({ path: output + '/yomogan-search-mobile.png' });

@@ -49,6 +49,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -84,7 +85,22 @@ jobs:
       - name: Verify existing public and ticketing flows
         working-directory: frontend
         run: node tools/capture-screenshots.mjs
+      - name: Detect changes requiring real model verification
+        id: ai-scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "$BASE_SHA" HEAD -- backend/src/services/yomogan\* backend/src/repositories/yomogan\* backend/src/validators/yomogan\* backend/src/db/migrations backend/tools/verify-yomogan-live.js backend/package.json backend/package-lock.json frontend/src/app/features/yomogan | grep -q .; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          elif git diff "$BASE_SHA" HEAD -- backend/src/config/env.js | grep -E '^[+-].*YOMOGAN_(PROVIDER|CHAT_URL|MODEL|EMBED_|TIMEOUT_MS)' >/dev/null; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "live=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Start isolated real Ollama
+        if: steps.ai-scope.outputs.live == 'true'
         run: |
           docker run -d --name yomogan-ollama -p 127.0.0.1:11434:11434 -e OLLAMA_MAX_LOADED_MODELS=1 -e OLLAMA_NUM_PARALLEL=1 ollama/ollama:0.40.7
           for attempt in $(seq 1 60); do
@@ -94,11 +110,13 @@ jobs:
           docker exec yomogan-ollama ollama pull qwen3:4b
           docker exec yomogan-ollama ollama pull embeddinggemma
       - name: Test real generation and embeddings
+        if: steps.ai-scope.outputs.live == 'true'
         working-directory: backend
         env:
           YOMOGAN_TIMEOUT_MS: '180000'
         run: node tools/verify-yomogan-live.js
       - name: Test real AI through Angular and HTTP
+        if: steps.ai-scope.outputs.live == 'true'
         working-directory: frontend
         run: node tools/test-assistant-ui.mjs --live
       - name: Upload screenshots
