@@ -72,7 +72,6 @@ export const EventEditorStore = signalStore(
         }
       },
       async save(eventId: string | null, payload: EventWritePayload): Promise<Event | null> {
-        if (store.saving()) return null;
         patchState(store, { saving: true, error: null });
         try {
           const response = eventId

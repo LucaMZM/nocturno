@@ -1,11 +1,13 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Event as NocturnoEvent, EventImageInput, Promoter, Venue } from '../../../core/models/domain.model';
+import { Event as NocturnoEvent, EventImageInput } from '../../../core/models/domain.model';
 import { ErrorStateComponent } from '../../../shared/components/states';
 import { readableTag } from '../../../shared/utils/format';
+import { EventEditorStore } from '../store/event-editor.store';
+import { AuthStore } from '../../auth/store/auth.store';
 import { EventGalleryEditorComponent } from './event-gallery-editor.component';
-import type { EventFormValues } from '../utils/event-form.mapper';
+import { mapEventFormToPayload, prepareEventImages } from '../utils/event-form.mapper';
 
 const eventTypes = [
   'CLUB',
@@ -61,11 +63,6 @@ const ideals = ['FRIENDS', 'MEETING_PEOPLE', 'DANCING', 'DATE', 'GROUPS', 'CELEB
 const dressCodes = ['CASUAL', 'SMART_CASUAL', 'ELEGANT', 'STREETWEAR', 'NO_DRESS_CODE'];
 type SelectionField = 'musicGenres' | 'atmosphere' | 'idealFor';
 
-export interface EventFormDraft {
-  values: EventFormValues;
-  images: EventImageInput[];
-}
-
 function localDateTime(iso: string): string {
   const date = new Date(iso);
   const twoDigits = (number: number) => String(number).padStart(2, '0');
@@ -75,9 +72,11 @@ function localDateTime(iso: string): string {
 @Component({
   selector: 'app-event-form',
   imports: [ReactiveFormsModule, RouterLink, ErrorStateComponent, EventGalleryEditorComponent],
+  providers: [EventEditorStore],
   templateUrl: './event-form.component.html',
 })
-export class EventFormComponent {
+export class EventFormComponent implements OnInit {
+  readonly editor = inject(EventEditorStore);
   readonly eventTypes = eventTypes;
   readonly statuses = statuses;
   readonly genres = genres;
@@ -85,24 +84,15 @@ export class EventFormComponent {
   readonly ideals = ideals;
   readonly dressCodes = dressCodes;
   readonly label = readableTag;
+  readonly saved = signal(false);
   readonly eventId = input<string | null>(null);
-  readonly event = input<NocturnoEvent | null>(null);
-  readonly venues = input<Venue[]>([]);
-  readonly promoters = input<Promoter[]>([]);
-  readonly canChoosePromoter = input(false);
-  readonly maxImages = input(24);
-  readonly loading = input(false);
-  readonly saving = input(false);
-  readonly ready = input(false);
-  readonly saved = input(false);
-  readonly serverError = input<string | null>(null);
-  readonly submissionError = input<string | null>(null);
-  readonly retryRequested = output<void>();
-  readonly submitted = output<EventFormDraft>();
+  readonly eventSaved = output<NocturnoEvent>();
   readonly validationError = signal<string | null>(null);
   readonly dateError = signal<string | null>(null);
+  readonly ready = signal(false);
   readonly initialGallery = signal<EventImageInput[]>([]);
   readonly galleryDraft = signal<EventImageInput[]>([]);
+  readonly auth = inject(AuthStore);
   private readonly formBuilder = inject(FormBuilder);
   readonly form = this.formBuilder.nonNullable.group({
     title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(180)]],
@@ -121,11 +111,16 @@ export class EventFormComponent {
     idealFor: [[] as string[]],
   });
 
-  constructor() {
-    effect(() => {
-      const event = this.event();
-      if (event) this.fillForm(event);
-    });
+  ngOnInit() {
+    void this.load();
+  }
+
+  async load() {
+    this.ready.set(false);
+    await this.editor.load(this.eventId());
+    const event = this.editor.event();
+    if (event) this.fillForm(event);
+    this.ready.set(true);
   }
 
   selected(field: SelectionField, value: string): boolean {
@@ -142,7 +137,7 @@ export class EventFormComponent {
   }
 
   canViewEvent(): boolean {
-    const event = this.event();
+    const event = this.editor.event();
     return (
       !!event &&
       event.isActive &&
@@ -151,7 +146,8 @@ export class EventFormComponent {
     );
   }
 
-  submit() {
+  async save() {
+    this.saved.set(false);
     this.validationError.set(null);
     this.dateError.set(null);
     this.form.markAllAsTouched();
@@ -166,7 +162,15 @@ export class EventFormComponent {
       this.dateError.set('La fecha de finalización debe ser posterior al comienzo.');
       return;
     }
-    this.submitted.emit({ values, images: this.galleryDraft() });
+    const gallery = prepareEventImages(this.galleryDraft(), this.editor.maxImages());
+    if (gallery.error) {
+      this.validationError.set(gallery.error);
+      return;
+    }
+    const event = await this.editor.save(this.eventId(), mapEventFormToPayload(values, gallery.images));
+    if (!event) return;
+    this.saved.set(true);
+    this.eventSaved.emit(event);
   }
 
   private fillForm(event: NocturnoEvent) {

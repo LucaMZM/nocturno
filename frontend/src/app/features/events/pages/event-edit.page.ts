@@ -1,10 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EventEditorPage } from './event-editor.page';
+import { EventFormComponent } from '../components/event-form.component';
 
 @Component({
   selector: 'app-event-edit-page',
-  imports: [EventEditorPage, RouterLink],
+  imports: [EventFormComponent, RouterLink],
   template: `
     <nav class="event-management-tabs page-width" aria-label="Gestión del evento">
       <a [routerLink]="['/dashboard/events', eventId, 'edit']">Evento</a>
@@ -12,7 +12,7 @@ import { EventEditorPage } from './event-editor.page';
       <a [routerLink]="['/dashboard/events', eventId, 'sales']">Ventas</a>
       <a [routerLink]="['/dashboard/events', eventId, 'attendees']">Asistentes</a>
     </nav>
-    <app-event-editor [eventId]="eventId" />
+    <app-event-form [eventId]="eventId" />
   `,
 })
 export class EventEditPage {
