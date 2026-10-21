@@ -6,10 +6,8 @@
         <p>Completa los datos del evento y guarda los cambios.</p>
       </div>
 
-      @if (editor.loading() || !ready()) {
-        <p class="muted" role="status">Cargando formulario…</p>
-      } @else if (editor.error() && !editor.venues().length) {
-        <app-error-state [message]="editor.error()!" (retry)="load()" />
+      @if (editor.error() && !editor.venues().length) {
+        <app-error-state [message]="editor.error()!" (retry)="reloadRequested.emit()" />
       } @else {
         @if (saved()) {
           <div class="editor-notice success" role="status">Evento guardado correctamente.</div>

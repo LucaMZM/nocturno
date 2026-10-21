@@ -1,7 +1,7 @@
 import { Component, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Event as NocturnoEvent, EventImageInput } from '../../../core/models/domain.model';
+import { Event as NocturnoEvent, EventImageInput, EventWritePayload } from '../../../core/models/domain.model';
 import { ErrorStateComponent } from '../../../shared/components/states';
 import { readableTag } from '../../../shared/utils/format';
 import { EventEditorStore } from '../store/event-editor.store';
@@ -72,7 +72,6 @@ function localDateTime(iso: string): string {
 @Component({
   selector: 'app-event-form',
   imports: [ReactiveFormsModule, RouterLink, ErrorStateComponent, EventGalleryEditorComponent],
-  providers: [EventEditorStore],
   templateUrl: './event-form.component.html',
 })
 export class EventFormComponent implements OnInit {
@@ -84,12 +83,12 @@ export class EventFormComponent implements OnInit {
   readonly ideals = ideals;
   readonly dressCodes = dressCodes;
   readonly label = readableTag;
-  readonly saved = signal(false);
+  readonly saved = input(false);
   readonly eventId = input<string | null>(null);
-  readonly eventSaved = output<NocturnoEvent>();
+  readonly submitted = output<{ payload: EventWritePayload; galleryOnly: boolean }>();
+  readonly reloadRequested = output<void>();
   readonly validationError = signal<string | null>(null);
   readonly dateError = signal<string | null>(null);
-  readonly ready = signal(false);
   readonly initialGallery = signal<EventImageInput[]>([]);
   readonly galleryDraft = signal<EventImageInput[]>([]);
   readonly auth = inject(AuthStore);
@@ -112,15 +111,8 @@ export class EventFormComponent implements OnInit {
   });
 
   ngOnInit() {
-    void this.load();
-  }
-
-  async load() {
-    this.ready.set(false);
-    await this.editor.load(this.eventId());
     const event = this.editor.event();
     if (event) this.fillForm(event);
-    this.ready.set(true);
   }
 
   selected(field: SelectionField, value: string): boolean {
@@ -146,8 +138,7 @@ export class EventFormComponent implements OnInit {
     );
   }
 
-  async save() {
-    this.saved.set(false);
+  save() {
     this.validationError.set(null);
     this.dateError.set(null);
     this.form.markAllAsTouched();
@@ -167,10 +158,10 @@ export class EventFormComponent implements OnInit {
       this.validationError.set(gallery.error);
       return;
     }
-    const event = await this.editor.save(this.eventId(), mapEventFormToPayload(values, gallery.images));
-    if (!event) return;
-    this.saved.set(true);
-    this.eventSaved.emit(event);
+    this.submitted.emit({
+      payload: mapEventFormToPayload(values, gallery.images),
+      galleryOnly: !!this.eventId() && this.form.pristine,
+    });
   }
 
   private fillForm(event: NocturnoEvent) {

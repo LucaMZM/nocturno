@@ -69,7 +69,7 @@ export class EventsApiService {
     );
   }
 
-  async updateEvent(eventId: string, payload: EventWritePayload): Promise<ApiResponse<Event>> {
+  async updateEvent(eventId: string, payload: Partial<EventWritePayload>): Promise<ApiResponse<Event>> {
     return firstValueFrom(
       this.http.patch<ApiResponse<Event>>(
         `${environment.apiUrl}/events/${encodeURIComponent(eventId)}`,

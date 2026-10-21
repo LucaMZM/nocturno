@@ -71,11 +71,12 @@ export const EventEditorStore = signalStore(
           });
         }
       },
-      async save(eventId: string | null, payload: EventWritePayload): Promise<Event | null> {
+      async save(eventId: string | null, payload: EventWritePayload, galleryOnly = false): Promise<Event | null> {
+        if (store.saving()) return null;
         patchState(store, { saving: true, error: null });
         try {
           const response = eventId
-            ? await events.updateEvent(eventId, payload)
+            ? await events.updateEvent(eventId, galleryOnly ? { images: payload.images } : payload)
             : await events.createEvent(payload);
           patchState(store, { event: response.data, saving: false });
           void eventsList.refreshEvents();
