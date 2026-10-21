@@ -69,17 +69,81 @@ Modelos verificados en el catálogo oficial:
 - https://ollama.com/library/embeddinggemma (embeddings)
 - API: https://docs.ollama.com/api/chat y https://docs.ollama.com/api/embed
 
-En el host de la API o una máquina privada accesible:
+### Mac local (pasos para ejecutar tú)
+
+Requiere Homebrew y Node ^24.15.0 o >=26. Estos comandos no se han ejecutado en tu Mac.
+Conserva tu PostgreSQL y tu .env si ya tienes una instalación; no uses db:reset.
+Para una instalación nueva de desarrollo:
+
 ~~~sh
-ollama serve
+brew install ollama postgresql@17
+brew services start postgresql@17
+brew services start ollama
+export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
+createdb nocturno
 ollama pull qwen3:4b
 ollama pull embeddinggemma
+~~~
+
+Si la base ya existe, omite createdb. Si Ollama ya está abierto como app, no arranques
+un segundo servidor; como alternativa al servicio, ollama serve ocupa su propia terminal.
+Los pull se necesitan al instalar/actualizar los modelos, no en cada arranque.
+Fuentes: [Ollama Homebrew](https://formulae.brew.sh/formula/ollama) y
+[PostgreSQL 17 Homebrew](https://formulae.brew.sh/formula/postgresql@17).
+
+Desde la raíz del repositorio, prepara backend/.env solo si todavía no existe:
+
+~~~sh
 cd backend
+npm ci
+node --input-type=module <<'NODE'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { userInfo } from 'node:os';
+if (!existsSync('.env')) {
+  const source = readFileSync('.env.example', 'utf8')
+    .replace(/^DATABASE_URL=.*$/m, 'DATABASE_URL=postgresql://' + encodeURIComponent(userInfo().username) + '@127.0.0.1:5432/nocturno')
+    .replace(/^JWT_ACCESS_SECRET=.*$/m, 'JWT_ACCESS_SECRET=' + randomBytes(32).toString('hex'))
+    .replace(/^JWT_REFRESH_SECRET=.*$/m, 'JWT_REFRESH_SECRET=' + randomBytes(32).toString('hex'));
+  writeFileSync('.env', source, { mode: 0o600 });
+}
+NODE
 npm run db:migrate
 npm run db:seed
 npm run db:index:yomogan
+npm run dev
+~~~
+
+La configuración generada presupone el usuario local de Homebrew y PostgreSQL en 5432.
+Si ya tenías .env, ajusta DATABASE_URL a tu instalación y comprueba estas variables
+existentes, sin cambiar el proveedor:
+
+~~~dotenv
+YOMOGAN_PROVIDER=ollama
+YOMOGAN_CHAT_URL=http://127.0.0.1:11434
+YOMOGAN_MODEL=qwen3:4b
+YOMOGAN_EMBED_PROVIDER=ollama
+YOMOGAN_EMBED_URL=http://127.0.0.1:11434
+YOMOGAN_EMBED_MODEL=embeddinggemma
+~~~
+
+db:migrate aplica todas las pendientes en orden (001–011), incluidas
+009_event_images.sql, 010_event_gallery_user_edits.sql y 011_yomogan_embeddings.sql.
+Registra las aplicadas; no hay que ejecutar ni modificar esos SQL a mano.
+El seed es exclusivamente de desarrollo. En otra terminal, desde la raíz:
+
+~~~sh
+cd frontend
+npm ci
 npm start
 ~~~
+
+Abre http://localhost:4200; la API está en http://localhost:3000/health.
+Angular usa su proxy /api. Prueba «Techno en Valencia por menos de 20 euros».
+Con los modelos disponibles debe aparecer «IA · contexto del catálogo»; si Ollama
+falla, el modo se identifica como «Búsqueda · sin respuesta IA».
+Si backend está en Docker, 127.0.0.1 apunta al contenedor, no al Mac: esta receta
+ejecuta Node y Ollama directamente en el host.
 
 El índice inicial es opcional pero evita el coste inicial para el primer visitante.
 El comando indexa por lotes el mismo catálogo público (máximo 100 candidatos).
@@ -98,16 +162,14 @@ Variables reales (backend/.env.example):
   Generación y embeddings se configuran por separado; disabled desactiva embeddings.
   La compatibilidad concreta de un servicio externo debe verificarse antes de desplegarlo.
 
-## Avatar oficial pendiente
-El encargo no trajo un archivo adjunto accesible y el repositorio no contiene la fotografía.
-No se incorporó ninguna imagen genérica, emoji ni avatar inventado. El launcher utiliza
-el nombre Yomogan mientras falta la fotografía. No se considera completada esa parte.
-
-Cuando se proporcione el original, optimizarlo conservando identidad/proporciones y
-guardar frontend/public/yomogan/avatar.webp (o png/jpg). Configurar
-YOMOGAN_AVATAR_PATH=/yomogan/avatar.webp. GET /api/yomogan/config solo publica esa ruta
-local, nunca datos del proveedor. La UI ya admite esa misma imagen en launcher,
-cabecera y mensajes. No existe una URL rota de avatar por defecto.
+## Avatar oficial
+Se utiliza exactamente la fotografía aportada por el usuario, sin recorte ni transformación:
+frontend/public/yomogan/avatar.png. SHA-256:
+3b0bf4b0499a87e47289288dde4c8457177fdcb1db3c7703e310900d34bb65d7.
+La ruta por defecto es /yomogan/avatar.png; YOMOGAN_AVATAR_PATH ya existente permite
+sobrescribirla. GET /api/yomogan/config entrega esa ruta al mecanismo existente.
+La misma imagen aparece en launcher, cabecera y mensajes, con object-fit: contain.
+El E2E comprueba los bytes servidos, carga, dimensiones naturales y proporciones.
 
 ## Web pública
 Un navegador público habla con la API de Nocturno, no con el ordenador del desarrollador.
@@ -127,3 +189,9 @@ cookies/chat y verifica el modo búsqueda con Ollama ausente. Después arranca O
 aislado y ejecuta tools/verify-yomogan-live.js con los dos modelos reales.
 El resultado de ese job, no la mera existencia del script, determina si la IA real
 ha quedado verificada.
+
+La pasada de avatar reutiliza el E2E de UI y el fallback real sin descargar modelos.
+El workflow reserva la inferencia real para cambios del código de IA o ejecución manual.
+La generación y los embeddings reales ya se verificaron remotamente en main a6ab6a3
+([Actions](https://github.com/LucaMZM/nocturno/actions/runs/39650780324)); esto no certifica
+la instalación ni el rendimiento de un Mac concreto.

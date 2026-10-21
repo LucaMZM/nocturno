@@ -68,7 +68,7 @@ npm ci
 npm start
 ```
 
-Abre `http://localhost:4200`. Angular reenvía `/api` al backend; `http://localhost:3000/health` confirma que está vivo. Swagger está en `http://localhost:3000/api/docs`. `db:migrate` aplica incrementalmente las migraciones 001–008 y registra las ya aplicadas. `db:reset` **borra datos**; úsalo solo si quieres una base nueva.
+Abre `http://localhost:4200`. Angular reenvía `/api` al backend; `http://localhost:3000/health` confirma que está vivo. Swagger está en `http://localhost:3000/api/docs`. `db:migrate` aplica incrementalmente las migraciones 001–011 y registra las ya aplicadas. `db:reset` **borra datos**; úsalo solo si quieres una base nueva.
 
 ## Roles y demo
 
@@ -163,4 +163,4 @@ Las compras de pago y los refunds reales requieren claves Stripe test y un webho
 
 ## Cookies y Yomogan
 
-Preferencias de cookies como demostración visual y asesor de eventos con recuperación híbrida sobre PostgreSQL. Ollama local es el proveedor predeterminado; si falta, el chat identifica expresamente el modo búsqueda. La fotografía oficial del avatar está pendiente de recibir. [Configuración, arquitectura y límites](docs/cookies-yomogan.md).
+Preferencias de cookies como demostración visual y asesor de eventos con recuperación híbrida sobre PostgreSQL. Ollama local es el proveedor predeterminado; si falta, el chat identifica expresamente el modo búsqueda. El avatar oficial está integrado en el botón, cabecera y mensajes. [Arranque de Yomogan en Mac, configuración y límites](docs/cookies-yomogan.md#mac-local-pasos-para-ejecutar-tú).
