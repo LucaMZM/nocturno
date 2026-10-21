@@ -8,6 +8,17 @@ try {
   const readiness = await fetch(env.YOMOGAN_CHAT_URL + '/api/tags');
   console.log('OLLAMA_READINESS', readiness.status);
   assert.equal(readiness.status, 200);
+  const upstreamFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    const response = await upstreamFetch(url, options);
+    if (String(url).endsWith('/api/chat')) {
+      const result = await response.clone().json();
+      console.log('PUBLIC_FIXTURE_MODEL_OUTPUT', JSON.stringify({
+        finish: result.done_reason, content: result.message?.content,
+      }));
+    }
+    return response;
+  };
   const generate = yomoganAiService.generate;
   yomoganAiService.generate = async (...args) => {
     try {
