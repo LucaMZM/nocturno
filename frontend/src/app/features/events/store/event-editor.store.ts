@@ -1,12 +1,13 @@
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { PaginatedResponse } from '../../../core/models/api.model';
-import { Event, EventWritePayload, Promoter, Venue } from '../../../core/models/domain.model';
+import { Event, EventImageInput, Promoter, Venue } from '../../../core/models/domain.model';
 import { PromotersApiService } from '../../../core/services/promoters-api.service';
 import { VenuesApiService } from '../../../core/services/venues-api.service';
 import { toApiProblem } from '../../../shared/utils/api-error';
 import { EventsApiService } from '../services/events-api.service';
 import { EventsStore } from './events.store';
+import { EventFormValues, mapEventFormToPayload } from '../utils/event-form.mapper';
 
 interface EditorState {
   event: Event | null;
@@ -71,13 +72,13 @@ export const EventEditorStore = signalStore(
           });
         }
       },
-      async save(eventId: string | null, payload: EventWritePayload, galleryOnly = false): Promise<Event | null> {
+      async save(eventId: string | null, values: EventFormValues, images: EventImageInput[], galleryOnly = false): Promise<Event | null> {
         if (store.saving()) return null;
         patchState(store, { saving: true, error: null });
         try {
           const response = eventId
-            ? await events.updateEvent(eventId, galleryOnly ? { images: payload.images } : payload)
-            : await events.createEvent(payload);
+            ? await events.updateEvent(eventId, galleryOnly ? { images } : mapEventFormToPayload(values, images))
+            : await events.createEvent(mapEventFormToPayload(values, images));
           patchState(store, { event: response.data, saving: false });
           void eventsList.refreshEvents();
           return response.data;

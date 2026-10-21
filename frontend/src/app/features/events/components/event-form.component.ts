@@ -1,13 +1,11 @@
 import { Component, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Event as NocturnoEvent, EventImageInput, EventWritePayload } from '../../../core/models/domain.model';
+import { Event as NocturnoEvent, EventImageInput, Promoter, Venue } from '../../../core/models/domain.model';
 import { ErrorStateComponent } from '../../../shared/components/states';
 import { readableTag } from '../../../shared/utils/format';
-import { EventEditorStore } from '../store/event-editor.store';
-import { AuthStore } from '../../auth/store/auth.store';
 import { EventGalleryEditorComponent } from './event-gallery-editor.component';
-import { mapEventFormToPayload, prepareEventImages } from '../utils/event-form.mapper';
+import { EventFormValues, prepareEventImages } from '../utils/event-form.mapper';
 
 const eventTypes = [
   'CLUB',
@@ -75,7 +73,6 @@ function localDateTime(iso: string): string {
   templateUrl: './event-form.component.html',
 })
 export class EventFormComponent implements OnInit {
-  readonly editor = inject(EventEditorStore);
   readonly eventTypes = eventTypes;
   readonly statuses = statuses;
   readonly genres = genres;
@@ -85,13 +82,19 @@ export class EventFormComponent implements OnInit {
   readonly label = readableTag;
   readonly saved = input(false);
   readonly eventId = input<string | null>(null);
-  readonly submitted = output<{ payload: EventWritePayload; galleryOnly: boolean }>();
+  readonly event = input<NocturnoEvent | null>(null);
+  readonly venues = input<Venue[]>([]);
+  readonly promoters = input<Promoter[]>([]);
+  readonly maxImages = input(24);
+  readonly error = input<string | null>(null);
+  readonly saving = input(false);
+  readonly isAdmin = input(false);
+  readonly submitted = output<{ values: EventFormValues; images: EventImageInput[]; galleryOnly: boolean }>();
   readonly reloadRequested = output<void>();
   readonly validationError = signal<string | null>(null);
   readonly dateError = signal<string | null>(null);
   readonly initialGallery = signal<EventImageInput[]>([]);
   readonly galleryDraft = signal<EventImageInput[]>([]);
-  readonly auth = inject(AuthStore);
   private readonly formBuilder = inject(FormBuilder);
   readonly form = this.formBuilder.nonNullable.group({
     title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(180)]],
@@ -111,7 +114,7 @@ export class EventFormComponent implements OnInit {
   });
 
   ngOnInit() {
-    const event = this.editor.event();
+    const event = this.event();
     if (event) this.fillForm(event);
   }
 
@@ -129,7 +132,7 @@ export class EventFormComponent implements OnInit {
   }
 
   canViewEvent(): boolean {
-    const event = this.editor.event();
+    const event = this.event();
     return (
       !!event &&
       event.isActive &&
@@ -153,13 +156,14 @@ export class EventFormComponent implements OnInit {
       this.dateError.set('La fecha de finalización debe ser posterior al comienzo.');
       return;
     }
-    const gallery = prepareEventImages(this.galleryDraft(), this.editor.maxImages());
+    const gallery = prepareEventImages(this.galleryDraft(), this.maxImages());
     if (gallery.error) {
       this.validationError.set(gallery.error);
       return;
     }
     this.submitted.emit({
-      payload: mapEventFormToPayload(values, gallery.images),
+      values,
+      images: gallery.images,
       galleryOnly: !!this.eventId() && this.form.pristine,
     });
   }

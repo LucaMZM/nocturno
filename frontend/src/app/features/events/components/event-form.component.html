@@ -6,24 +6,24 @@
         <p>Completa los datos del evento y guarda los cambios.</p>
       </div>
 
-      @if (editor.error() && !editor.venues().length) {
-        <app-error-state [message]="editor.error()!" (retry)="reloadRequested.emit()" />
+      @if (error() && !venues().length) {
+        <app-error-state [message]="error()!" (retry)="reloadRequested.emit()" />
       } @else {
         @if (saved()) {
           <div class="editor-notice success" role="status">Evento guardado correctamente.</div>
         }
-        @if (editor.error()) {
-          <div class="editor-notice" role="alert">{{ editor.error() }}</div>
+        @if (error()) {
+          <div class="editor-notice" role="alert">{{ error() }}</div>
         }
         @if (validationError()) {
           <div class="editor-notice" role="alert">{{ validationError() }}</div>
         }
-        @if (!editor.venues().length) {
+        @if (!venues().length) {
           <div class="editor-notice" role="alert">
             Necesitas crear un local en Gestión → Locales antes de registrar un evento.
           </div>
         }
-        @if (editor.event()?.deletedAt) {
+        @if (event()?.deletedAt) {
           <div class="editor-notice" role="alert">
             Este evento está eliminado y no se puede editar.
           </div>
@@ -54,16 +54,16 @@
                 >Local <span>*</span>
                 <select formControlName="venueId">
                   <option value="">Selecciona un local</option>
-                  @for (venue of editor.venues(); track venue.id) {
+                  @for (venue of venues(); track venue.id) {
                     <option [value]="venue.id">{{ venue.name }} · {{ venue.municipality }}</option>
                   }
                 </select>
               </label>
-              @if (auth.user()?.role === 'ADMIN') { <label
+              @if (isAdmin()) { <label
                 >Promotor
                 <select formControlName="promoterId">
                   <option value="">Sin promotor</option>
-                  @for (promoter of editor.promoters(); track promoter.id) {
+                  @for (promoter of promoters(); track promoter.id) {
                     <option [value]="promoter.id">{{ promoter.name }}</option>
                   }
                 </select>
@@ -90,7 +90,7 @@
                 </select>
                 <small class="editor-help">Los borradores no aparecen en la agenda pública.</small>
               </label>
-              <label class="editor-toggle"><input type="checkbox" formControlName="isActive" [attr.disabled]="editor.event()?.deletedAt ? true : null" /> Evento activo</label>
+              <label class="editor-toggle"><input type="checkbox" formControlName="isActive" [attr.disabled]="event()?.deletedAt ? true : null" /> Evento activo</label>
               <h3 class="editor-wide editor-subheading">Clasificación y descripción</h3>
               <label
                 >Edad mínima
@@ -114,7 +114,7 @@
 
           <app-event-gallery-editor
             [initialImages]="initialGallery()"
-            [maxImages]="editor.maxImages()"
+            [maxImages]="maxImages()"
             (imagesChanged)="galleryDraft.set($event)"
           />
 
@@ -172,13 +172,13 @@
             <button
               class="button-primary"
               type="submit"
-              [disabled]="editor.saving() || !editor.venues().length || !!editor.event()?.deletedAt"
+              [disabled]="saving() || !venues().length || !!event()?.deletedAt"
             >
-              {{ editor.saving() ? 'Guardando…' : eventId() ? 'Guardar cambios' : 'Crear evento' }}
+              {{ saving() ? 'Guardando…' : eventId() ? 'Guardar cambios' : 'Crear evento' }}
               <span>↗</span>
             </button>
             @if (canViewEvent()) {
-              <a class="button-outline" [routerLink]="['/events', editor.event()!.slug]"
+              <a class="button-outline" [routerLink]="['/events', event()!.slug]"
                 >Ver evento ↗</a
               >
             }

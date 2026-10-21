@@ -1,6 +1,8 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EventWritePayload } from '../../../core/models/domain.model';
+import { EventImageInput } from '../../../core/models/domain.model';
+import { AuthStore } from '../../auth/store/auth.store';
+import { EventFormValues } from '../utils/event-form.mapper';
 import { EventFormComponent } from '../components/event-form.component';
 import { EventEditorStore } from '../store/event-editor.store';
 
@@ -17,6 +19,10 @@ import { EventEditorStore } from '../store/event-editor.store';
     </nav>
     @if (ready()) {
       <app-event-form [eventId]="eventId" [saved]="saved()"
+        [event]="editor.event()" [venues]="editor.venues()"
+        [promoters]="editor.promoters()" [maxImages]="editor.maxImages()"
+        [error]="editor.error()" [saving]="editor.saving()"
+        [isAdmin]="auth.user()?.role === 'ADMIN'"
         (submitted)="save($event)" (reloadRequested)="load()" />
     } @else { <p class="page-width muted" role="status">Cargando formulario…</p> }
   `,
@@ -24,6 +30,7 @@ import { EventEditorStore } from '../store/event-editor.store';
 export class EventEditPage implements OnInit {
   readonly eventId = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
   readonly editor = inject(EventEditorStore);
+  readonly auth = inject(AuthStore);
   readonly ready = signal(false);
   readonly saved = signal(false);
 
@@ -36,8 +43,8 @@ export class EventEditPage implements OnInit {
     this.ready.set(true);
   }
 
-  async save({ payload, galleryOnly }: { payload: EventWritePayload; galleryOnly: boolean }) {
+  async save({ values, images, galleryOnly }: { values: EventFormValues; images: EventImageInput[]; galleryOnly: boolean }) {
     this.saved.set(false);
-    if (await this.editor.save(this.eventId, payload, galleryOnly)) this.saved.set(true);
+    if (await this.editor.save(this.eventId, values, images, galleryOnly)) this.saved.set(true);
   }
 }
