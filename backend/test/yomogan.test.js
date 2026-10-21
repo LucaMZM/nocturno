@@ -309,3 +309,11 @@ test('negative wording is respected and factual reasons always come from the cur
     question: null, recommendations: [],
   }).success, false);
 });
+
+test('conversational strings exclude JSON-breaking characters and numeric event claims', () => {
+  const base = { message: 'Estas opciones encajan con tu música.', question: null, recommendations: [] };
+  assert.equal(replySchema.safeParse(base).success, true);
+  for (const message of ['Precio 14 euros', 'Dice "algo"', 'Una\\nsegunda línea', 'Una\\\\barra']) {
+    assert.equal(replySchema.safeParse({ ...base, message }).success, false);
+  }
+});

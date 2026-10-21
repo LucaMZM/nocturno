@@ -67,12 +67,12 @@ export const replySchema = z
       .trim()
       .min(1)
       .max(240)
-      .regex(/^[^0-9€$£<>]{1,240}$/),
+      .regex(/^[^0-9€$£<>"\\\u0000-\u001f]{1,240}$/),
     question: z
       .string()
       .trim()
       .max(120)
-      .regex(/^[^0-9€$£<>]{0,120}$/)
+      .regex(/^[^0-9€$£<>"\\\u0000-\u001f]{0,120}$/)
       .nullable(),
     recommendations: z
       .array(
