@@ -97,7 +97,7 @@ test('OpenAPI documents every registered resource method', () => {
 });
 
 test('migration runner discovers the initial SQL migration', async () => {
-  assert.deepEqual(await listMigrationFiles(), ['001_initial_schema.sql', '002_event_lifecycle.sql', '003_identity_commerce.sql', '004_venue_postal_code.sql', '005_event_soft_delete_invariant.sql', '006_portfolio_domain.sql', '007_event_sources.sql', '008_demo_catalogue_provenance.sql', '009_event_images.sql', '010_event_gallery_user_edits.sql', '011_yomogan_embeddings.sql']);
+  assert.deepEqual(await listMigrationFiles(), ['001_initial_schema.sql', '002_event_lifecycle.sql', '003_identity_commerce.sql', '004_venue_postal_code.sql', '005_event_soft_delete_invariant.sql', '006_portfolio_domain.sql', '007_event_sources.sql', '008_demo_catalogue_provenance.sql', '009_event_images.sql', '010_event_gallery_user_edits.sql', '011_yomogan_embeddings.sql', '012_integrity_constraints.sql', '013_event_deletion_audit.sql']);
 });
 
 test('event routes keep slug lookup separate from UUID and document lifecycle operations', () => {

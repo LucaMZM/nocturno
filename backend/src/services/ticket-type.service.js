@@ -1,3 +1,4 @@
+import { entityRemovalRepository } from '../repositories/entity-removal.repository.js';
 import { ticketTypeRepository } from '../repositories/ticket-type.repository.js';
 import { eventRepository } from '../repositories/event.repository.js';
 import { crudService } from './crud.service.js';
@@ -17,6 +18,15 @@ async function requireEvent(eventId) {
 }
 export const ticketTypeService = {
   ...base,
+  async remove(id) {
+    const result = await entityRemovalRepository.removeTicketType(id);
+    if (!result.found) throw new AppError(404, 'TICKET_TYPE_NOT_FOUND', 'Resource not found');
+    if (!result.deleted) throw new AppError(409, 'TICKET_TYPE_HAS_DEPENDENCIES', 'No se puede eliminar: existen relaciones que deben conservarse.', {
+      dependencies: result.dependencies,
+      recommendation: 'Desactiva el tipo de entrada mediante active=false para conservar ventas, reservas e histórico.'
+    });
+  },
+
   async listByEvent(eventId, query, actor) {
     const event = await eventRepository.findById(eventId);
     if (!event) throw new AppError(404, 'EVENT_NOT_FOUND', 'Event not found');

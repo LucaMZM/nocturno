@@ -50,6 +50,7 @@ jobs:
       - run: npm run db:migrate
       - run: npm test
       - run: npm run check
+      - run: npm run db:audit
 
   frontend:
     name: Frontend tests and build

@@ -7,6 +7,24 @@ import { Event, EventFilters, EventWritePayload } from '../../../core/models/dom
 import { eventFilterEntries } from '../../../shared/utils/event-filter-entries';
 import { LocationStore } from '../../location/store/location.store';
 
+export interface EventDeletionImpact {
+  eventId: string;
+  title: string;
+  analysisToken: string;
+  operation: 'delete' | 'archive' | 'blocked';
+  recoverable: boolean;
+  relations: { key: string; label: string; count: number; action: 'delete' | 'deactivate' | 'preserve' | 'block'; reason: string }[];
+  blockers: string[];
+  warnings: string[];
+}
+
+export interface EventDeletionResult {
+  eventId: string;
+  operation: 'delete' | 'archive';
+  deletedAt?: string;
+  replayed?: boolean;
+}
+
 export function eventFiltersToHttpParams(eventFilters: EventFilters): HttpParams {
   let params = new HttpParams();
   for (const [key, value] of eventFilterEntries(eventFilters)) {
@@ -77,6 +95,18 @@ export class EventsApiService {
       ),
     );
   }
+  getDeletionImpact(eventId: string): Promise<ApiResponse<EventDeletionImpact>> {
+    return firstValueFrom(this.http.get<ApiResponse<EventDeletionImpact>>(
+      `${environment.apiUrl}/events/${encodeURIComponent(eventId)}/deletion-impact`));
+  }
+
+  deleteWithImpact(eventId: string, payload: {
+    analysisToken: string; operation: 'delete' | 'archive'; requestId: string;
+  }): Promise<ApiResponse<EventDeletionResult>> {
+    return firstValueFrom(this.http.post<ApiResponse<EventDeletionResult>>(
+      `${environment.apiUrl}/events/${encodeURIComponent(eventId)}/deletion`, payload));
+  }
+
   async softDeleteEvent(eventId: string): Promise<ApiResponse<Event>> {
     return firstValueFrom(this.http.patch<ApiResponse<Event>>(
       `${environment.apiUrl}/events/${encodeURIComponent(eventId)}/soft-delete`, {}));

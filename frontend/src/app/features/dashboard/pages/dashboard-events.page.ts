@@ -5,12 +5,20 @@ import { AuthStore } from '../../auth/store/auth.store';
 import { DashboardStore } from '../store/dashboard.store';
 import { statusLabel, statusTone } from '../../../shared/utils/status-presentation';
 
+import { EventDeletionDialogComponent } from '../../events/components/event-deletion-dialog/event-deletion-dialog.component';
+
 type EventView = 'all' | 'active' | 'inactive' | 'deleted';
 
 @Component({
   selector: 'app-dashboard-events-page',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, FormsModule, EventDeletionDialogComponent],
   template: `
+    @if (dashboard.deletionEventId()) {
+      <app-event-deletion-dialog [title]="dashboard.deletionTitle()" [impact]="dashboard.deletionImpact()"
+        [loading]="dashboard.deletionLoading()" [saving]="dashboard.deletionSaving()"
+        [error]="dashboard.deletionError()" [stale]="dashboard.deletionStale()" [result]="dashboard.deletionResult()"
+        (dismiss)="dashboard.closeEventDeletion()" (refresh)="refreshDeletion()" (confirm)="confirmDeletion()" />
+    }
     <div class="dashboard-heading row-between">
       <div><p class="eyebrow">PROGRAMACIÓN</p><h2>Eventos<span>.</span></h2></div>
       <a class="button-primary" routerLink="/dashboard/events/create">Crear evento <span>＋</span></a>
@@ -81,9 +89,15 @@ export class DashboardEventsPage implements OnInit {
   changeView(view: EventView) { this.view.set(view); this.load(); }
   search() { this.load(); }
   page(delta: number) { this.load(this.dashboard.pagination().page + delta); }
-  async remove(id: string, title: string) {
-    if (!confirm(`¿Eliminar el evento «${title}»? Dejará de aparecer públicamente.`)) return;
-    if (await this.dashboard.softDeleteEvent(id)) this.search();
+  remove(id: string, title: string) {
+    void this.dashboard.analyzeEventDeletion(id, title);
+  }
+  refreshDeletion() {
+    const id = this.dashboard.deletionEventId();
+    if (id) void this.dashboard.analyzeEventDeletion(id, this.dashboard.deletionTitle());
+  }
+  async confirmDeletion() {
+    if (await this.dashboard.confirmEventDeletion()) this.search();
   }
   async restore(id: string) {
     if (await this.dashboard.restoreEvent(id)) this.changeView('inactive');

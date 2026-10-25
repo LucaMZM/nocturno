@@ -1,0 +1,44 @@
+<dialog #dialog class="impact-dialog" aria-labelledby="event-deletion-title" aria-describedby="event-deletion-description"
+  tabindex="-1" [attr.aria-busy]="loading() || saving()" (cancel)="cancel($event)" (click)="outsideClick($event)" (keydown)="trapFocus($event)">
+  <header>
+    <p class="eyebrow">Gestión de eventos</p>
+    <button type="button" class="close" autofocus aria-label="Cerrar análisis de eliminación" [disabled]="saving()" (click)="cancel()">×</button>
+    <h2 id="event-deletion-title">{{ result() ? 'Operación completada' : impact()?.operation === 'archive' ? '¿Archivar' : '¿Eliminar' }}{{ result() ? '' : ' «' + title() + '»?' }}</h2>
+    <p id="event-deletion-description">Antes de continuar, revisa los elementos relacionados que se verán afectados por esta operación.</p>
+  </header>
+  <div class="impact-content" aria-live="polite">
+    @if (loading()) { <p role="status">Consultando dependencias y actividad comercial…</p> }
+    @if (error()) { <p class="inline-alert" role="alert">{{ error() }}</p> }
+    @if (result(); as completed) {
+      <p class="completion" role="status">{{ completed.operation === 'archive' ? 'Evento archivado. Su historial comercial se conserva y ya no está disponible públicamente.' : 'Evento eliminado definitivamente junto con sus dependencias seguras.' }}</p>
+      @if (completed.operation === 'archive') { <p>La restauración seguirá disponible desde Borrados. Restaurar no activa automáticamente el evento.</p> }
+    } @else if (impact(); as analysis) {
+      <p class="decision" [class.blocked]="analysis.operation === 'blocked'">{{ analysis.operation === 'archive' ? 'Archivado: se conservará el historial' : analysis.operation === 'delete' ? 'Eliminación definitiva permitida' : 'Operación bloqueada' }}</p>
+      @if (!analysis.relations.length || !analysis.relations.some(hasDependencies)) { <p>No se han encontrado dependencias.</p> }
+      @for (group of groups; track group.action) {
+        @if (rows(group.action).length) {
+          <section [attr.aria-label]="group.title"><h3>{{ group.title }}</h3><ul>
+            @for (relation of rows(group.action); track relation.key) {
+              <li><span aria-hidden="true" class="relation-symbol">{{ group.symbol }}</span><div><strong>{{ relation.label }}</strong><p>{{ relation.reason }}</p></div><span class="count">{{ relation.count }}</span></li>
+            }
+          </ul></section>
+        }
+      }
+      @if (analysis.blockers.length) { <section class="warnings"><h3>Qué impide continuar</h3><ul>@for (blocker of analysis.blockers; track $index) { <li>{{ blocker }}</li> }</ul></section> }
+      @if (analysis.warnings.length) { <section class="warnings"><h3>Advertencias</h3><ul>@for (warning of analysis.warnings; track $index) { <li>{{ warning }}</li> }</ul></section> }
+      <p class="recovery">{{ analysis.recoverable ? 'El evento podrá restaurarse inactivo. El historial no se eliminará.' : analysis.operation === 'delete' ? 'Esta eliminación es definitiva y no se puede deshacer.' : 'No se realizará ningún cambio mientras existan bloqueos.' }}</p>
+    }
+  </div>
+  <footer>
+    <button type="button" class="button-outline" [disabled]="saving()" (click)="cancel()">{{ result() ? 'Cerrar' : 'Cancelar' }}</button>
+    @if (!result()) {
+      @if (stale() || error() && !impact()) {
+        <button type="button" class="button-primary" [disabled]="loading() || saving()" (click)="refresh.emit()">Actualizar análisis</button>
+      } @else if (impact(); as analysis) {
+        @if (analysis.operation !== 'blocked' && !analysis.blockers.length) {
+          <button type="button" class="button-primary" [disabled]="loading() || saving() || stale()" (click)="confirm.emit()">{{ saving() ? 'Procesando…' : analysis.operation === 'archive' ? 'Archivar evento' : 'Eliminar definitivamente' }}</button>
+        }
+      }
+    }
+  </footer>
+</dialog>

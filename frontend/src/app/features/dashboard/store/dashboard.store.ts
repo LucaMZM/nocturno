@@ -4,12 +4,20 @@ import { Pagination } from '../../../core/models/api.model';
 import { Event } from '../../../core/models/domain.model';
 import { toApiProblem } from '../../../shared/utils/api-error';
 import { Attendee, CheckInOverview, DashboardApiService, DashboardSummary, Sale } from '../services/dashboard-api.service';
-import { EventsApiService } from '../../events/services/events-api.service';
+import { EventDeletionImpact, EventDeletionResult, EventsApiService } from '../../events/services/events-api.service';
 import { TicketsApiService } from '../../tickets/services/tickets-api.service';
 import { HttpErrorResponse } from '@angular/common/http';
 
 const emptyPagination: Pagination = { page: 1, limit: 20, total: 0, totalPages: 0 };
 interface DashboardState {
+  deletionEventId: string | null;
+  deletionTitle: string;
+  deletionImpact: EventDeletionImpact | null;
+  deletionLoading: boolean;
+  deletionSaving: boolean;
+  deletionError: string | null;
+  deletionStale: boolean;
+  deletionResult: EventDeletionResult | null;
   summary: DashboardSummary | null;
   events: Event[];
   sales: Sale[];
@@ -23,7 +31,10 @@ interface DashboardState {
   saving: boolean;
   error: string | null;
 }
-const initialState: DashboardState = { summary: null, events: [], sales: [], attendees: [],
+const emptyDeletion = { deletionEventId: null, deletionTitle: '', deletionImpact: null,
+  deletionLoading: false, deletionSaving: false, deletionError: null,
+  deletionStale: false, deletionResult: null };
+const initialState: DashboardState = { ...emptyDeletion, summary: null, events: [], sales: [], attendees: [],
   checkInOverview: null, checkInResult: null, checkInMessage: null, checkingIn: false,
   pagination: emptyPagination, loading: false, saving: false, error: null };
 
@@ -32,6 +43,8 @@ export const DashboardStore = signalStore(
   withState(initialState),
   withMethods((store, api = inject(DashboardApiService), eventsApi = inject(EventsApiService), ticketsApi = inject(TicketsApiService)) => {
     let version = 0;
+    let deletionVersion = 0;
+    let deletionRequestId = "";
     const requestIds = { summary: 0, events: 0, sales: 0, attendees: 0 };
     async function load<T>(request: () => Promise<{ data: T; pagination?: Pagination }>, key: 'summary' | 'events' | 'sales' | 'attendees') {
       const requestVersion = version;
@@ -79,11 +92,49 @@ export const DashboardStore = signalStore(
           return false;
         }
       },
-      async softDeleteEvent(eventId: string): Promise<boolean> {
-        patchState(store, { saving: true, error: null });
-        try { await eventsApi.softDeleteEvent(eventId); patchState(store, { saving: false }); return true; }
-        catch (error) { patchState(store, { saving: false,
-          error: toApiProblem(error, 'No hemos podido eliminar el evento.').message }); return false; }
+      async analyzeEventDeletion(eventId: string, title: string) {
+        if (store.deletionSaving()) return;
+        const currentRequest = ++deletionVersion;
+        deletionRequestId = crypto.randomUUID();
+        patchState(store, { ...emptyDeletion, deletionEventId: eventId,
+          deletionTitle: title, deletionLoading: true });
+        try {
+          const impact = (await eventsApi.getDeletionImpact(eventId)).data;
+          if (currentRequest !== deletionVersion) return;
+          patchState(store, { deletionImpact: impact, deletionTitle: impact.title,
+            deletionLoading: false });
+        } catch (error) {
+          if (currentRequest !== deletionVersion) return;
+          patchState(store, { deletionLoading: false,
+            deletionError: toApiProblem(error, 'No hemos podido analizar las dependencias. Vuelve a intentarlo.').message });
+        }
+      },
+      closeEventDeletion() {
+        if (store.deletionSaving()) return;
+        deletionVersion++;
+        patchState(store, emptyDeletion);
+      },
+      async confirmEventDeletion(): Promise<boolean> {
+        const impact = store.deletionImpact();
+        if (!impact || impact.operation === 'blocked' || impact.blockers.length ||
+          store.deletionLoading() || store.deletionSaving() || store.deletionStale() || store.deletionResult()) return false;
+        const currentRequest = deletionVersion;
+        patchState(store, { deletionSaving: true, deletionError: null });
+        try {
+          const result = (await eventsApi.deleteWithImpact(impact.eventId, {
+            analysisToken: impact.analysisToken, operation: impact.operation, requestId: deletionRequestId,
+          })).data;
+          if (currentRequest !== deletionVersion) return false;
+          patchState(store, { deletionSaving: false, deletionResult: result });
+          return true;
+        } catch (error) {
+          if (currentRequest !== deletionVersion) return false;
+          const problem = toApiProblem(error, 'No hemos podido completar la operación. Puedes volver a intentarlo.');
+          const stale = ['IMPACT_STALE', 'EVENT_DELETION_BLOCKED'].includes(problem.code);
+          patchState(store, { deletionSaving: false, deletionStale: stale,
+            deletionError: stale ? 'Las dependencias han cambiado. Actualiza el análisis antes de continuar.' : problem.message });
+          return false;
+        }
       },
       async restoreEvent(eventId: string): Promise<boolean> {
         patchState(store, { saving: true, error: null });
@@ -97,7 +148,7 @@ export const DashboardStore = signalStore(
         catch (error) { patchState(store, { saving: false,
           error: toApiProblem(error, 'No hemos podido cambiar la actividad del evento.').message }); return false; }
       },
-      reset() { version++; patchState(store, initialState); }
+      reset() { version++; deletionVersion++; patchState(store, initialState); }
     };
   })
 );

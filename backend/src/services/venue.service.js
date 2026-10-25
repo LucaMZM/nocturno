@@ -1,3 +1,4 @@
+import { entityRemovalRepository } from '../repositories/entity-removal.repository.js';
 import { venueRepository } from '../repositories/venue.repository.js';
 import { crudService } from './crud.service.js';
 import { eventRepository } from '../repositories/event.repository.js';
@@ -8,6 +9,15 @@ import { randomBytes } from 'node:crypto';
 const base = crudService(venueRepository, 'VENUE');
 export const venueService = {
   ...base,
+  async remove(id) {
+    const result = await entityRemovalRepository.removeVenue(id);
+    if (!result.found) throw new AppError(404, 'VENUE_NOT_FOUND', 'Resource not found');
+    if (!result.deleted) throw new AppError(409, 'VENUE_HAS_DEPENDENCIES', 'No se puede eliminar: existen relaciones que deben conservarse.', {
+      dependencies: result.dependencies,
+      recommendation: 'Conserva el local y archiva o revisa sus eventos; el histórico no se elimina.'
+    });
+  },
+
   async create(data) {
     const stem = slugFromText(data.name, 'local');
     for (let attempt = 0; attempt < 8; attempt++) {

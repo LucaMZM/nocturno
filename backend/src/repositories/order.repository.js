@@ -23,6 +23,10 @@ export const orderRepository = {
     return rows[0]?.id ?? null;
   },
   async lockCartTickets(client, cartId) {
+    // Serialize new reservations with archival; re-read availability after taking the lock.
+    await client.query(`SELECT e.id FROM events e JOIN ticket_types tt ON tt.event_id=e.id
+      JOIN cart_items ci ON ci.ticket_type_id=tt.id WHERE ci.cart_id=$1
+      ORDER BY e.id FOR SHARE OF e`, [cartId]);
     const { rows } = await client.query(
       `SELECT ci.quantity AS requested, tt.id AS ticket_type_id, tt.event_id,
               tt.name, tt.price, tt.quantity AS stock, tt.sold, tt.reserved,

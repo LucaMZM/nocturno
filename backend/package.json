@@ -14,7 +14,8 @@
     "db:reset": "node src/db/reset.js",
     "test": "NODE_ENV=test node --test",
     "check": "find src test -name '*.js' -exec node --check {} \\;",
-    "db:index:yomogan": "node tools/index-yomogan.js"
+    "db:index:yomogan": "node tools/index-yomogan.js",
+    "db:audit": "node tools/audit-integrity.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

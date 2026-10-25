@@ -218,13 +218,6 @@ export const eventRepository = {
     return rowCount ? eventRepository.findById(eventId) : null;
   },
 
-  async softDeleteEvent(eventId) {
-    const { rowCount } = await getPool().query(
-      'UPDATE events SET is_active = FALSE, deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL',
-      [eventId],
-    );
-    return rowCount ? eventRepository.findById(eventId) : null;
-  },
   async restoreEvent(eventId) {
     const { rowCount } = await getPool().query(
       'UPDATE events SET deleted_at = NULL, is_active = FALSE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NOT NULL',

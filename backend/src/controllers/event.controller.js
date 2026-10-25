@@ -3,9 +3,17 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { pagination } from '../utils/pagination.js';
 import { AppError } from '../utils/AppError.js';
 import { waitlistService } from '../services/waitlist.service.js';
+import { eventDeletionService } from '../services/event-deletion.service.js';
 
 // Translate HTTP requests into the explicitly named Event service operations.
 export const eventController = {
+  deletionImpact: asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ data: await eventDeletionService.preview(req.params.id, req.user) });
+  }),
+  executeDeletion: asyncHandler(async (req, res) => {
+    res.json({ data: await eventDeletionService.execute(req.params.id, req.user, req.validated.body) });
+  }),
   getEvents: asyncHandler(async (req, res) => {
     const eventFilters = req.validated.query;
     const eventsPage = await eventService.getEvents(eventFilters);
@@ -65,7 +73,7 @@ export const eventController = {
   }),
 
   softDeleteEvent: asyncHandler(async (req, res) => {
-    const event = await eventService.softDeleteEvent(req.params.id);
+    const event = await eventService.softDeleteEvent(req.params.id, req.user);
     res.json({ data: event });
   }),
 
@@ -75,7 +83,7 @@ export const eventController = {
   }),
 
   deleteEvent: asyncHandler(async (req, res) => {
-    await eventService.softDeleteEvent(req.params.id);
+    await eventService.softDeleteEvent(req.params.id, req.user);
     res.status(204).end();
   }),
 };

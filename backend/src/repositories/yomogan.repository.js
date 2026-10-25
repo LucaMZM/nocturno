@@ -72,7 +72,8 @@ export const yomoganRepository = {
   },
   async cache(id, key, hash, embedding) {
     await getPool().query(
-      'INSERT INTO yomogan_embeddings(event_id,model_key,document_hash,embedding) VALUES($1,$2,$3,$4::jsonb) ' +
+      "WITH eligible AS MATERIALIZED (SELECT id FROM events WHERE id=$1 AND deleted_at IS NULL AND is_active=TRUE AND status='PUBLISHED' AND ends_at>NOW() FOR SHARE) " +
+      'INSERT INTO yomogan_embeddings(event_id,model_key,document_hash,embedding) SELECT id,$2,$3,$4::jsonb FROM eligible ' +
         'ON CONFLICT(event_id,model_key) DO UPDATE SET document_hash=EXCLUDED.document_hash,embedding=EXCLUDED.embedding,indexed_at=NOW()',
       [id, key, hash, JSON.stringify(embedding)],
     );

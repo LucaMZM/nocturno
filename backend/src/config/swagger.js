@@ -298,3 +298,27 @@ swaggerSpec.paths['/api/yomogan/chat']={post:{
 
 swaggerSpec.paths['/api/yomogan/config']={get:{tags:['Yomogan'],summary:'Public avatar asset path, never provider credentials',
   responses:{'200':{description:'Configured avatarUrl or null if the official photograph is unavailable'}}}};
+
+swaggerSpec.components.schemas.EventDeletionImpact = object({
+  eventId: uuid, title: str(180), analysisToken: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+  operation: values(['delete', 'archive', 'blocked']), recoverable: { type: 'boolean' },
+  relations: array(object({ key: str(), label: str(), count: integer(),
+    action: values(['delete', 'deactivate', 'preserve', 'block']), reason: str() })),
+  blockers: array(str()), warnings: array(str()),
+});
+swaggerSpec.paths['/api/events/{id}/deletion-impact'] = { get: secured({
+  tags: ['Events'], summary: 'Read-only dependency preview (ADMIN or owning PROMOTER)',
+  parameters: [idParam()], responses: {
+    '200': response(wrapped(ref('EventDeletionImpact'))), ...commonErrors,
+  },
+}) };
+swaggerSpec.paths['/api/events/{id}/deletion'] = { post: secured({
+  tags: ['Events'], summary: 'Confirm current impact atomically; preserve commercial history; replay requestId safely',
+  parameters: [idParam()], requestBody: jsonBody(object({
+    analysisToken: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+    operation: values(['delete', 'archive']), requestId: uuid,
+  }, ['analysisToken', 'operation', 'requestId'])),
+  responses: { '200': response(wrapped(object({ eventId: uuid,
+    operation: values(['delete', 'archive']), replayed: { type: 'boolean' } }))),
+    ...commonErrors, '409': { description: 'IMPACT_STALE, EVENT_DELETION_BLOCKED or requestId conflict: refresh preview' } },
+}) };

@@ -13,7 +13,13 @@ import { ticketTypeCreate } from '../validators/ticket-type.validator.js';
 import { optionalAuth, requireAuth, requireRole } from '../middlewares/auth.middleware.js';
 import { requireEventManager } from '../middlewares/ownership.middleware.js';
 import { ticketController } from '../controllers/ticket.controller.js';
+import { eventDeletionInput } from '../validators/event-deletion.validator.js';
 export const eventRoutes = Router();
+
+eventRoutes.get('/:id/deletion-impact', requireAuth, requireRole('ADMIN', 'PROMOTER'),
+  validateId(), requireEventManager, eventController.deletionImpact);
+eventRoutes.post('/:id/deletion', requireAuth, requireRole('ADMIN', 'PROMOTER'),
+  validateId(), validate(eventDeletionInput), eventController.executeDeletion);
 
 eventRoutes.get('/', validate(eventQuery, 'query'), eventController.getEvents);
 eventRoutes.get(

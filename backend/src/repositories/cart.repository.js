@@ -31,6 +31,8 @@ export const cartRepository = {
     return rows.map((row) => ({ ...toCamel(row), unitPriceCents: Number(row.unit_price_cents) }));
   },
   async getTicketForCart(client, ticketTypeId) {
+    await client.query(`SELECT e.id FROM events e JOIN ticket_types tt ON tt.event_id=e.id
+      WHERE tt.id=$1 FOR SHARE OF e`, [ticketTypeId]);
     const { rows } = await client.query(
       `SELECT tt.*, e.status AS event_status, e.is_active AS event_active,
               e.deleted_at AS event_deleted_at, e.ends_at AS event_ends_at

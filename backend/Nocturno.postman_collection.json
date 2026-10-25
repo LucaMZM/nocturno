@@ -1107,6 +1107,52 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Event deletion impact",
+      "item": [
+        {
+          "name": "Preview event deletion (read only)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/events/{{eventId}}/deletion-impact"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const impact = pm.response.json().data;",
+                  "  pm.collectionVariables.set(\"deletionAnalysisToken\", impact.analysisToken);",
+                  "  pm.collectionVariables.set(\"deletionOperation\", impact.operation);",
+                  "  pm.collectionVariables.set(\"deletionRequestId\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm preview (destructive; requires manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/events/{{eventId}}/deletion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"analysisToken\": \"{{deletionAnalysisToken}}\",\n  \"operation\": \"{{deletionOperation}}\",\n  \"requestId\": \"{{deletionRequestId}}\"\n}"
+            }
+          },
+          "description": "Run preview first. blocked cannot be confirmed. Keep requestId for a network retry; refresh preview after IMPACT_STALE."
+        }
+      ]
     }
   ]
 }

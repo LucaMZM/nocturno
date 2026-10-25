@@ -5,6 +5,7 @@ import { crudService } from './crud.service.js';
 import { AppError } from '../utils/AppError.js';
 import { randomBytes } from 'node:crypto';
 import { slugFromText } from '../utils/slug.js';
+import { eventDeletionService } from './event-deletion.service.js';
 
 const sharedCrudService = crudService(eventRepository, 'EVENT');
 const MAX_GENERATED_SLUG_ATTEMPTS = 8;
@@ -117,12 +118,9 @@ export const eventService = {
     return updatedEvent;
   },
 
-  async softDeleteEvent(eventId) {
-    const currentEvent = await eventService.getEventById(eventId);
-    if (currentEvent.deletedAt) throw eventAlreadyDeletedError();
-    const deletedEvent = await eventRepository.softDeleteEvent(eventId);
-    if (!deletedEvent) throw eventAlreadyDeletedError();
-    return deletedEvent;
+  async softDeleteEvent(eventId, actor) {
+    await eventDeletionService.archiveLegacy(eventId, actor);
+    return eventRepository.findById(eventId);
   },
   async restoreEvent(eventId) {
     const currentEvent = await eventService.getEventById(eventId);
