@@ -465,9 +465,18 @@ export async function seed() {
         [id(8,i+1),id(6,i+1),`pi_demo_nocturno_${i+1}`,amountCents]);
       for (let ticketIndex = 0; ticketIndex < quantity; ticketIndex++) {
         const ticketNumber = demoSales.slice(0,i).reduce((count,sale)=>count+sale[1],0)+ticketIndex+1;
+        // This one synthetic fixture is checked in at issuance. Repair only its
+        // missing demo timestamp, never a real ticket or an existing check-in time.
         await client.query(`INSERT INTO tickets
-          (id,order_item_id,user_id,event_id,ticket_type_id,status)
-          VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING`,
+          (id,order_item_id,user_id,event_id,ticket_type_id,status,used_at)
+          VALUES ($1,$2,$3,$4,$5,$6::varchar,CASE WHEN $6::varchar='USED' THEN NOW() ELSE NULL END)
+          ON CONFLICT (id) DO UPDATE SET used_at=tickets.issued_at
+          WHERE tickets.id='90000000-0000-4000-8000-000000000003'::uuid
+            AND EXCLUDED.status='USED' AND tickets.status='USED' AND tickets.used_at IS NULL
+            AND tickets.order_item_id=EXCLUDED.order_item_id AND tickets.user_id=EXCLUDED.user_id
+            AND tickets.event_id=EXCLUDED.event_id AND tickets.ticket_type_id=EXCLUDED.ticket_type_id
+            AND EXISTS (SELECT 1 FROM payments p JOIN order_items oi ON oi.order_id=p.order_id
+              WHERE oi.id=tickets.order_item_id AND p.provider_payment_id='pi_demo_nocturno_2')`,
           [id(9,ticketNumber),id(7,i+1),id(3,3),id(4,eventIndex),generalType,ticketIndex===0 && i===1 ? 'USED' : 'VALID']);
       }
     }

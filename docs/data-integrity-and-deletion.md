@@ -9,7 +9,7 @@ No se cambian cookies, pagos, proveedores de IA ni el significado de `status`.
 
 Verificación realizada con PostgreSQL **18.6**, en un clúster temporal en un puerto
 separado. No se han aplicado migraciones ni seed a la base local del usuario.
-Docker no estaba disponible. No se ha hecho push ni modificado producción.
+Docker no estaba disponible. No se ha modificado la configuración de producción.
 
 ## Relaciones reales
 
@@ -77,15 +77,18 @@ coordenadas, promotores sin perfil, carritos no disponibles, todas las FK declar
 necesita Payment; un pago fallido puede mantener temporalmente su reserva vigente.
 Un evento cancelado o archivado no invalida por sí solo un pedido histórico pagado.
 
-### Hallazgo real en el seed
+### Corrección acotada del fixture USED
 
-La auditoría completa del dataset de desarrollo encontró una entrada heredada USED
-sin used_at: `90000000-0000-4000-8000-000000000003`.
-El seed la inserta con estado USED sin aportar la fecha. El resto de checks no encontró
-violaciones. No se ha inventado una fecha ni corregido el registro automáticamente.
-Su remediación requiere recuperar una fecha de uso fiable o decidir explícitamente
-cómo representar ese histórico desconocido; no es correcto poner NOW() y fingir que
-es la fecha real. El auditor debe seguir señalándolo mientras no se resuelva.
+La auditoría detectó el ticket demo `90000000-0000-4000-8000-000000000003`
+marcado USED sin used_at. El seed ahora lo crea con una fecha de uso sintética igual
+al momento de emisión. Para el fixture antiguo, completa únicamente el used_at
+vacío con su issued_at; no representa un check-in histórico real.
+
+La reparación exige ese UUID, estado USED, las mismas relaciones esperadas de
+usuario/evento/tipo/línea y el pago sintético `pi_demo_nocturno_2`. No modifica
+estados, precios, stock, pedidos ni pagos; no sobrescribe una fecha existente ni
+repara otros tickets. No se ha añadido una migration que actualice datos comerciales.
+El seed sigue bloqueado en producción y la auditoría continúa siendo solo lectura.
 
 ## Política por entidad
 
@@ -174,24 +177,40 @@ Prueba preview/cancelación/foco, error y reintento, huella obsoleta real, borra
 archivo con entrada emitida, actualización de lista y 390/768/1280 px.
 Capturas en `docs/screenshots/integrity/`. Los proveedores IA no se llaman en esta pasada.
 
-### Resultado de esta pasada
+### Verificación inicial del commit 607f504
 
 - PostgreSQL 18.6: migraciones 001–013 aplicadas únicamente en bases temporales.
 - Backend: **48/48** tests, sin skips; check de sintaxis correcto.
 - Frontend: **32/32** tests; build de producción correcto.
 - Auditoría completa: **49 comprobaciones**, metadatos reales de 235 constraints y
   62 índices en PostgreSQL 18. Base temporal limpia: exit0, sin incidencias.
-  Seed temporal: exit1 por la entrada USED sin fecha indicada arriba, sin otras incidencias.
+  El seed original terminaba con exit1 por la entrada USED; el cierre posterior corrige
+  exclusivamente ese fixture, como se explica arriba.
 - Playwright headless con perfil aislado: recorridos de borrado/archivo, error/reintento,
   cambio real de dependencias, foco/Tab/Escape y 390/768/1280 px correctos. No se abrió
   un navegador personal. Las capturas son reales de ese build y del dataset temporal.
 - El build mantiene avisos anteriores: CSS Yomogan, dependencias CommonJS y optional
   chaining de Payments. No se amplió el alcance para cambiarlos.
 - CI preparado para ejecutar auditoría y E2E nuevos en la próxima publicación autorizada.
-  No se ha hecho push ni ejecutado GitHub Actions para este commit local.
+  Esa primera verificación fue local; el cierre posterior publica los commits pendientes
+  y comprueba los workflows remotos sin modificar la base habitual del usuario.
 
 | Borrado sin historial | Archivado con entrada emitida |
 | --- | --- |
 | ![Borrado permitido](screenshots/integrity/01-delete-impact-desktop.png) | ![Archivado e historial](screenshots/integrity/02-archive-impact-desktop.png) |
 
 [Modal a 390 px, con acciones visibles](screenshots/integrity/03-archive-impact-mobile.png).
+
+### Regresión del cierre del seed
+
+`test/seed-integrity.integration.test.js` crea una base temporal aleatoria (requiere
+CREATEDB), instala 001–011, introduce historial comercial y aplica 012–013. Compara
+las filas antes/después y repite migrate para comprobar idempotencia. No utiliza
+la base configurada como destino del seed ni como destino de las migraciones.
+
+Después verifica seed nuevo, reparación del fixture antiguo, conservación exacta
+de Order/OrderItem/Payment/Ticket, respeto de una fecha existente y ausencia de
+reparaciones genéricas de otros tickets. La auditoría debe terminar sin incidencias.
+Los archivos de test backend se ejecutan en serie para separar sus fixtures sobre
+la misma base; las pruebas explícitas de concurrencia siguen ejecutando peticiones
+simultáneas. No se han relajado las transacciones ni las restricciones de producción.
