@@ -87,9 +87,6 @@ export const authService = {
     const row = await authRepository.findById(subject);
     if (!row?.is_active) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
     return publicUser(row);
-  },
-  async updateProfile(userId, displayName) {
-    return publicUser(await authRepository.updateProfile(userId, displayName));
   }
 };
 

@@ -32,8 +32,5 @@ export const authController = {
   logout: asyncHandler(async (req, res) => {
     await authService.logout(readRefreshCookie(req));
     res.clearCookie(cookieName, cookieOptions).status(204).end();
-  }),
-  me: (req, res) => res.json({ data: req.user }),
-  updateProfile: asyncHandler(async (req, res) =>
-    res.json({ data: await authService.updateProfile(req.user.id, req.validated.body.displayName) }))
+  })
 };

@@ -16,7 +16,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     return from(auth.refresh()).pipe(switchMap((newToken) => {
       if (newToken) return next(request.clone({ setHeaders: { Authorization: `Bearer ${newToken}` } }));
       // A public request can carry an expired token too; redirect only for private APIs.
-      if (/\/api\/(?:cart|checkout|orders|tickets|dashboard|users|me|payments)(?:\/|$)/.test(request.url)
+      if (/\/api\/(?:cart|checkout|orders|tickets|dashboard|users|profile|me|payments)(?:\/|$)/.test(request.url)
         && !router.url.startsWith('/error/')) {
         void router.navigate(['/error/401'], { queryParams: { returnUrl: router.url } });
       }

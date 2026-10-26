@@ -27,10 +27,4 @@ export class AuthApiService {
   async logout(): Promise<void> {
     await firstValueFrom(this.http.post<void>(`${this.root}/logout`, {}, { withCredentials: true }));
   }
-  me(): Promise<ApiResponse<User>> {
-    return firstValueFrom(this.http.get<ApiResponse<User>>(`${this.root}/me`));
-  }
-  updateProfile(displayName: string): Promise<ApiResponse<User>> {
-    return firstValueFrom(this.http.patch<ApiResponse<User>>(`${this.root}/me`, { displayName }));
-  }
 }

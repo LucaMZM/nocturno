@@ -10,4 +10,3 @@ export const registerInput = z.object({
 }).strict();
 
 export const loginInput = z.object({ email, password: z.string().min(1) }).strict();
-export const profilePatch = z.object({ displayName: z.string().trim().min(1).max(120) }).strict();

@@ -15,7 +15,7 @@ export const routes: Routes = [
   { path: 'cart', canActivate: [authGuard], title: 'Carrito · Nocturno', loadComponent: () => import('./features/cart/pages/cart.page').then((m) => m.CartPage) },
   { path: 'checkout', canActivate: [authGuard], title: 'Finalizar compra · Nocturno', loadComponent: () => import('./features/checkout/pages/checkout.page').then((m) => m.CheckoutPage) },
   { path: 'account', canActivate: [authGuard], loadComponent: () => import('./features/account/pages/account-layout.page').then((m) => m.AccountLayoutPage), children: [
-    { path: '', title: 'Mi perfil · Nocturno', loadComponent: () => import('./features/account/pages/profile.page').then((m) => m.ProfilePage) },
+    { path: '', title: 'Mi perfil · Nocturno', loadComponent: () => import('./features/profile/pages/profile.page').then((m) => m.ProfilePage) },
     { path: 'favorites', title: 'Mis favoritos · Nocturno', loadComponent: () => import('./features/favorites/pages/favorites.page').then((m) => m.FavoritesPage) },
     { path: 'orders', title: 'Mis pedidos · Nocturno', loadComponent: () => import('./features/orders/pages/orders.page').then((m) => m.OrdersPage) },
     { path: 'orders/:id', title: 'Pedido · Nocturno', loadComponent: () => import('./features/orders/pages/order-detail.page').then((m) => m.OrderDetailPage) },
@@ -39,7 +39,7 @@ export const routes: Routes = [
     { path: 'promoters/create', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Crear promotor · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-editor.page').then((m) => m.PromoterEditorPage) },
     { path: 'promoters/:id/edit', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Editar promotor · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-editor.page').then((m) => m.PromoterEditorPage) },
     { path: 'profile', title: 'Perfil de promotor · Nocturno', loadComponent: () => import('./features/promoters/pages/promoter-profile.page').then((m) => m.PromoterProfilePage) },
-    { path: 'users', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Usuarios · Nocturno', loadComponent: () => import('./features/admin/pages/admin-users.page').then((m) => m.AdminUsersPage) },
+    { path: 'users', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Usuarios · Nocturno', loadComponent: () => import('./features/users/pages/admin-users.page').then((m) => m.AdminUsersPage) },
     { path: 'orders', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Pedidos · Nocturno', loadComponent: () => import('./features/admin/pages/admin-orders.page').then((m) => m.AdminOrdersPage) },
     { path: 'orders/:id', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Detalle de pedido · Nocturno', loadComponent: () => import('./features/orders/pages/order-detail.page').then((m) => m.OrderDetailPage) },
     { path: 'payments', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, title: 'Pagos · Nocturno', loadComponent: () => import('./features/admin/pages/admin-payments.page').then((m) => m.AdminPaymentsPage) },

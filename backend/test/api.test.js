@@ -14,6 +14,7 @@ import { eventRoutes } from '../src/routes/event.routes.js';
 import { ticketTypeRoutes } from '../src/routes/ticket-type.routes.js';
 import { favoriteRoutes, myFavoriteRoutes } from '../src/routes/favorite.routes.js';
 import { yomoganRoutes } from '../src/routes/yomogan.routes.js';
+import { profileRoutes } from '../src/routes/profile.routes.js';
 import { authRoutes } from '../src/routes/auth.routes.js';
 import { cartRoutes } from '../src/routes/cart.routes.js';
 import { checkoutRoutes, orderRoutes } from '../src/routes/checkout.routes.js';
@@ -83,7 +84,7 @@ test('OpenAPI documents every registered resource method', () => {
   for (const [prefix, router] of [
     ['/api/users', userRoutes], ['/api/users', favoriteRoutes], ['/api/promoters', promoterRoutes],
     ['/api/venues', venueRoutes], ['/api/events', eventRoutes], ['/api/ticket-types', ticketTypeRoutes],
-    ['/api/me', myFavoriteRoutes], ['/api/auth', authRoutes], ['/api/cart', cartRoutes],
+    ['/api/me', myFavoriteRoutes], ['/api/auth', authRoutes], ['/api/profile', profileRoutes], ['/api/auth', profileRoutes], ['/api/cart', cartRoutes],
     ['/api/yomogan', yomoganRoutes], ['/api/checkout', checkoutRoutes], ['/api/orders', orderRoutes],
     ['/api/payments', paymentRoutes], ['/api/tickets', ticketRoutes], ['/api/dashboard', dashboardRoutes]
   ]) {

@@ -322,3 +322,17 @@ swaggerSpec.paths['/api/events/{id}/deletion'] = { post: secured({
     operation: values(['delete', 'archive']), replayed: { type: 'boolean' } }))),
     ...commonErrors, '409': { description: 'IMPACT_STALE, EVENT_DELETION_BLOCKED or requestId conflict: refresh preview' } },
 }) };
+
+// Profile owns both canonical endpoints and the legacy Auth URL.
+swaggerSpec.paths['/api/profile/me'] = {
+  get: simple('Profile', 'Get my authenticated profile', ref('User')),
+  patch: post('Profile', 'Update only my display name',
+    object({ displayName: str(120) }, ['displayName']), ref('User')),
+};
+for (const operation of Object.values(swaggerSpec.paths['/api/profile/me']))
+  operation.security = [{ bearerAuth: [] }];
+for (const operation of Object.values(swaggerSpec.paths['/api/auth/me'])) {
+  operation.tags = ['Profile'];
+  operation.deprecated = true;
+  operation.description = 'Compatibility alias of /api/profile/me; delegated to Profile.';
+}

@@ -4,7 +4,10 @@ import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import '@angular/compiler';
-import { createEnvironmentInjector } from '@angular/core';
+import { HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { firstValueFrom, of, throwError } from 'rxjs';
+import { createEnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { build } from 'esbuild';
 
 // Angular's existing build dependency compiles the real stores for Node tests.
@@ -23,6 +26,11 @@ await build({
       export { TicketTypesApiService } from './src/app/core/services/ticket-types-api.service.ts';
       export { AuthStore } from './src/app/features/auth/store/auth.store.ts';
       export { AuthApiService } from './src/app/features/auth/services/auth-api.service.ts';
+      export { ProfileStore } from './src/app/features/profile/store/profile.store.ts';
+      export { ProfileApiService } from './src/app/features/profile/services/profile-api.service.ts';
+      export { UsersStore } from './src/app/features/users/store/users.store.ts';
+      export { UsersApiService } from './src/app/features/users/services/users-api.service.ts';
+      export { authInterceptor } from './src/app/features/auth/auth.interceptor.ts';
     `,
     resolveDir: process.cwd(),
     sourcefile: 'store-harness.ts',
@@ -39,6 +47,7 @@ after(() => rm(bundlePath, { force: true }));
 const {
   EventsStore, EventsApiService, EventDetailStore, VenuesApiService,
   PromotersApiService, TicketTypesApiService, AuthStore, AuthApiService,
+  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor,
 } = await import(pathToFileURL(bundlePath).href);
 
 function deferred() {
@@ -133,14 +142,14 @@ test('an old profile response cannot restore a logged-out user', async () => {
   const user = { id: 'user-1', displayName: 'Original', role: 'USER' };
   const api = {
     login: async () => ({ data: { user, accessToken: 'demo-token' } }),
-    updateProfile: () => profile.promise,
     logout: async () => {},
   };
-  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: api }, AuthStore]);
+  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: api },
+    { provide: ProfileApiService, useValue: { updateMine: () => profile.promise } }, AuthStore, ProfileStore]);
   try {
     const store = injector.get(AuthStore);
     assert.equal(await store.login('demo@example.test', 'demo'), true);
-    const updating = store.updateProfile('Nuevo');
+    const updating = injector.get(ProfileStore).save('Nuevo');
     await store.logout();
     profile.resolve({ data: { ...user, displayName: 'Nuevo' } });
     assert.equal(await updating, false);
@@ -177,5 +186,93 @@ test('a waitlist response from another event does not update the current detail'
     assert.equal(store.venue().id, 'venue-b');
     assert.equal(store.joinedWaitlist(), false);
     assert.equal(store.waitlistMessage(), null);
+  } finally { injector.destroy(); }
+});
+
+test('Profile owns load/save state while session consumers share the updated user', async () => {
+  const user = { id: 'profile-user', displayName: 'Original', role: 'USER' };
+  const pending = deferred(); let saves = 0;
+  const injector = createEnvironmentInjector([
+    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, accessToken: 'memory-token' } }) } },
+    { provide: ProfileApiService, useValue: { getMine: async () => ({ data: { ...user, displayName: 'Loaded' } }),
+      updateMine: () => { saves++; return pending.promise; } } }, AuthStore, ProfileStore,
+  ]);
+  try {
+    const auth = injector.get(AuthStore), profile = injector.get(ProfileStore);
+    await auth.login('fixture@example.test', 'password');
+    assert.equal(await profile.load(), true);
+    assert.equal(auth.user().displayName, 'Loaded');
+    const saving = profile.save('Updated');
+    assert.equal(profile.saving(), true);
+    assert.equal(await profile.save('Duplicate'), false);
+    pending.resolve({ data: { ...user, displayName: 'Updated' } });
+    assert.equal(await saving, true);
+    assert.equal(saves, 1);
+    assert.equal(profile.saved(), true);
+    assert.equal(auth.user(), profile.user());
+    assert.equal(auth.user().displayName, 'Updated');
+    assert.equal(auth.accessToken(), 'memory-token');
+    assert.equal(auth.error(), null);
+  } finally { injector.destroy(); }
+});
+
+test('Profile errors and late responses cannot pollute Auth or a later login of the same user', async () => {
+  const user = { id: 'profile-user', displayName: 'Original', role: 'USER' }, pending = deferred();
+  const api = { updateMine: async () => { throw new HttpErrorResponse({ status: 400 }); } };
+  const injector = createEnvironmentInjector([
+    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, accessToken: 'memory-token' } }), logout: async () => {} } },
+    { provide: ProfileApiService, useValue: api }, AuthStore, ProfileStore,
+  ]);
+  try {
+    const auth = injector.get(AuthStore), profile = injector.get(ProfileStore);
+    await auth.login('fixture@example.test', 'password');
+    assert.equal(await profile.save('Bad'), false);
+    assert.ok(profile.error()); assert.equal(auth.error(), null);
+    api.updateMine = () => pending.promise;
+    const saving = profile.save('Old response');
+    await auth.logout(); await auth.login('fixture@example.test', 'password');
+    pending.resolve({ data: { ...user, displayName: 'Old response' } });
+    assert.equal(await saving, false);
+    assert.equal(auth.user().displayName, 'Original'); assert.equal(profile.saved(), false);
+  } finally { injector.destroy(); }
+});
+
+test('Profile HTTP sends Bearer and retries after access-token expiry using existing refresh', async () => {
+  const user = { id: 'profile-user', displayName: 'Original', role: 'USER' }, requests = [];
+  let refreshes = 0;
+  const injector = createEnvironmentInjector([
+    { provide: AuthApiService, useValue: {
+      login: async () => ({ data: { user, accessToken: 'expired-token' } }),
+      refresh: async () => { refreshes++; return { data: { user, accessToken: 'fresh-token' } }; },
+    } }, { provide: Router, useValue: { url: '/account', navigate() { throw Error('Unexpected redirect'); } } }, AuthStore,
+  ]);
+  try {
+    const auth = injector.get(AuthStore); await auth.login('fixture@example.test', 'password');
+    const response = await runInInjectionContext(injector, () => firstValueFrom(authInterceptor(
+      new HttpRequest('PATCH', '/api/profile/me', { displayName: 'Updated' }), request => {
+        requests.push(request.headers.get('Authorization'));
+        return requests.length === 1 ? throwError(() => new HttpErrorResponse({ status: 401 })) : of(new HttpResponse({ status: 200 }));
+      },
+    )));
+    assert.equal(response.status, 200);
+    assert.deepEqual(requests, ['Bearer expired-token', 'Bearer fresh-token']); assert.equal(refreshes, 1);
+  } finally { injector.destroy(); }
+});
+
+test('Users administration delegates listing and writes to UsersApiService', async () => {
+  const calls = [], user = { id: 'user-fixture', role: 'USER', displayName: 'User' };
+  const injector = createEnvironmentInjector([
+    { provide: UsersApiService, useValue: {
+      getUsers: async (...args) => { calls.push(args); return { data: [user], pagination: { page: 2, totalPages: 2, total: 21, limit: 20 } }; },
+      createUser: async payload => ({ data: { ...user, ...payload } }),
+      updateUser: async (id, payload) => ({ data: { ...user, id, ...payload } }),
+    } }, UsersStore,
+  ]);
+  try {
+    const users = injector.get(UsersStore); await users.loadUsers(2, 'User', 'USER');
+    assert.deepEqual(calls, [[2, 'User', 'USER']]); assert.equal(users.users()[0], user);
+    assert.equal(users.pagination().page, 2);
+    assert.equal((await users.saveUser(null, { displayName: 'Created' })).displayName, 'Created');
+    assert.equal((await users.saveUser(user.id, { isActive: false })).isActive, false);
   } finally { injector.destroy(); }
 });

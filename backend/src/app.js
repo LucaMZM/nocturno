@@ -13,6 +13,7 @@ import { favoriteRoutes, myFavoriteRoutes } from './routes/favorite.routes.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { notFoundMiddleware } from './middlewares/not-found.middleware.js';
 import { requestLoggers } from './config/logging.js';
+import { profileRoutes } from './routes/profile.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { cartRoutes } from './routes/cart.routes.js';
 import { checkoutRoutes, orderRoutes } from './routes/checkout.routes.js';
@@ -57,6 +58,9 @@ app.get('/api/openapi.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/yomogan',yomoganRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
+// Compatibility alias: both URLs delegate to Profile, never to Auth logic.
+app.use('/api/auth', profileRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/orders', orderRoutes);

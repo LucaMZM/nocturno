@@ -83,19 +83,11 @@ export const AuthStore = signalStore(
         catch { /* The local session still ends when the API is unavailable. */ }
         finally { patchState(store, { user: null, accessToken: null, initialized: true }); }
       },
-      async updateProfile(displayName: string): Promise<boolean> {
-        const requestVersion = sessionVersion;
-        const userId = store.user()?.id;
-        try {
-          const updatedUser = (await api.updateProfile(displayName)).data;
-          if (requestVersion !== sessionVersion || updatedUser.id !== userId) return false;
-          patchState(store, { user: updatedUser, error: null });
-          return true;
-        } catch (error) {
-          if (requestVersion !== sessionVersion) return false;
-          patchState(store, { error: toApiProblem(error, 'No hemos podido guardar tu perfil.').message });
-          return false;
-        }
+      getSessionVersion: () => sessionVersion,
+      updateSessionUser(user: User, expectedVersion: number): boolean {
+        if (expectedVersion !== sessionVersion || !store.user() || user.id !== store.user()?.id) return false;
+        patchState(store, { user });
+        return true;
       },
       clearError() { patchState(store, { error: null }); }
     };

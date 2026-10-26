@@ -20,12 +20,6 @@ export const authRepository = {
       [email, displayName, passwordHash]);
     return rows[0];
   },
-  async updateProfile(userId, displayName) {
-    const { rows } = await getPool().query(
-      `UPDATE users SET display_name = $2 WHERE id = $1 RETURNING ${publicColumns}`,
-      [userId, displayName]);
-    return rows[0] ?? null;
-  },
   async storeRefreshToken({ userId, tokenHash, familyId, expiresAt }) {
     await getPool().query(
       `INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)

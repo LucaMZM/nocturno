@@ -197,31 +197,6 @@
           ]
         },
         {
-          "name": "Me",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/auth/me"
-          }
-        },
-        {
-          "name": "Update profile",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}/api/auth/me",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"displayName\": \"Nuevo nombre\"\n}"
-            }
-          }
-        },
-        {
           "name": "Logout",
           "request": {
             "method": "POST",
@@ -1151,6 +1126,62 @@
             }
           },
           "description": "Run preview first. blocked cannot be confirmed. Keep requestId for a network retry; refresh preview after IMPACT_STALE."
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "My profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/profile/me"
+          }
+        },
+        {
+          "name": "Update my display name",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Mi nombre\"\n}"
+            },
+            "url": "{{baseUrl}}/api/profile/me"
+          }
+        },
+        {
+          "name": "Me (legacy alias)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me"
+          },
+          "description": "Compatibility URL delegated to Profile; prefer /api/profile/me."
+        },
+        {
+          "name": "Update profile (legacy alias)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/me",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Nuevo nombre\"\n}"
+            }
+          },
+          "description": "Compatibility URL delegated to Profile; prefer /api/profile/me."
         }
       ]
     }

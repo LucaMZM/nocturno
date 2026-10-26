@@ -2,12 +2,12 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { Promoter, User } from '../../../core/models/domain.model';
 import { PromotersApiService } from '../../../core/services/promoters-api.service';
-import { AdminStore } from '../store/admin.store';
+import { UsersStore } from '../store/users.store';
 import { statusLabel, statusTone } from '../../../shared/utils/status-presentation';
 
 @Component({
   selector: 'app-admin-users-page',
-  providers: [AdminStore],
+  providers: [UsersStore],
   imports: [ReactiveFormsModule, FormsModule],
   template: `
     <div class="dashboard-heading"><p class="eyebrow">ACCESO</p><h2>Usuarios<span>.</span></h2></div>
@@ -52,7 +52,7 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
   `,
 })
 export class AdminUsersPage implements OnInit {
-  readonly store = inject(AdminStore);
+  readonly store = inject(UsersStore);
   readonly label = statusLabel;
   readonly tone = statusTone;
   private readonly promotersApi = inject(PromotersApiService);
