@@ -35,7 +35,7 @@ async function login(page, email, password) {
   await page.goto('/auth/login');
   await page.locator('input[formcontrolname="email"]').fill(email);
   await page.locator('input[formcontrolname="password"]').fill(password);
-  const cookieChoice = page.getByRole('button', { name: 'Rechazar opcionales', exact: true });
+  const cookieChoice = page.getByRole('button', { name: 'Solo esta visita', exact: true });
   if (await cookieChoice.isVisible()) await cookieChoice.click();
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/auth/login'));
@@ -53,7 +53,7 @@ try {
   page.on('pageerror', (error) => console.error('Browser error:', error.message));
   page.on('console', (message) => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Rechazar opcionales', exact: true }).click();
+  await page.getByRole('button', { name: 'Solo esta visita', exact: true }).click();
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
 
@@ -126,9 +126,21 @@ try {
   await buyerGeneral.getByRole('button', { name: /Añadir 2 entradas/ }).click();
   await page.getByText('Entrada añadida al carrito.').waitFor({ timeout: 15000 });
   await page.goto('/cart');
-  await page.locator('.commerce-row').first().waitFor({ timeout: 15000 });
-  await page.locator('.commerce-row-actions strong').getByText(/28/).waitFor();
+  await page.locator('.cart-item').first().waitFor({ timeout: 15000 });
+  await page.locator('.cart-line-total strong').getByText(/28/).waitFor();
+  await page.getByRole('link', {name:'Carrito, 2 entradas',exact:true}).waitFor();
   await capture(page, '06-cart.png');
+  const cartItem = page.locator('.cart-item').first();
+  await cartItem.getByRole('button', {name:'Añadir una entrada',exact:true}).click();
+  await page.getByRole('link', {name:'Carrito, 3 entradas',exact:true}).waitFor();
+  await cartItem.getByRole('button', {name:'Quitar una entrada',exact:true}).click();
+  await page.getByRole('link', {name:'Carrito, 2 entradas',exact:true}).waitFor();
+  for (const width of [390,768,1280]) {
+    await page.setViewportSize({width,height:900});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+  }
+  await page.setViewportSize(contextOptions.viewport);
+
 
   await page.goto('/account/tickets');
   await page.locator('.commerce-row').first().waitFor({ timeout: 15000 });
@@ -220,6 +232,8 @@ try {
   assert.equal(edited.status(), 200, 'Edit page saves an event');
   assert.equal((await edited.json()).data.slug, 'noche-de-prueba-revisada');
   console.log('Existing create and edit pages saved; changing title regenerated the slug.');
+  await page.getByRole('button', {name:'Salir',exact:true}).click();
+  await page.getByRole('link', {name:'Carrito, 0 entradas',exact:true}).waitFor();
   await adminContext.close();
   await publicContext.close();
 } finally {

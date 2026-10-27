@@ -30,6 +30,8 @@ await build({
       export { ProfileApiService } from './src/app/features/profile/services/profile-api.service.ts';
       export { UsersStore } from './src/app/features/users/store/users.store.ts';
       export { UsersApiService } from './src/app/features/users/services/users-api.service.ts';
+      export { CartStore } from './src/app/features/cart/store/cart.store.ts';
+      export { CartApiService } from './src/app/features/cart/services/cart-api.service.ts';
       export { authInterceptor } from './src/app/features/auth/auth.interceptor.ts';
     `,
     resolveDir: process.cwd(),
@@ -47,7 +49,7 @@ after(() => rm(bundlePath, { force: true }));
 const {
   EventsStore, EventsApiService, EventDetailStore, VenuesApiService,
   PromotersApiService, TicketTypesApiService, AuthStore, AuthApiService,
-  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor,
+  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, CartStore, CartApiService,
 } = await import(pathToFileURL(bundlePath).href);
 
 function deferred() {
@@ -274,5 +276,47 @@ test('Users administration delegates listing and writes to UsersApiService', asy
     assert.equal(users.pagination().page, 2);
     assert.equal((await users.saveUser(null, { displayName: 'Created' })).displayName, 'Created');
     assert.equal((await users.saveUser(user.id, { isActive: false })).isActive, false);
+  } finally { injector.destroy(); }
+});
+
+
+test('cart count, mutations and checkout eligibility use server data; normal loads are deduplicated', async () => {
+  let reads = 0;
+  const response = (quantity, purchasable = true) => ({ data: { id: 'cart', totalCents: 1400 * quantity,
+    items: quantity ? [{ id: 'item', quantity, unitPriceCents: 1400, purchasable }] : [] } });
+  const waiting = deferred();
+  const api = { getCart: () => { reads++; return waiting.promise; },
+    addItem: async () => response(2), updateItem: async (_id, quantity) => response(quantity),
+    removeItem: async () => response(0), clear: async () => response(0) };
+  const injector = createEnvironmentInjector([{ provide: CartApiService, useValue: api }, CartStore]);
+  try {
+    const store = injector.get(CartStore);
+    const load = store.load(); await store.load(); assert.equal(reads, 1);
+    await store.addItem('type', 2);
+    waiting.resolve(response(1)); await load;
+    assert.equal(store.itemCount(), 2, 'old initial GET cannot replace an add');
+    assert.equal(store.canCheckout(), true);
+    await store.load(); assert.equal(reads, 1, 'loaded navbar does not refetch on navigation');
+    await store.updateItem('item', 3); assert.equal(store.itemCount(), 3);
+    await store.removeItem('item'); assert.equal(store.itemCount(), 0); assert.equal(store.canCheckout(), false);
+    api.getCart = async () => response(2, false);
+    await store.load(true); assert.equal(store.canCheckout(), false);
+    store.reset(); assert.equal(store.itemCount(), 0); assert.equal(store.cart(), null);
+  } finally { injector.destroy(); }
+});
+
+test('cart resets at session boundary and ignores late load and mutation responses', async () => {
+  const load = deferred(), add = deferred();
+  const injector = createEnvironmentInjector([{ provide: CartApiService, useValue: {
+    getCart: () => load.promise, addItem: () => add.promise,
+  } }, CartStore]);
+  try {
+    const store = injector.get(CartStore);
+    const loading = store.load(), adding = store.addItem('old-session-type');
+    store.reset();
+    const old = { data: { id: 'private-cart', items: [{ quantity: 4, purchasable: true }], totalCents: 5600 } };
+    load.resolve(old); add.resolve(old); await Promise.all([loading, adding]);
+    assert.equal(store.cart(), null); assert.equal(store.itemCount(), 0);
+    assert.equal(store.pending(), false); assert.equal(store.loading(), false);
   } finally { injector.destroy(); }
 });

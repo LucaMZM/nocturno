@@ -21,8 +21,10 @@ export const cartRepository = {
               tt.quantity - tt.sold - tt.reserved AS available,
               tt.max_per_user, tt.active, tt.sales_start, tt.sales_end,
               e.id AS event_id, e.title AS event_title, e.slug AS event_slug,
-              e.starts_at, e.status AS event_status, e.is_active AS event_active,
-              e.deleted_at AS event_deleted_at, v.name AS venue_name
+              e.starts_at, e.ends_at AS event_ends_at, e.status AS event_status, e.is_active AS event_active,
+              e.deleted_at AS event_deleted_at, v.name AS venue_name,
+              COALESCE((SELECT ei.url FROM event_images ei WHERE ei.event_id=e.id
+                ORDER BY ei.position LIMIT 1), e.poster_url) AS image_url
        FROM cart_items ci
        JOIN ticket_types tt ON tt.id = ci.ticket_type_id
        JOIN events e ON e.id = tt.event_id

@@ -21,6 +21,8 @@ test('visual preferences round-trip and necessary remains active', () => {
     const choice = cookieChoice(optional);
     assert.deepEqual(readCookieChoice({ getItem: () => JSON.stringify(choice) }), choice);
     assert.equal(choice.necessary, true);
+    assert.equal(choice.analytics, false);
+    assert.equal(choice.marketing, false);
   }
 });
 test('invalid or unavailable storage starts with no remembered choice', () => {
@@ -28,7 +30,7 @@ test('invalid or unavailable storage starts with no remembered choice', () => {
     'bad json',
     'null',
     '{}',
-    '{"version":2}',
+    '{"version":1}',
     '{"version":1,"necessary":false}',
   ])
     assert.equal(readCookieChoice({ getItem: () => value }), null);

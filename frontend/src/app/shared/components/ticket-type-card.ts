@@ -10,7 +10,7 @@ import { ticketQuantityLimit, ticketSubtotalCents } from '../utils/ticketing';
       <div class="ticket-copy">
         <p class="eyebrow">ENTRADA</p>
         <h3>{{ ticket().name }}</h3>
-        @if (ticket().benefits.length) { <p class="ticket-benefits">{{ ticket().benefits.join(' · ') }}</p> }
+        @if (ticket().benefits.length) { <p class="ticket-benefits">{{ ticket().benefits.map(benefitLabel).join(' · ') }}</p> }
         <p class="ticket-stock">{{ statusLabel() }}</p>
       </div>
       <div class="ticket-action">
@@ -43,6 +43,7 @@ export class TicketTypeCardComponent {
   readonly selectedQuantity = computed(() => Math.min(this.quantity(), Math.max(1, this.limit())));
   readonly subtotalCents = computed(() => ticketSubtotalCents(this.ticket().price, this.selectedQuantity()));
   readonly price = euro;
+  readonly benefitLabel = (value: string) => value === 'Acceso demo al evento' ? 'Acceso al evento' : value;
   available() { return this.ticket().quantity - this.ticket().sold - this.ticket().reserved; }
   adjust(delta: number) { this.quantity.set(Math.max(1, Math.min(this.limit(), this.selectedQuantity() + delta))); }
   unavailable() {

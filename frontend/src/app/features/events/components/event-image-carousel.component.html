@@ -24,7 +24,7 @@
   </div>
   @if (currentImage(); as image) {
     @if (image.sourceUrl; as sourceUrl) {
-      <p class="image-credit">{{ event().isDemo ? 'Fotografía del local · Evento demo' : 'Fuente de la imagen' }} ·
+      <p class="image-credit">Crédito de imagen ·
         <a [href]="sourceUrl" target="_blank" rel="noopener noreferrer">Fuente ↗</a>
       </p>
     }
@@ -33,7 +33,9 @@
     <div class="carousel-thumbnails" role="group" aria-label="Seleccionar imagen">
       @for (image of images(); track image.id; let i = $index) {
         <button type="button" [class.active]="selectedIndex() === i" [attr.aria-label]="'Mostrar imagen ' + (i + 1)" [attr.aria-pressed]="selectedIndex() === i" (click)="select(i)">
-          <img [src]="image.url" [alt]="image.altText || ''" loading="lazy" (error)="onImageError(image.url)" />
+          @if (!brokenUrls().has(image.url)) {
+            <img [src]="image.url" [alt]="image.altText || ''" loading="lazy" (error)="onImageError(image.url)" />
+          } @else { <span aria-hidden="true">NOCTURNO.</span> }
         </button>
       }
     </div>

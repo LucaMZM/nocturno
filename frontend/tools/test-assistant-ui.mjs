@@ -13,7 +13,7 @@ try {
     });
     const page = await context.newPage();
     await page.goto('/');
-    await page.getByRole('button', { name: 'Rechazar opcionales', exact: true }).click();
+    await page.getByRole('button', { name: 'Solo esta visita', exact: true }).click();
     await page.getByRole('button', { name: 'Hablar con Yomogan' }).click();
     await page.getByLabel('Cuéntame tu plan').fill('Techno en Valencia por menos de 20 euros');
     const response = page.waitForResponse(
@@ -60,14 +60,14 @@ try {
     await dialog.waitFor();
     assert.equal(await page.evaluate(() => document.body.style.overflow), 'hidden');
     assert.equal(await page.getByRole('switch', { name: /necesarias/ }).isDisabled(), true);
-    await page.getByRole('switch', { name: 'Preferencias', exact: true }).click();
+    await page.getByRole('switch', { name: 'Recordar mi elección', exact: true }).click();
     await page.screenshot({ path: `${output}/cookie-desktop.png` });
     await page.getByRole('button', { name: 'Guardar preferencias' }).click();
     await banner.waitFor({ state: 'detached' });
     await page.reload();
     assert.equal(await banner.count(), 0);
     const stored = await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('nocturno_cookie_demo_v1')),
+      JSON.parse(localStorage.getItem('nocturno_cookie_preferences_v2')),
     );
     assert.equal(stored.preferences, true);
     assert.equal(stored.analytics, false);
@@ -79,18 +79,23 @@ try {
     await dialog.waitFor({ state: 'hidden' });
     assert.equal(await reopen.evaluate((button) => button === document.activeElement), true);
     for (const [name, expected] of [
-      ['Aceptar todas', true],
-      ['Rechazar opcionales', false],
+      ['Recordar mi elección', true],
+      ['Solo esta visita', false],
     ]) {
-      await page.evaluate(() => localStorage.removeItem('nocturno_cookie_demo_v1'));
+      await page.evaluate(() => localStorage.removeItem('nocturno_cookie_preferences_v2'));
       await page.reload();
       await page.getByRole('button', { name, exact: true }).click();
       const choice = await page.evaluate(() =>
-        JSON.parse(localStorage.getItem('nocturno_cookie_demo_v1')),
+        JSON.parse(localStorage.getItem('nocturno_cookie_preferences_v2')),
       );
-      assert.equal(choice.necessary, true);
-      assert.equal(choice.analytics, expected);
-      assert.equal(choice.marketing, expected);
+      if (expected) {
+        assert.equal(choice.necessary, true);
+        assert.equal(choice.preferences, true);
+        assert.equal(choice.analytics, false);
+        assert.equal(choice.marketing, false);
+      } else assert.equal(choice, null, 'Only this visit must not persist a choice');
+      await page.reload();
+      assert.equal(await banner.count(), expected ? 0 : 1);
     }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => localStorage.clear());
@@ -119,7 +124,7 @@ try {
     );
     await page.screenshot({ path: `${output}/cookie-preferences-mobile.png` });
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Rechazar opcionales', exact: true }).click();
+    await page.getByRole('button', { name: 'Solo esta visita', exact: true }).click();
     await page.getByRole('button', { name: 'Hablar con Yomogan' }).click();
     const chat = page.getByRole('dialog', { name: 'Yomogan.' });
     await chat.waitFor();
@@ -215,7 +220,7 @@ try {
     );
     assert.deepEqual(errors, []);
     console.log(
-      'Cookie demo: first visit, accept, reject, configure, save, reload, reopen, keyboard and 390px passed.',
+      'Cookie preferences: real persistence, visit-only choice, configure, save, reload, reopen, keyboard and 390px passed.',
     );
     await context.close();
   }

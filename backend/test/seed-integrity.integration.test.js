@@ -6,6 +6,7 @@ import pg from 'pg';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { migrate, listMigrationFiles } from '../src/db/migrate.js';
+import { importCatalogue } from '../src/db/import-catalogue.js';
 import { seed } from '../src/db/seed.js';
 import { runIntegrityAudit } from '../src/services/integrity-audit.service.js';
 
@@ -101,6 +102,24 @@ test('existing commerce survives migrations and the demo USED fixture seeds cons
         assert.equal(report.errors, 0, JSON.stringify(report.findings.filter(check => check.count)));
         assert.equal(report.warnings, 0);
       });
+      await t.test('incremental catalogue inserts ten events once, preserving all existing data and archived rows', async () => {
+        const before = await snapshot(pool);
+        assert.deepEqual(await importCatalogue(pool), { inserted: 10, skipped: 0 });
+        const once = await snapshot(pool);
+        for (const table of tables) for (const old of before[table])
+          assert.deepEqual(once[table].find(row => row.id === old.id), old, table);
+        assert.equal(once.events.length, before.events.length + 10);
+        assert.equal(once.ticket_types.length, before.ticket_types.length + 20);
+        assert.deepEqual(await importCatalogue(pool), { inserted: 0, skipped: 10 });
+        assert.deepEqual(await snapshot(pool), once);
+        const first = 'f1000000-0000-4000-8000-000000000001';
+        await pool.query('UPDATE events SET is_active=FALSE,deleted_at=NOW(),gallery_user_edited=TRUE WHERE id=$1', [first]);
+        const archived = await snapshot(pool);
+        await importCatalogue(pool);
+        assert.deepEqual(await snapshot(pool), archived, 'Import never restores or overwrites an edited event');
+        assert.equal((await runIntegrityAudit(pool)).errors, 0);
+      });
+
     } finally {
       await closePool();
       env.DATABASE_URL = originalUrl;

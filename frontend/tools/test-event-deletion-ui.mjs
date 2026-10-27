@@ -46,7 +46,7 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/auth/login');
-  await page.getByRole('button', { name: 'Rechazar opcionales', exact: true }).click();
+  await page.getByRole('button', { name: 'Solo esta visita', exact: true }).click();
   await page.locator('input[formcontrolname="email"]').fill('admin@nocturno.test');
   await page.locator('input[formcontrolname="password"]').fill('AdminDemo!2026');
   await page.getByRole('button', { name: /Entrar/ }).click();

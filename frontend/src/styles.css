@@ -2115,3 +2115,7 @@ p {
   .ticket-pass-facts { grid-template-columns: 1fr; padding-inline: 17px; }
   .purchase-confirmation { padding: 20px; }
 }
+
+/* The cart count follows the existing navigation rhythm at every breakpoint. */
+.primary-nav .cart-nav { display: inline-flex; gap: 7px; align-items: center; }
+.cart-count { min-width: 20px; height: 20px; padding: 2px 5px; border-radius: 50%; background: var(--red-primary); color: #fff; font-size: 11px; line-height: 16px; text-align: center; }

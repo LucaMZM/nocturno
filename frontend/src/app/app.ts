@@ -48,7 +48,7 @@ export class App {
         this.orders.reset();
         this.tickets.reset();
         this.dashboard.reset();
-        if (userId) void this.favorites.load();
+        if (userId) { void this.favorites.load(); void this.cart.load(); }
       });
     });
   }

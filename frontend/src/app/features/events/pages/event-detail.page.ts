@@ -43,12 +43,13 @@ import { EventImageCarouselComponent } from '../components/event-image-carousel.
               <p class="eyebrow">SOBRE EL EVENTO</p>
               <h2>La noche, en detalle.</h2>
               @if (event.isDemo) {
-                <p class="demo-disclosure"><strong>EVENTO DEMO DE NOCTURNO</strong><br />
-                  Esta sesión y sus entradas son una simulación de portfolio. El local no organiza ni avala este evento; no se emite una entrada oficial.</p>
+                <p class="demo-disclosure">Propuesta independiente de Nocturno. Esta sesión es ficticia y sus entradas no son oficiales; el local no la organiza ni la avala.</p>
               }
               <p>
                 {{
-                  event.description ||
+                  (event.description?.startsWith('Evento ficticio creado por Nocturno para demostrar')
+                    ? 'Una propuesta de ' + event.musicGenres.map(label).join(', ') + ' para descubrir la noche a tu manera.'
+                    : event.description) ||
                     'Una propuesta para salir y descubrir la noche. Consulta la información del local y las entradas disponibles.'
                 }}
               </p>
@@ -133,7 +134,7 @@ import { EventImageCarouselComponent } from '../components/event-image-carousel.
           <aside class="detail-sidebar">
             <p class="eyebrow">
               {{ label(event.eventType) }} <span>·</span>
-              {{ event.isDemo ? 'DEMO NOCTURNO' : event.status === 'SOLD_OUT' ? 'AGOTADO' : 'EVENTO' }}
+              {{ event.status === 'SOLD_OUT' ? 'AGOTADO' : 'EVENTO' }}
             </p>
             <h1>{{ event.title }}</h1>
             <p class="detail-date">{{ date(event.startsAt) }}</p>
@@ -157,7 +158,7 @@ import { EventImageCarouselComponent } from '../components/event-image-carousel.
               }
               @if (eventDetailStore.promoter(); as promoter) {
                 <div>
-                  <span>{{ event.isDemo ? 'PROMOTOR DEMO' : 'ORGANIZA' }}</span><strong><a [routerLink]="['/promoters', promoter.slug]">{{ promoter.name }} ↗</a></strong>
+                  <span>ORGANIZA</span><strong><a [routerLink]="['/promoters', promoter.slug]">{{ promoter.name }} ↗</a></strong>
                 </div>
               }
               @if (distanceTo(event); as distance) {

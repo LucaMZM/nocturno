@@ -9,7 +9,7 @@ function validateSelection(ticket, quantity) {
     throw new AppError(404, 'TICKET_TYPE_NOT_FOUND', 'Ticket type is not available');
   if (ticket.sales_start && new Date(ticket.sales_start) > new Date())
     throw new AppError(409, 'SALES_NOT_STARTED', 'Ticket sales have not started');
-  if (ticket.sales_end && new Date(ticket.sales_end) < new Date())
+  if (ticket.sales_end && new Date(ticket.sales_end) <= new Date())
     throw new AppError(409, 'SALES_ENDED', 'Ticket sales have ended');
   if (ticket.max_per_user && quantity > ticket.max_per_user)
     throw new AppError(409, 'TICKET_LIMIT', 'Quantity exceeds the per-user limit');
@@ -42,7 +42,19 @@ async function changeQuantity(userId, ticketTypeId, quantity, increment) {
 export const cartService = {
   async getCart(userId) {
     const cartId = await cartRepository.ensureCart(userId);
-    const items = await cartRepository.listItems(cartId);
+    const items = (await cartRepository.listItems(cartId)).map(item => {
+      let unavailableReason = null;
+      try {
+        validateSelection({ active: item.active, event_active: item.eventActive,
+          event_deleted_at: item.eventDeletedAt, event_status: item.eventStatus,
+          event_ends_at: item.eventEndsAt, sales_start: item.salesStart, sales_end: item.salesEnd,
+          max_per_user: item.maxPerUser, quantity: item.available, sold: 0, reserved: 0 }, item.quantity);
+      } catch (error) {
+        if (!(error instanceof AppError)) throw error;
+        unavailableReason = error.code;
+      }
+      return { ...item, purchasable: unavailableReason === null, unavailableReason };
+    });
     return {
       id: cartId,
       items,

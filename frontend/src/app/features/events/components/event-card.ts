@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { Event } from '../../../core/models/domain.model';
 import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../../shared/utils/format';
@@ -15,7 +15,7 @@ import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../.
           class="poster-link"
         >
           @if (coverUrl(); as imageUrl) {
-            <img [src]="imageUrl" [alt]="coverAlt()" loading="lazy" />
+            <img [src]="imageUrl" [alt]="coverAlt()" loading="lazy" (error)="brokenUrl.set(imageUrl)" />
           } @else {
             <div
               class="poster-placeholder"
@@ -35,7 +35,7 @@ import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../.
             </div>
           }
         </a>
-        @if (event().isDemo) { <span class="poster-demo-badge">DEMO · NOCTURNO</span> }
+
         @if (event().status === 'SOLD_OUT') {
           <span class="poster-badge sold">AGOTADO</span>
         } @else if (event().ticketAvailability === 0 && event().minPrice !== null && event().minPrice !== undefined) {
@@ -106,7 +106,11 @@ import { eventDate, eventTime, euro, readableTag, formatDistance } from '../../.
 export class EventCardComponent {
   readonly event = input.required<Event>();
   readonly coverImage = computed(() => this.event().images?.[0] ?? null);
-  readonly coverUrl = computed(() => this.coverImage()?.url ?? this.event().posterUrl);
+  readonly brokenUrl = signal<string | null>(null);
+  readonly coverUrl = computed(() => {
+    const url = this.coverImage()?.url ?? this.event().posterUrl;
+    return url === this.brokenUrl() ? null : url;
+  });
   readonly coverAlt = computed(() => this.coverImage()?.altText || 'Imagen de ' + this.event().title);
   readonly isFavorite = input(false);
   readonly favoritePending = input(false);

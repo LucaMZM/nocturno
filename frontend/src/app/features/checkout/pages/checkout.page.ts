@@ -14,8 +14,8 @@ import { AuthStore } from '../../auth/store/auth.store';
     <main class="page-width commerce-page checkout-page">
       <a routerLink="/cart" class="back-link">← Volver al carrito</a>
       <div class="page-heading"><p class="eyebrow">COMPRA SEGURA</p><h1>Finalizar compra<span>.</span></h1></div>
-      <div class="demo-checkout-notice" role="note"><strong>PORTFOLIO DEMO · SIN COBROS REALES</strong>
-        <span>{{ checkout.config()?.testMode ? 'Stripe está en modo test. Utiliza tarjetas de prueba.' : 'Las compras de esta demo requieren claves de prueba de Stripe.' }}</span></div>
+      <div class="demo-checkout-notice" role="note"><strong>ENTRADAS NO OFICIALES</strong>
+        <span>{{ checkout.config()?.testMode ? 'Stripe está en modo test. Utiliza tarjetas de prueba.' : 'El pago online no está disponible por el momento. Tu selección permanece en el carrito.' }}</span></div>
       @if (cart.cart(); as current) {
         <div class="checkout-layout">
           <section class="editor-panel">
@@ -31,10 +31,10 @@ import { AuthStore } from '../../auth/store/auth.store';
             @if (!checkout.config() && !checkout.error()) {
               <p role="status">Comprobando el pago…</p>
             } @else if (!checkout.config()?.enabled && current.totalCents > 0) {
-              <p>El pago con Stripe todavía no está configurado en este entorno.</p>
+              <p>No podemos procesar pagos ahora. Puedes volver al carrito y seguir explorando.</p>
             } @else if (!checkout.session()) {
               <p>{{ current.totalCents === 0 ? 'Confirmaremos las entradas gratuitas en el servidor.' : 'Reservaremos las entradas durante 30 minutos y calcularemos el importe en el servidor.' }}</p>
-              <button class="button-primary" type="button" [disabled]="checkout.loading() || !current.items.length"
+              <button class="button-primary" type="button" [disabled]="checkout.loading() || cart.loading() || !cart.canCheckout()"
                 (click)="preparePayment()">
                 {{ checkout.loading() ? 'Preparando…' : current.totalCents === 0 ? 'Confirmar entradas' : 'Preparar pago' }} <span>↗</span>
               </button>
@@ -91,6 +91,7 @@ export class CheckoutPage implements OnInit, OnDestroy {
   ngOnDestroy() { this.stripe.destroy(); }
 
   async preparePayment() {
+    if (this.cart.loading() || !this.cart.canCheckout()) return;
     if (!await this.checkout.start()) return;
     const session = this.checkout.session();
     if (session?.order.status === 'PAID')

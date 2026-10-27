@@ -10,7 +10,7 @@ export function toApiProblem(error: unknown, fallback: string): ApiProblem {
     if (error.status === 403) return { code, message: 'No tienes permiso para realizar esta acción.' };
     if (error.status === 503) return { code, message: 'El servicio no está disponible ahora. Inténtalo más tarde.' };
     if (error.status >= 500) return { code, message: 'Ha ocurrido un error inesperado. Inténtalo más tarde.' };
-    if (code === 'USER_NOT_FOUND') return { code, message: 'No encontramos el usuario de demostración. Ejecuta el seed del backend.' };
+    if (code === 'USER_NOT_FOUND') return { code, message: 'No encontramos tu cuenta. Inicia sesión de nuevo.' };
     if (code === 'EVENT_NOT_FOUND') return { code, message: 'Este evento ya no está disponible.' };
     if (code === 'DUPLICATE_FAVORITE') return { code, message: 'Este evento ya está guardado.' };
     return { code, message: fallback };

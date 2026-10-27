@@ -163,7 +163,7 @@ Las compras de pago y los refunds reales requieren claves Stripe test y un webho
 
 ## Cookies y Yomogan
 
-Preferencias de cookies como demostración visual y asesor de eventos con recuperación híbrida sobre PostgreSQL. Ollama local es el proveedor predeterminado; si falta, el chat identifica expresamente el modo búsqueda. El avatar oficial está integrado en el botón, cabecera y mensajes. [Arranque de Yomogan en Mac, configuración y límites](docs/cookies-yomogan.md#mac-local-pasos-para-ejecutar-tú).
+Preferencias del navegador con almacenamiento opcional real y asesor de eventos con recuperación híbrida sobre PostgreSQL. Ollama local es el proveedor predeterminado; si falta, el chat identifica expresamente el modo búsqueda. El avatar oficial está integrado en el botón, cabecera y mensajes. [Arranque de Yomogan en Mac, configuración y límites](docs/cookies-yomogan.md#mac-local-pasos-para-ejecutar-tú).
 
 ## Integridad y eliminación de datos
 
@@ -172,3 +172,5 @@ identificadores y código de error si detecta inconsistencias. Events incorpora 
 de impacto, confirmación accesible y borrado o archivado transaccional según su historial.
 Los pedidos, pagos, tickets y snapshots comerciales se conservan.
 [Políticas, migraciones 012–013, hallazgos y pruebas](docs/data-integrity-and-deletion.md).
+
+El [catálogo incremental y carrito](docs/catalogue-expansion.md) documenta cómo añadir diez propuestas sin sobrescribir eventos ni historial comercial.

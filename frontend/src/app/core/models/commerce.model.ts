@@ -1,4 +1,10 @@
 export interface CartItem {
+  imageUrl: string | null;
+  eventEndsAt: string;
+  salesStart: string | null;
+  salesEnd: string | null;
+  purchasable: boolean;
+  unavailableReason: string | null;
   id: string;
   ticketTypeId: string;
   quantity: number;

@@ -88,6 +88,7 @@ jobs:
       - name: Verify event deletion impact dialog
         working-directory: frontend
         run: node tools/test-event-deletion-ui.mjs
+      # Dependency changes are covered by package-lock; script-only changes do not require model downloads.
       - name: Detect changes requiring real model verification
         id: ai-scope
         env:
@@ -95,7 +96,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = workflow_dispatch ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             echo "live=true" >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "$BASE_SHA" HEAD -- backend/src/services/yomogan\* backend/src/repositories/yomogan\* backend/src/validators/yomogan\* backend/src/db/migrations backend/tools/verify-yomogan-live.js backend/package.json backend/package-lock.json frontend/src/app/features/yomogan | grep -q .; then
+          elif git diff --name-only "$BASE_SHA" HEAD -- backend/src/services/yomogan\* backend/src/repositories/yomogan\* backend/src/validators/yomogan\* backend/src/db/migrations backend/tools/verify-yomogan-live.js backend/package-lock.json frontend/src/app/features/yomogan | grep -q .; then
             echo "live=true" >> "$GITHUB_OUTPUT"
           elif git diff "$BASE_SHA" HEAD -- backend/src/config/env.js | grep -E '^[+-].*YOMOGAN_(PROVIDER|CHAT_URL|MODEL|EMBED_|TIMEOUT_MS)' >/dev/null; then
             echo "live=true" >> "$GITHUB_OUTPUT"

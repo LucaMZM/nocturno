@@ -18,11 +18,11 @@ import { ErrorStateComponent } from '../../../shared/components/states';
       @else if (store.error()) { <app-error-state [message]="store.error()!" [code]="store.errorCode() === 'NETWORK_ERROR' || store.errorCode() === 'DATABASE_UNAVAILABLE' ? '503' : '500'" (retry)="loadProfile(slug())" /> }
       @else if (store.publicProfile(); as profile) {
         <header class="public-profile-hero">
-          <div><p class="eyebrow">NOCTURNO. / {{ profile.venue.isDemo ? 'LOCAL DE PRUEBA' : 'LOCAL REAL' }}</p><h1>{{ profile.venue.name }}</h1>
+          <div><p class="eyebrow">NOCTURNO. / LOCAL</p><h1>{{ profile.venue.name }}</h1>
             <p class="public-profile-lead">{{ profile.venue.description || profile.venue.type.replaceAll('_', ' ') }}</p>
             <p>{{ profile.venue.address }} · {{ profile.venue.municipality }}, {{ profile.venue.province }}</p>
             @if (profile.venue.websiteUrl) { <a [href]="profile.venue.websiteUrl" target="_blank" rel="noopener noreferrer">Web del local ↗</a> }
-            @if (!profile.venue.isDemo && profile.venue.sourceUrl) { <p class="muted">Datos del local: <a [href]="profile.venue.sourceUrl" target="_blank" rel="noopener noreferrer">fuente ↗</a>. Los eventos de Nocturno son simulados y no implican colaboración.</p> }
+            @if (!profile.venue.isDemo && profile.venue.sourceUrl) { <p class="muted">Datos del local: <a [href]="profile.venue.sourceUrl" target="_blank" rel="noopener noreferrer">fuente ↗</a>. Las propuestas ficticias de Nocturno no forman parte de la programación oficial del local.</p> }
           </div>
           @if (profile.venue.imageUrl) { <img [src]="profile.venue.imageUrl" [alt]="profile.venue.name" /> }
           @else { <div class="public-profile-art" aria-hidden="true">NOCTURNO.</div> }
@@ -35,7 +35,7 @@ import { ErrorStateComponent } from '../../../shared/components/states';
             </a>
           </section>
         }
-        <section class="public-profile-section"><p class="eyebrow">PRÓXIMAMENTE</p><h2>{{ hasDemoEvents(profile.upcomingEvents) ? 'Sesiones demo de Nocturno en ' : 'La agenda de ' }}{{ profile.venue.name }}.</h2>
+        <section class="public-profile-section"><p class="eyebrow">PRÓXIMAMENTE</p><h2>Propuestas en {{ profile.venue.name }}.</h2>
           @if (profile.upcomingEvents.length) {
             <app-event-grid [events]="profile.upcomingEvents" [favoriteIds]="favorites.favoriteIds()"
               [pendingIds]="favorites.pendingIds()" (favoriteClicked)="favorites.toggle($event)" />

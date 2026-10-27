@@ -17,19 +17,19 @@ import { ErrorStateComponent } from '../../../shared/components/states';
       @else if (store.error()) { <app-error-state [message]="store.error()!" [code]="store.errorCode() === 'NETWORK_ERROR' || store.errorCode() === 'DATABASE_UNAVAILABLE' ? '503' : '500'" (retry)="loadProfile(slug())" /> }
       @else if (store.publicProfile(); as profile) {
         <header class="public-profile-hero">
-          <div><p class="eyebrow">NOCTURNO. / {{ hasDemoEvents(profile.upcomingEvents) ? 'PROMOTOR DEMO' : 'ORGANIZA' }}</p><h1>{{ profile.promoter.name }}</h1>
-            <p class="public-profile-lead">{{ profile.promoter.description || 'Descubre las próximas fechas de este organizador.' }}</p>
-            @if (hasDemoEvents(profile.upcomingEvents)) { <p class="muted">Perfil y eventos simulados de Nocturno. Los locales citados no colaboran ni avalan estas sesiones.</p> }
+          <div><p class="eyebrow">NOCTURNO. / ORGANIZA</p><h1>{{ profile.promoter.name }}</h1>
+            <p class="public-profile-lead">{{ (profile.promoter.description === 'Colectivo cultural ficticio de la demo Nocturno.' ? null : profile.promoter.description) || 'Descubre las próximas fechas de este organizador.' }}</p>
+            @if (hasDemoEvents(profile.upcomingEvents)) { <p class="muted">Propuestas ficticias e independientes de Nocturno, sin afiliación con los locales citados.</p> }
             @if (profile.promoter.websiteUrl) { <a [href]="profile.promoter.websiteUrl" target="_blank" rel="noopener noreferrer">Web oficial ↗</a> }
           </div>
           <div class="public-profile-art" aria-hidden="true">{{ profile.promoter.name.slice(0, 1) }}</div>
         </header>
         @if (usualVenues(profile.upcomingEvents).length) {
-          <div class="profile-venues"><span class="eyebrow">{{ hasDemoEvents(profile.upcomingEvents) ? 'LOCALES DE LA SIMULACIÓN' : 'ESPACIOS' }}</span>
+          <div class="profile-venues"><span class="eyebrow">ESPACIOS</span>
             @for (venue of usualVenues(profile.upcomingEvents); track venue) { <span>{{ venue }}</span> }
           </div>
         }
-        <section class="public-profile-section"><p class="eyebrow">PRÓXIMAMENTE</p><h2>{{ hasDemoEvents(profile.upcomingEvents) ? 'Próximas sesiones demo.' : 'Sus próximas noches.' }}</h2>
+        <section class="public-profile-section"><p class="eyebrow">PRÓXIMAMENTE</p><h2>Sus próximas noches.</h2>
           @if (profile.upcomingEvents.length) {
             <app-event-grid [events]="profile.upcomingEvents" [favoriteIds]="favorites.favoriteIds()"
               [pendingIds]="favorites.pendingIds()" (favoriteClicked)="favorites.toggle($event)" />

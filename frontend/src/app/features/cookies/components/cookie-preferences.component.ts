@@ -22,21 +22,8 @@ export class CookiePreferencesComponent implements OnDestroy {
   readonly choice = signal<CookieChoice | null>(readCookieChoice(this.storage));
   readonly draft = signal(cookieChoice());
   readonly categories: { key: OptionalCookie; title: string; description: string }[] = [
-    {
-      key: 'preferences',
-      title: 'Preferencias',
-      description: 'Cómo te gustaría personalizar tu experiencia.',
-    },
-    {
-      key: 'analytics',
-      title: 'Analíticas',
-      description: 'Simulación de una elección sobre medición de visitas.',
-    },
-    {
-      key: 'marketing',
-      title: 'Marketing',
-      description: 'Simulación de una elección sobre publicidad.',
-    },
+    { key: 'preferences', title: 'Recordar mi elección',
+      description: 'Guarda esta preferencia en este navegador para no volver a mostrar el aviso. Si la desactivas, solo se recuerda durante esta visita.' },
   ];
 
   private get storage(): Storage | null {
@@ -67,11 +54,12 @@ export class CookiePreferencesComponent implements OnDestroy {
 
   save(choice = this.draft()) {
     try {
-      this.storage?.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+      if (choice.preferences) this.storage?.setItem(COOKIE_CHOICE_KEY, JSON.stringify(choice));
+      else this.storage?.removeItem(COOKIE_CHOICE_KEY);
     } catch {
       /* The choice still works for this visit. */
     }
-    this.choice.set({ ...choice });
+    this.choice.set({ ...choice, analytics: false, marketing: false });
     this.dialog?.nativeElement.close();
   }
 

@@ -28,7 +28,7 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
         <td>{{ date(payment.createdAt) }}</td><td>{{ payment.buyerName }}</td><td>{{ payment.orderId.slice(-8) }}</td>
         <td>{{ payment.provider }}<small>{{ payment.providerPaymentId || 'Sin referencia' }}</small></td>
         <td><span [class]="'state-badge state-' + tone(payment.status)">{{ label(payment.status) }}</span>
-          @if (payment.providerPaymentId?.startsWith('pi_demo_')) { <small>Datos demo</small> }
+          @if (payment.providerPaymentId?.startsWith('pi_demo_')) { <small>Registro de muestra · sin cobro</small> }
           @if (payment.refundRequestedAt && payment.status !== 'REFUNDED') { <small><span class="state-badge state-warning">Reembolso solicitado</span></small> }</td>
         <td>{{ euros(payment.amountCents) }} {{ payment.currency }}</td>
         <td>@if (payment.status === 'PAID' && payment.providerPaymentId && !payment.providerPaymentId.startsWith('pi_demo_') && !payment.refundRequestedAt) {

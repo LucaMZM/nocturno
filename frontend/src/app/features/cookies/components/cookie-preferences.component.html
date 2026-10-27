@@ -4,14 +4,14 @@
       <p class="cookie-eyebrow">TU NOCHE. TUS PREFERENCIAS.</p>
       <h2 id="cookie-banner-title">Antes de seguir el ritmo<span>.</span></h2>
       <p>
-        Esta es una demo visual de cookies. Guardamos tu elección en este navegador; no activamos
-        analítica ni publicidad y no modificamos tus cookies de acceso.
+        Usamos almacenamiento técnico para que puedas acceder a tu cuenta. Puedes recordar este aviso
+        en tu navegador. No utilizamos analítica ni publicidad.
       </p>
     </div>
     <div class="cookie-actions">
-      <button type="button" class="cookie-primary" (click)="chooseAll(true)">Aceptar todas</button>
+      <button type="button" class="cookie-primary" (click)="chooseAll(true)">Recordar mi elección</button>
       <button type="button" class="cookie-secondary" (click)="chooseAll(false)">
-        Rechazar opcionales
+        Solo esta visita
       </button>
       <button type="button" class="cookie-link" (click)="openPreferences()">Configurar</button>
     </div>
@@ -21,7 +21,7 @@
   #preferencesDialog
   class="cookie-dialog"
   aria-labelledby="cookie-dialog-title"
-  aria-describedby="cookie-demo-description"
+  aria-describedby="cookie-description"
   (keydown)="trapFocus($event)"
   (close)="onClose()"
   (click)="outsideClick($event)"
@@ -39,9 +39,9 @@
     </button>
   </div>
   <h2 id="cookie-dialog-title">Tú eliges el ritmo<span>.</span></h2>
-  <p id="cookie-demo-description">
-    Demostración de preferencias. Ninguna de estas opciones instala scripts ni constituye un sistema
-    completo de consentimiento legal.
+  <p id="cookie-description">
+    Elige si quieres recordar este aviso. Las cookies de acceso y seguridad siguen funcionando
+    para que puedas utilizar tu cuenta.
   </p>
   <div class="cookie-category">
     <div>
@@ -79,7 +79,7 @@
     </div>
   }
   <p class="cookie-note">
-    Solo se recuerda esta elección visual en localStorage. Puedes cambiarla desde el pie de página.
+    No utilizamos cookies analíticas ni de marketing. Puedes cambiar tu elección desde el pie de página.
   </p>
   <button type="button" class="cookie-primary cookie-save" (click)="save()">
     Guardar preferencias

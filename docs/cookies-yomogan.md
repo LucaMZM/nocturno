@@ -1,13 +1,15 @@
 # Cookies visuales y Yomogan
 
-## Cookies: demostración visual
-Aviso inicial con aceptar, rechazar y configurar. Diálogo con necesarias (siempre activas),
-preferencias, analíticas y marketing. Pie de página para reabrirlo.
-Solo se guarda la elección visual en localStorage, clave nocturno_cookie_demo_v1.
-No instala ni controla scripts, trackers o cookies de autenticación; no es una CMP ni
-una declaración de cumplimiento legal. Si el almacenamiento está bloqueado, la elección
-dura esta visita. El diálogo nativo admite ESC, clic exterior, foco inicial, Tab circular
-y retorno al botón que lo abrió.
+## Preferencias del navegador
+Aviso inicial con «Recordar mi elección», «Solo esta visita» y «Configurar».
+Solo hay un ajuste opcional con efecto real: recordar el aviso en localStorage
+(clave `nocturno_cookie_preferences_v2`). Desactivarlo elimina esa preferencia;
+el aviso reaparece al recargar. Con almacenamiento bloqueado, la elección dura esta visita.
+Analítica y marketing no están implementados: no hay interruptores ficticios ni trackers.
+Las cookies de autenticación y el resto del almacenamiento técnico permanecen intactos.
+No es una CMP ni una declaración de cumplimiento legal. La antigua clave visual v1
+no se utiliza como consentimiento. El pie permite reabrir el diálogo, que conserva
+ESC, clic exterior, foco inicial, Tab circular y retorno al botón de apertura.
 
 Referencia consultada: https://site.fourvenues.com/es/nativa (21 de octubre de 2026).
 La lectura pública mostró el enlace «Cookies» pero no permitió inspeccionar visualmente

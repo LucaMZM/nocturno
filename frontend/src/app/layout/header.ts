@@ -2,6 +2,7 @@ import { Component, inject, input, output } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { LocationSelectorComponent } from '../shared/components/location-selector';
 import { AuthStore } from '../features/auth/store/auth.store';
+import { CartStore } from '../features/cart/store/cart.store';
 import { FavoritesStore } from '../features/favorites/store/favorites.store';
 
 @Component({
@@ -18,7 +19,11 @@ import { FavoritesStore } from '../features/favorites/store/favorites.store';
             >Descubrir</a
           >
           <a routerLink="/favorites" routerLinkActive="active">Favoritos</a>
-          <a routerLink="/cart" routerLinkActive="active">Carrito</a>
+          <a routerLink="/cart" routerLinkActive="active" class="cart-nav"
+            [attr.aria-label]="'Carrito, ' + cart.itemCount() + ' entradas'">
+            <span aria-hidden="true">🛒</span> Carrito
+            <span class="cart-count" aria-hidden="true">{{ cart.itemCount() }}</span>
+          </a><span class="sr-only" role="status" aria-live="polite">{{ cart.itemCount() }} entradas en tu carrito</span>
         </nav>
         <div class="header-right">
           <app-location-selector
@@ -42,6 +47,7 @@ import { FavoritesStore } from '../features/favorites/store/favorites.store';
 })
 export class HeaderComponent {
   readonly auth = inject(AuthStore);
+  readonly cart = inject(CartStore);
   private readonly favorites = inject(FavoritesStore);
   private readonly router = inject(Router);
   readonly municipality = input.required<string>();

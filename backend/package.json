@@ -15,7 +15,8 @@
     "test": "NODE_ENV=test node --test --test-concurrency=1",
     "check": "find src test -name '*.js' -exec node --check {} \\;",
     "db:index:yomogan": "node tools/index-yomogan.js",
-    "db:audit": "node tools/audit-integrity.js"
+    "db:audit": "node tools/audit-integrity.js",
+    "db:catalogue:import": "node src/db/import-catalogue.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

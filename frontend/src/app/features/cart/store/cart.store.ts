@@ -17,13 +17,15 @@ export const CartStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withComputed(({ cart }) => ({ itemCount: computed(() => cart()?.items.reduce(
-    (sum, item) => sum + item.quantity, 0) ?? 0) })),
+    (sum, item) => sum + item.quantity, 0) ?? 0),
+    canCheckout: computed(() => !!cart()?.items.length && cart()!.items.every(item => item.purchasable))
+  })),
   withMethods((store, api = inject(CartApiService)) => {
     let version = 0;
     async function change(operation: () => Promise<{ data: Cart }>, successMessage?: string) {
       if (store.pending()) return false;
-      const requestVersion = version;
-      patchState(store, { pending: true, error: null, message: null });
+      const requestVersion = ++version;
+      patchState(store, { loading: false, pending: true, error: null, message: null });
       try {
         const response = await operation();
         if (requestVersion !== version) return false;
@@ -38,8 +40,8 @@ export const CartStore = signalStore(
       }
     }
     return {
-      async load() {
-        if (store.loading()) return;
+      async load(force = false) {
+        if (store.loading() || store.pending() || (!force && store.cart())) return;
         const requestVersion = version;
         patchState(store, { loading: true, error: null });
         try { const response = await api.getCart();
@@ -50,9 +52,9 @@ export const CartStore = signalStore(
       addItem: (ticketTypeId: string, quantity = 1) =>
         change(() => api.addItem(ticketTypeId, quantity), 'Entrada añadida al carrito.'),
       updateItem: (itemId: string, quantity: number) =>
-        change(() => api.updateItem(itemId, quantity)),
-      removeItem: (itemId: string) => change(() => api.removeItem(itemId)),
-      clear: () => change(() => api.clear()),
+        change(() => api.updateItem(itemId, quantity), 'Cantidad actualizada.'),
+      removeItem: (itemId: string) => change(() => api.removeItem(itemId), 'Entrada retirada del carrito.'),
+      clear: () => change(() => api.clear(), 'Carrito vaciado.'),
       clearMessage() { patchState(store, { message: null, error: null }); },
       reset() {
         version++;
