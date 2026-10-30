@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { SignJWT } from 'jose';
 import { app } from '../src/app.js';
 import { env } from '../src/config/env.js';
@@ -70,7 +70,12 @@ test('event deletion impact, history preservation and transaction integrity', {
       await pool.query(`INSERT INTO users(id,email,display_name,role,promoter_id)
         VALUES($1,$2,'Deletion fixture',$3,$4)`, [id, id + '@example.com',
         { admin: 'ADMIN', user: 'USER', outsider: 'PROMOTER' }[name], name === 'outsider' ? promoter : null]);
-      tokens[name] = await new SignJWT({}).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
+      const familyId = randomUUID();
+      // The test models an active server-side session instead of a detached JWT.
+      await pool.query(`INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
+        VALUES ($1, $2, $3, NOW() + interval '1 hour')`,
+      [id, randomBytes(32).toString('hex'), familyId]);
+      tokens[name] = await new SignJWT({ sid: familyId }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
         .setIssuer('nocturno-api').setAudience('nocturno-web').setIssuedAt().setExpirationTime('10m')
         .sign(new TextEncoder().encode(env.JWT_ACCESS_SECRET));
     }
