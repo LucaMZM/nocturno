@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, roleGuard } from './features/auth/auth.guard';
+import { authGuard, roleGuard } from './features/auth/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', title: 'Descubrir · Nocturno', loadComponent: () => import('./features/events/pages/events-list.page').then((m) => m.EventsListPage) },

@@ -14,7 +14,7 @@ import { errorMiddleware } from './middlewares/error.middleware.js';
 import { notFoundMiddleware } from './middlewares/not-found.middleware.js';
 import { requestLoggers } from './config/logging.js';
 import { profileRoutes } from './routes/profile.routes.js';
-import { authRoutes } from './routes/auth.routes.js';
+import { authRoutes } from './auth/auth.routes.js';
 import { cartRoutes } from './routes/cart.routes.js';
 import { checkoutRoutes, orderRoutes } from './routes/checkout.routes.js';
 import { stripeController } from './controllers/stripe.controller.js';

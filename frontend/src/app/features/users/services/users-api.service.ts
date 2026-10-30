@@ -12,6 +12,8 @@ export class UsersApiService {
   getUsers(page = 1, search = '', role = '') { return firstValueFrom(this.http.get<PaginatedResponse<User>>(
     `${this.base}/users`, { params: { page, limit: 20, ...(search ? { search } : {}), ...(role ? { role } : {}) } })); }
   createUser(payload: object) { return firstValueFrom(this.http.post<ApiResponse<User>>(`${this.base}/users`, payload)); }
+  deleteUser(id: string) { return firstValueFrom(this.http.delete<void>(
+    `${this.base}/users/${encodeURIComponent(id)}`)); }
   updateUser(id: string, payload: object) { return firstValueFrom(this.http.patch<ApiResponse<User>>(
     `${this.base}/users/${encodeURIComponent(id)}`, payload)); }
 }
