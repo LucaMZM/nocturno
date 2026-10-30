@@ -27,18 +27,23 @@ import { AuthStore } from '../../auth/store/auth.store';
             @if (checkout.error() && !checkout.config()) {
               <button class="button-outline" type="button" (click)="checkout.loadConfig()">Reintentar conexión ↗</button>
             }
-            @if (paymentError()) { <p class="inline-alert" role="alert">{{ paymentError() }}</p> }
+            @if (paymentError()) { <p class="inline-alert" role="alert">{{ paymentError() }}</p>
+              @if (!paymentReady() && checkout.session()?.clientSecret) {
+                <button class="button-outline" type="button" [disabled]="mounting()" (click)="mountPayment()">Reintentar formulario</button>
+              }
+            }
             @if (!checkout.config() && !checkout.error()) {
               <p role="status">Comprobando el pago…</p>
             } @else if (!checkout.config()?.enabled && current.totalCents > 0) {
               <p>No podemos procesar pagos ahora. Puedes volver al carrito y seguir explorando.</p>
             } @else if (!checkout.session()) {
               <p>{{ current.totalCents === 0 ? 'Confirmaremos las entradas gratuitas en el servidor.' : 'Reservaremos las entradas durante 30 minutos y calcularemos el importe en el servidor.' }}</p>
-              <button class="button-primary" type="button" [disabled]="checkout.loading() || cart.loading() || !cart.canCheckout()"
+              <button class="button-primary" type="button" [disabled]="checkout.loading() || cart.loading() || (!cart.canCheckout() && !checkout.hasSavedAttempt(auth.user()?.id))"
                 (click)="preparePayment()">
                 {{ checkout.loading() ? 'Preparando…' : current.totalCents === 0 ? 'Confirmar entradas' : 'Preparar pago' }} <span>↗</span>
               </button>
             } @else {
+              @if (mounting()) { <p role="status">Cargando formulario seguro…</p> }
               <div #paymentHost class="payment-element" aria-label="Formulario de pago seguro"></div>
               @if (checkout.session()?.clientSecret) {
                 <button class="button-primary" type="button" [disabled]="paying() || !paymentReady()" (click)="confirmPayment()">
@@ -65,6 +70,7 @@ export class CheckoutPage implements OnInit, OnDestroy {
   readonly auth = inject(AuthStore);
   readonly checkout = inject(CheckoutStore);
   readonly paymentReady = signal(false);
+  readonly mounting = signal(false);
   readonly paymentError = signal<string | null>(null);
   readonly paying = signal(false);
   readonly price = euro;
@@ -72,6 +78,7 @@ export class CheckoutPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly paymentHost = viewChild<ElementRef<HTMLElement>>('paymentHost');
   private mountedSecret: string | null = null;
+  private destroyed = false;
 
   constructor() {
     effect(() => {
@@ -79,36 +86,53 @@ export class CheckoutPage implements OnInit, OnDestroy {
       const secret = this.checkout.session()?.clientSecret;
       const key = this.checkout.config()?.publishableKey;
       if (host && secret && key && secret !== this.mountedSecret) {
-        this.mountedSecret = secret;
-        void this.stripe.mount(host.nativeElement, key, secret)
-          .then(() => this.paymentReady.set(true))
-          .catch((error: Error) => this.paymentError.set(error.message));
+        void this.mountPayment();
       }
     });
   }
 
-  ngOnInit() { void this.cart.load(); void this.checkout.loadConfig(); }
-  ngOnDestroy() { this.stripe.destroy(); }
+  ngOnInit() { void this.cart.load(true); void this.checkout.loadConfig(); }
+  ngOnDestroy() { this.destroyed = true; this.stripe.destroy(); }
+
+  async mountPayment() {
+    const host = this.paymentHost();
+    const secret = this.checkout.session()?.clientSecret;
+    const key = this.checkout.config()?.publishableKey;
+    if (!host || !secret || !key || this.mounting()) return;
+    this.mountedSecret = secret;
+    this.mounting.set(true);
+    this.paymentReady.set(false);
+    this.paymentError.set(null);
+    try {
+      await this.stripe.mount(host.nativeElement, key, secret);
+      if (!this.destroyed) this.paymentReady.set(true);
+    } catch {
+      if (!this.destroyed) this.paymentError.set('No hemos podido cargar el formulario seguro. Reinténtalo o vuelve al carrito.');
+    } finally { if (!this.destroyed) this.mounting.set(false); }
+  }
 
   async preparePayment() {
-    if (this.cart.loading() || !this.cart.canCheckout()) return;
-    if (!await this.checkout.start()) return;
+    if (this.cart.loading() || (!this.cart.canCheckout() && !this.checkout.hasSavedAttempt(this.auth.user()?.id))) return;
+    if (!await this.checkout.start(this.auth.user()?.id)) return;
     const session = this.checkout.session();
-    if (session?.order.status === 'PAID')
+    if (session && !session.clientSecret)
       await this.router.navigate(['/account/orders', session.order.id]);
   }
 
   async confirmPayment() {
     const orderId = this.checkout.session()?.order.id;
-    if (!orderId) return;
+    if (!orderId || this.paying() || !this.paymentReady()) return;
     this.paying.set(true);
     this.paymentError.set(null);
     try {
       const result = await this.stripe.confirm(orderId);
+      if (this.destroyed) return;
       if (result.error) this.paymentError.set(result.error.message ?? 'No hemos podido completar el pago.');
-      else await this.router.navigate(['/account/orders', orderId]);
+      else if (['succeeded', 'processing'].includes(result.paymentIntent?.status ?? ''))
+        await this.router.navigate(['/account/orders', orderId]);
+      else this.paymentError.set('El pago no se ha completado. Revisa los datos o utiliza otra tarjeta.');
     } catch (error) {
-      this.paymentError.set(error instanceof Error ? error.message : 'Error al confirmar el pago.');
-    } finally { this.paying.set(false); }
+      if (!this.destroyed) this.paymentError.set(error instanceof Error ? error.message : 'Error al confirmar el pago.');
+    } finally { if (!this.destroyed) this.paying.set(false); }
   }
 }

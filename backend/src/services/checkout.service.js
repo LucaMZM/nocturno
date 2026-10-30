@@ -1,4 +1,6 @@
+import { env } from '../config/env.js';
 import { getPool } from '../config/db.js';
+import { paymentRepository } from '../repositories/payment.repository.js';
 import { orderRepository } from '../repositories/order.repository.js';
 import { paymentService } from './payment.service.js';
 import { stripeApiService } from './stripe-api.service.js';
@@ -19,7 +21,7 @@ function checkTicketAvailability(ticket, previousQuantity) {
     throw new AppError(409, 'EVENT_UNAVAILABLE', 'An event is no longer available');
   if (ticket.sales_start && ticket.sales_start > now)
     throw new AppError(409, 'SALES_NOT_STARTED', 'Ticket sales have not started');
-  if (ticket.sales_end && ticket.sales_end < now)
+  if (ticket.sales_end && ticket.sales_end <= now)
     throw new AppError(409, 'SALES_ENDED', 'Ticket sales have ended');
   if (ticket.requested > ticket.stock - ticket.sold - ticket.reserved)
     throw new AppError(409, 'OUT_OF_STOCK', 'Not enough tickets remain');
@@ -72,23 +74,62 @@ export const checkoutService = {
   async startCheckout(userId, idempotencyKey) {
     await checkoutService.expireStaleOrders();
     const orderId = await checkoutService.createOrderFromCart(userId, idempotencyKey);
+    // Keep expiry and concurrent retries out until the provider ID is persisted.
+    // Network I/O is bounded by the Stripe adapter's timeout; stock locks are not held.
+    const client = await getPool().connect();
+    let intent;
+    try {
+      await client.query('BEGIN');
+      await paymentRepository.lockOrder(client, orderId);
+      const order = await orderRepository.getOrder(orderId, userId, client);
+      if (order.status === 'PAID' || order.status === 'REFUNDED') {
+        await client.query('COMMIT');
+        return { order, clientSecret: null };
+      }
+      if (order.status !== 'AWAITING_PAYMENT' || new Date(order.expiresAt) <= new Date())
+        throw new AppError(409, 'ORDER_EXPIRED', 'Order expired; start checkout again');
+      intent = order.providerPaymentId
+        ? await stripeApiService.retrievePaymentIntent(order.providerPaymentId)
+        : await stripeApiService.createPaymentIntent(order);
+      if (!['requires_payment_method', 'requires_confirmation', 'requires_action', 'processing', 'succeeded', 'canceled'].includes(intent.status) ||
+          (!['processing', 'succeeded', 'canceled'].includes(intent.status) && typeof intent.client_secret !== 'string') ||
+          !intent.id || intent.amount !== order.totalCents || intent.currency !== order.currency.toLowerCase() ||
+          intent.metadata?.order_id !== order.id || (env.NODE_ENV !== 'production' && intent.livemode === true) ||
+          (order.providerPaymentId && intent.id !== order.providerPaymentId))
+        throw new AppError(502, 'INVALID_PAYMENT_PROVIDER_RESPONSE', 'Payment provider returned an invalid payment');
+      if (!order.providerPaymentId) await orderRepository.setProviderPaymentId(order.id, intent.id, client);
+      await client.query('COMMIT');
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
+    if (intent.status === 'succeeded') await paymentService.confirmPaymentIntent(intent);
+    if (intent.status === 'canceled')
+      throw new AppError(409, 'ORDER_EXPIRED', 'Payment was cancelled; start checkout again');
     const order = await orderRepository.getOrder(orderId, userId);
-    if (order.status === 'PAID') return { order, clientSecret: null };
-    if (order.status !== 'AWAITING_PAYMENT' || new Date(order.expiresAt) <= new Date())
-      throw new AppError(409, 'ORDER_EXPIRED', 'Order expired; start checkout again');
-    const intent = order.providerPaymentId
-      ? await stripeApiService.retrievePaymentIntent(order.providerPaymentId)
-      : await stripeApiService.createPaymentIntent(order);
-    if (!order.providerPaymentId) await orderRepository.setProviderPaymentId(order.id, intent.id);
-    return { order: await orderRepository.getOrder(order.id, userId), clientSecret: intent.client_secret };
+    return { order, clientSecret: order.status === 'AWAITING_PAYMENT' && intent.status !== 'processing'
+      ? intent.client_secret : null };
   },
   async expireStaleOrders() {
     for (const orderId of await orderRepository.findExpiredOrderIds()) {
       const order = await orderRepository.getOrder(orderId);
       if (!order || order.status !== 'AWAITING_PAYMENT') continue;
       if (order.providerPaymentId) {
-        try { await stripeApiService.cancelPaymentIntent(order.providerPaymentId); }
-        catch { continue; }
+        try {
+          let intent = await stripeApiService.retrievePaymentIntent(order.providerPaymentId);
+          if (intent.status === 'succeeded') {
+            await paymentService.confirmPaymentIntent(intent);
+            continue;
+          }
+          if (intent.status !== 'canceled') {
+            try { intent = await stripeApiService.cancelPaymentIntent(order.providerPaymentId); }
+            catch {
+              // Success can race with cancellation. Reconcile before releasing any stock.
+              intent = await stripeApiService.retrievePaymentIntent(order.providerPaymentId);
+              if (intent.status === 'succeeded') await paymentService.confirmPaymentIntent(intent);
+              continue;
+            }
+          }
+          if (intent.id !== order.providerPaymentId || intent.status !== 'canceled') continue;
+        } catch { continue; } // Uncertain provider state must retain the reservation.
       }
       await paymentService.releaseExpiredOrder(orderId, order.providerPaymentId);
     }

@@ -44,6 +44,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  idempotencyKey?: string;
   id: string;
   userId: string;
   status: 'AWAITING_PAYMENT' | 'PAID' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED';

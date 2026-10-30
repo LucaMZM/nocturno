@@ -129,8 +129,8 @@ export const orderRepository = {
       : Number((await getPool().query(`SELECT count(*) AS total ${from} ${where}`, params)).rows[0].total);
     return { rows: rows.map(({ total_count: _count, ...row }) => mapOrder(row)), total };
   },
-  async setProviderPaymentId(orderId, paymentIntentId) {
-    const { rows } = await getPool().query(
+  async setProviderPaymentId(orderId, paymentIntentId, client = getPool()) {
+    const { rows } = await client.query(
       `UPDATE payments SET provider_payment_id = $2 WHERE order_id = $1
        RETURNING provider_payment_id`, [orderId, paymentIntentId]);
     return rows[0] ?? null;

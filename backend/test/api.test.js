@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import morgan from 'morgan';
 import { app } from '../src/app.js';
 import { swaggerSpec } from '../src/config/swagger.js';
 import { buildEventListQuery } from '../src/repositories/event.repository.js';
@@ -133,4 +134,12 @@ test('access logs omit ticket check-in codes and query parameters', () => {
   assert.equal(safeRequestPath(`/api/tickets/${code}/check-in?token=private`),
     '/api/tickets/[redacted]/check-in');
   assert.equal(safeRequestPath('/api/events?search=private'), '/api/events');
+});
+
+
+test('access logs strip client-secret query parameters from request URL and Referer', () => {
+  const referrer='http://localhost:4200/account/orders/fixture?payment_intent_client_secret=private-fixture';
+  assert.equal(morgan.referrer({headers:{referer:referrer}}),'http://localhost:4200/account/orders/fixture');
+  assert.equal(morgan.url({originalUrl:'/health?secret=private-fixture'}),'/health');
+  assert.equal(morgan.referrer({headers:{}}),undefined);
 });

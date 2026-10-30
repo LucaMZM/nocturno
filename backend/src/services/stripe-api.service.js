@@ -5,8 +5,9 @@ function secretKey() {
   const key = env.STRIPE_SECRET_KEY;
   if (!key || !env.STRIPE_PUBLISHABLE_KEY || !env.STRIPE_WEBHOOK_SECRET)
     throw new AppError(503, 'STRIPE_NOT_CONFIGURED', 'Payments are not configured');
-  if (env.NODE_ENV !== 'production' && (!key.startsWith('sk_test_') ||
-      !env.STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')))
+  if (!env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_') ||
+      (env.NODE_ENV !== 'production' && (!key.startsWith('sk_test_') ||
+      !env.STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_'))))
     throw new AppError(503, 'STRIPE_TEST_KEY_REQUIRED', 'Use Stripe test keys in development');
   return key;
 }
@@ -17,8 +18,10 @@ async function stripeRequest(path, { method = 'GET', fields, idempotencyKey } = 
   try {
     response = await fetch(`https://api.stripe.com/v1${path}`, {
       method,
+      signal: AbortSignal.timeout(15000),
       headers: {
         authorization: `Bearer ${key}`,
+        'stripe-version': '2026-09-30.endive',
         ...(fields ? { 'content-type': 'application/x-www-form-urlencoded' } : {}),
         ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {})
       },
@@ -40,6 +43,15 @@ async function stripeRequest(path, { method = 'GET', fields, idempotencyKey } = 
 
 export const stripeApiService = {
   requireConfiguration: secretKey,
+  publicConfiguration() {
+    let enabled = false;
+    try { secretKey(); enabled = true; } catch { /* Never publish secret configuration. */ }
+    const key = env.STRIPE_PUBLISHABLE_KEY;
+    const publishableKey = key && /^pk_(test|live)_/.test(key) &&
+      (env.NODE_ENV === 'production' || key.startsWith('pk_test_')) ? key : null;
+    return { enabled: enabled && !!publishableKey, publishableKey,
+      testMode: !!(publishableKey?.startsWith('pk_test_') && env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) };
+  },
   createPaymentIntent(order) {
     return stripeRequest('/payment_intents', {
       method: 'POST',
@@ -47,7 +59,8 @@ export const stripeApiService = {
       fields: {
         amount: String(order.totalCents),
         currency: order.currency.toLowerCase(),
-        'payment_method_types[]': 'card',
+        'automatic_payment_methods[enabled]': 'true',
+        'automatic_payment_methods[allow_redirects]': 'never',
         'metadata[order_id]': order.id
       }
     });

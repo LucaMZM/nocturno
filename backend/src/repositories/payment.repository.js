@@ -11,7 +11,7 @@ export const paymentRepository = {
     const { rows } = await getPool().query(`
       UPDATE payments SET refund_requested_at = coalesce(refund_requested_at, NOW()),
         provider_refund_id = coalesce(provider_refund_id, $2)
-      WHERE id = $1 AND status = 'PAID'
+      WHERE id = $1 AND status IN ('PAID', 'REFUNDED')
       RETURNING refund_requested_at, provider_refund_id`, [id, providerRefundId]);
     return rows[0] ?? null;
   },

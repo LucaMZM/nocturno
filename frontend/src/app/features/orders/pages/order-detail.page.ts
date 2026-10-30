@@ -27,7 +27,8 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
           @if (order.paymentStatus) { · Pago: <span [class]="'state-badge state-' + tone(order.paymentStatus)">{{ label(order.paymentStatus) }}</span> }</p>
         @if (order.providerPaymentId) { <p class="muted">Referencia de pago: {{ order.providerPaymentId }}</p> }
         @if (order.status === 'AWAITING_PAYMENT') {
-          <p role="status">Esperando confirmación del pago. Esta página se actualizará durante unos segundos.</p>
+          <p role="status">Esperando confirmación del pago. Las entradas aparecerán cuando el servidor reciba la confirmación.</p>
+          <button class="button-outline" type="button" (click)="refresh()">Consultar estado</button>
         }
         <div class="commerce-list">
           @for (item of order.items ?? []; track item.id) {
@@ -60,17 +61,28 @@ export class OrderDetailPage implements OnDestroy {
   private readonly cart = inject(CartStore);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private attempts = 0;
+  private destroyed = false;
 
   constructor() {
+    const callback = this.router.parseUrl(this.router.url);
+    if (callback.queryParams['payment_intent_client_secret']) {
+      for (const key of ['payment_intent_client_secret', 'payment_intent', 'redirect_status']) delete callback.queryParams[key];
+      void this.router.navigateByUrl(callback, { replaceUrl: true });
+    }
     effect(() => { const id = this.id(); if (id) void this.load(id); });
   }
-  ngOnDestroy() { if (this.timer) clearTimeout(this.timer); }
+  ngOnDestroy() { this.destroyed = true; if (this.timer) clearTimeout(this.timer); }
+  refresh() { if (this.timer) clearTimeout(this.timer); this.attempts = 0; void this.load(this.id()); }
   private async load(id: string) {
     await this.orders.loadOrder(id);
+    if (this.destroyed || id !== this.id()) return;
     const order = this.orders.selected();
     if (order?.status === 'PAID') {
-      sessionStorage.removeItem('nocturno_checkout_key');
-      void this.cart.load();
+      if (sessionStorage.getItem('nocturno_checkout_key') === order.idempotencyKey) {
+        sessionStorage.removeItem('nocturno_checkout_key');
+        sessionStorage.removeItem('nocturno_checkout_user');
+      }
+      void this.cart.load(true);
     } else if (order?.status === 'AWAITING_PAYMENT' && this.attempts++ < 10) {
       this.timer = setTimeout(() => void this.load(id), 2000);
     }

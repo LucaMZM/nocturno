@@ -29,7 +29,10 @@ export const CartStore = signalStore(
       try {
         const response = await operation();
         if (requestVersion !== version) return false;
-        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('nocturno_checkout_key');
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('nocturno_checkout_key');
+          sessionStorage.removeItem('nocturno_checkout_user');
+        }
         patchState(store, { cart: response.data, pending: false, message: successMessage ?? null });
         return true;
       } catch (error) {
@@ -56,9 +59,12 @@ export const CartStore = signalStore(
       removeItem: (itemId: string) => change(() => api.removeItem(itemId), 'Entrada retirada del carrito.'),
       clear: () => change(() => api.clear(), 'Carrito vaciado.'),
       clearMessage() { patchState(store, { message: null, error: null }); },
-      reset() {
+      reset(preserveCheckoutKey = false) {
         version++;
-        if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('nocturno_checkout_key');
+        if (!preserveCheckoutKey && typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('nocturno_checkout_key');
+          sessionStorage.removeItem('nocturno_checkout_user');
+        }
         patchState(store, initialState);
       }
     };

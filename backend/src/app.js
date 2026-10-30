@@ -18,6 +18,7 @@ import { authRoutes } from './routes/auth.routes.js';
 import { cartRoutes } from './routes/cart.routes.js';
 import { checkoutRoutes, orderRoutes } from './routes/checkout.routes.js';
 import { stripeController } from './controllers/stripe.controller.js';
+import { stripeApiService } from './services/stripe-api.service.js';
 import { paymentRoutes } from './routes/payment.routes.js';
 import { ticketRoutes } from './routes/ticket.routes.js';
 import { yomoganRoutes } from './routes/yomogan.routes.js';
@@ -43,14 +44,10 @@ app.use(cors({ origin: frontendOrigins(), credentials: true }));
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), stripeController.webhook);
 app.use(express.json({ limit: '1mb' }));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-app.get('/api/config/payments', (_req, res) => res.json({ data: {
-  publishableKey: env.STRIPE_PUBLISHABLE_KEY ?? null,
-  enabled: Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_PUBLISHABLE_KEY && env.STRIPE_WEBHOOK_SECRET
-    && (env.NODE_ENV === 'production' || (env.STRIPE_SECRET_KEY.startsWith('sk_test_')
-      && env.STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')))),
-  testMode: Boolean(env.STRIPE_SECRET_KEY?.startsWith('sk_test_')
-    && env.STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_'))
-} }));
+app.get('/api/config/payments', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ data: stripeApiService.publicConfiguration() });
+});
 app.get('/api/config/events', (_req, res) => res.json({ data: {
   maxImages: env.EVENT_GALLERY_MAX_IMAGES
 } }));

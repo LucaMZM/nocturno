@@ -30,6 +30,9 @@ await build({
       export { ProfileApiService } from './src/app/features/profile/services/profile-api.service.ts';
       export { UsersStore } from './src/app/features/users/store/users.store.ts';
       export { UsersApiService } from './src/app/features/users/services/users-api.service.ts';
+      export { CheckoutStore } from './src/app/features/checkout/store/checkout.store.ts';
+      export { CheckoutApiService } from './src/app/features/checkout/services/checkout-api.service.ts';
+      export { StripeCheckoutService } from './src/app/features/checkout/services/stripe-checkout.service.ts';
       export { CartStore } from './src/app/features/cart/store/cart.store.ts';
       export { CartApiService } from './src/app/features/cart/services/cart-api.service.ts';
       export { authInterceptor } from './src/app/features/auth/auth.interceptor.ts';
@@ -49,7 +52,7 @@ after(() => rm(bundlePath, { force: true }));
 const {
   EventsStore, EventsApiService, EventDetailStore, VenuesApiService,
   PromotersApiService, TicketTypesApiService, AuthStore, AuthApiService,
-  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, CartStore, CartApiService,
+  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, CartStore, CartApiService, CheckoutStore, CheckoutApiService, StripeCheckoutService,
 } = await import(pathToFileURL(bundlePath).href);
 
 function deferred() {
@@ -319,4 +322,107 @@ test('cart resets at session boundary and ignores late load and mutation respons
     assert.equal(store.cart(), null); assert.equal(store.itemCount(), 0);
     assert.equal(store.pending(), false); assert.equal(store.loading(), false);
   } finally { injector.destroy(); }
+});
+
+
+test('checkout blocks concurrent submit, keeps a retry key and replaces it only after expiry', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  const values = new Map();
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable:true, value: {
+    getItem:key=>values.get(key)??null, setItem:(key,value)=>values.set(key,value), removeItem:key=>values.delete(key),
+  } });
+  let calls=0, pending=deferred(); const keys=[];
+  const injector=createEnvironmentInjector([{provide:CheckoutApiService,useValue:{
+    startCheckout:key=>{calls++;keys.push(key);return pending.promise;}
+  }},CheckoutStore]);
+  try {
+    const store=injector.get(CheckoutStore), first=store.start('buyer');
+    assert.equal(sessionStorage.getItem('nocturno_checkout_user'),'buyer');
+    assert.equal(store.hasSavedAttempt('buyer'),true);
+    assert.equal(store.hasSavedAttempt('another-buyer'),false);
+    assert.equal(await store.start(),false);assert.equal(calls,1);
+    pending.reject(new HttpErrorResponse({status:502}));assert.equal(await first,false);
+    pending=deferred();const retry=store.start();assert.equal(keys[0],keys[1]);
+    pending.reject(new HttpErrorResponse({status:409,error:{error:{code:'ORDER_EXPIRED'}}}));await retry;
+    assert.equal(sessionStorage.getItem('nocturno_checkout_key'),null);
+    pending=deferred();const next=store.start();assert.notEqual(keys[2],keys[1]);
+    pending.resolve({data:{order:{id:'order',status:'AWAITING_PAYMENT'},clientSecret:'mock-secret'}});
+    assert.equal(await next,true);assert.equal(store.loading(),false);
+  } finally {injector.destroy();if(descriptor)Object.defineProperty(globalThis,'sessionStorage',descriptor);else delete globalThis.sessionStorage;}
+});
+
+test('Stripe UI waits for ready, validates fields, prevents double confirm and allows retry after a decline', async () => {
+  const oldWindow=globalThis.window;const callbacks=new Map();const waiting=deferred();let confirms=0,invalid=true;
+  const element={on:(name,callback)=>callbacks.set(name,callback),mount:()=>queueMicrotask(()=>callbacks.get('ready')()),destroy:()=>{}};
+  const elements={create:()=>element,submit:async()=>invalid?{error:{message:'Revisa la tarjeta'}}:{}};
+  globalThis.window={location:{origin:'http://localhost:4200'},Stripe:()=>({elements:()=>elements,confirmPayment:()=>{confirms++;return waiting.promise;}})};
+  const service=new StripeCheckoutService();
+  try {
+    await service.mount({isConnected:true},'pk_test_mock','mock-client-secret');
+    assert.equal((await service.confirm('order')).error.message,'Revisa la tarjeta');assert.equal(confirms,0);
+    invalid=false;const first=service.confirm('order');await Promise.resolve();
+    await assert.rejects(()=>service.confirm('order'),/ya se está procesando/);assert.equal(confirms,1);
+    waiting.resolve({error:{message:'Tarjeta rechazada'}});assert.equal((await first).error.message,'Tarjeta rechazada');
+    await service.confirm('order');assert.equal(confirms,2);
+  } finally {service.destroy();globalThis.window=oldWindow;}
+});
+
+test('Stripe script network failure is recoverable and navigation cancels a pending mount', async () => {
+  const oldWindow=globalThis.window,oldDocument=globalThis.document;let fail=true,appends=0,removed=0,created=0;
+  const factory=()=>({elements:()=>({create:()=>{created++;const callbacks=new Map();return {
+    on:(name,callback)=>callbacks.set(name,callback),mount:()=>queueMicrotask(()=>callbacks.get('ready')()),destroy:()=>{}
+  };}})});
+  globalThis.window={};globalThis.document={createElement:()=>({remove:()=>removed++}),head:{append:script=>{
+    appends++;assert.equal(script.src,'https://js.stripe.com/v3/');
+    queueMicrotask(()=>{if(fail)script.onerror();else {window.Stripe=factory;script.onload();}});
+  }}};
+  const service=new StripeCheckoutService();
+  try {
+    await assert.rejects(()=>service.mount({isConnected:true},'pk_test_mock','mock-secret'),/cargar/);
+    assert.equal(removed,1);fail=false;
+    await service.mount({isConnected:true},'pk_test_mock','mock-secret');assert.equal(appends,2);assert.equal(created,1);
+    service.destroy();delete window.Stripe;
+    let script;document.head.append=value=>{script=value;};
+    const raceService=new StripeCheckoutService();
+    const pending=raceService.mount({isConnected:true},'pk_test_mock','mock-secret');raceService.destroy();
+    window.Stripe=factory;script.onload();
+    await assert.rejects(()=>pending,/se ha cerrado/);assert.equal(created,1);
+  } finally {service.destroy();globalThis.window=oldWindow;globalThis.document=oldDocument;}
+});
+
+
+test('cart reload can retain only the existing checkout marker; logout and mutations clear it', async () => {
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'sessionStorage'),values=new Map([
+    ['nocturno_checkout_key','attempt'],['nocturno_checkout_user','buyer']
+  ]);
+  Object.defineProperty(globalThis,'sessionStorage',{configurable:true,value:{
+    getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)
+  }});
+  const injector=createEnvironmentInjector([{provide:CartApiService,useValue:{clear:async()=>({data:{id:'cart',items:[],totalCents:0}})}},CartStore]);
+  try {
+    const store=injector.get(CartStore);store.reset(true);
+    assert.equal(sessionStorage.getItem('nocturno_checkout_key'),'attempt');
+    await store.clear();assert.equal(sessionStorage.getItem('nocturno_checkout_key'),null);assert.equal(sessionStorage.getItem('nocturno_checkout_user'),null);
+    sessionStorage.setItem('nocturno_checkout_key','another');sessionStorage.setItem('nocturno_checkout_user','buyer');
+    store.reset();assert.equal(sessionStorage.getItem('nocturno_checkout_key'),null);assert.equal(sessionStorage.getItem('nocturno_checkout_user'),null);
+  } finally {injector.destroy();if(descriptor)Object.defineProperty(globalThis,'sessionStorage',descriptor);else delete globalThis.sessionStorage;}
+});
+
+
+test('leaving a pending Stripe form cannot block or unlock a later form confirmation', async () => {
+  const oldWindow=globalThis.window,first=deferred(),second=deferred();let calls=0;
+  globalThis.window={location:{origin:'http://localhost:4200'},Stripe:()=>({
+    elements:()=>({submit:async()=>({}),create:()=>{const callbacks=new Map();return {
+      on:(name,callback)=>callbacks.set(name,callback),mount:()=>queueMicrotask(()=>callbacks.get('ready')()),destroy:()=>{}
+    };}}),confirmPayment:()=>++calls===1?first.promise:second.promise
+  })};
+  const service=new StripeCheckoutService();
+  try {
+    await service.mount({isConnected:true},'pk_test_mock','mock-secret');const previous=service.confirm('previous');await Promise.resolve();
+    service.destroy();await service.mount({isConnected:true},'pk_test_mock','mock-secret');const current=service.confirm('current');await Promise.resolve();
+    assert.equal(calls,2);
+    first.resolve({error:{message:'Cancelled previous form'}});await previous;
+    await assert.rejects(()=>service.confirm('current'),/ya se está procesando/);
+    second.resolve({paymentIntent:{status:'succeeded'}});await current;
+  } finally {service.destroy();globalThis.window=oldWindow;}
 });

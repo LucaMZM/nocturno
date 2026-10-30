@@ -21,8 +21,16 @@ export function verifyStripeWebhook(rawBody, signatureHeader, secret = env.STRIP
     return timingSafeEqual(Buffer.from(value, 'hex'), expected);
   });
   if (!valid) throw new AppError(400, 'INVALID_STRIPE_SIGNATURE', 'Invalid webhook signature');
-  try { return JSON.parse(rawBody.toString('utf8')); }
-  catch { throw new AppError(400, 'INVALID_WEBHOOK_BODY', 'Invalid webhook body'); }
+  try {
+    const event = JSON.parse(rawBody.toString('utf8'));
+    if (!event || typeof event.type !== 'string' || !event.data?.object ||
+        typeof event.data.object !== 'object') throw new Error('Invalid event');
+    if (env.NODE_ENV !== 'production' && event.livemode === true)
+      throw new AppError(400, 'STRIPE_TEST_EVENT_REQUIRED', 'Only Sandbox events are accepted');
+    return event;
+  }
+  catch (error) { if (error instanceof AppError) throw error;
+    throw new AppError(400, 'INVALID_WEBHOOK_BODY', 'Invalid webhook body'); }
 }
 
 export const paymentService = {
@@ -38,12 +46,14 @@ export const paymentService = {
     if (payment.refund_requested_at)
       return { status: 'PENDING', providerRefundId: payment.provider_refund_id };
     const refund = await stripeApiService.createRefund(payment.provider_payment_id, payment.id);
-    if (!refund.id || refund.payment_intent !== payment.provider_payment_id)
+    if (!refund.id || refund.payment_intent !== payment.provider_payment_id ||
+        refund.amount !== Number(payment.amount_cents) || refund.currency !== payment.currency.toLowerCase() ||
+        !['pending', 'requires_action', 'succeeded'].includes(refund.status))
       throw new AppError(502, 'INVALID_REFUND_RESPONSE', 'Payment provider returned an invalid refund');
     await paymentRepository.markRefundRequested(payment.id, refund.id);
     return { status: 'PENDING', providerRefundId: refund.id };
   },
-  async confirmPaymentIntent({ id, amount_received: received, currency }) {
+  async confirmPaymentIntent({ id, amount_received: received, currency, metadata, status, livemode }) {
     const client = await getPool().connect();
     try {
       await client.query('BEGIN');
@@ -51,6 +61,11 @@ export const paymentService = {
       if (!found) throw new AppError(404, 'PAYMENT_NOT_FOUND', 'Payment not found');
       const order = await paymentRepository.lockOrder(client, found.order_id);
       const payment = await paymentRepository.lockPaymentByProviderId(client, id);
+      if (!Number.isSafeInteger(received) || Number(payment.amount_cents) !== received ||
+          Number(order.total_cents) !== received || payment.currency.toLowerCase() !== currency ||
+          order.currency.toLowerCase() !== currency || (metadata?.order_id && metadata.order_id !== order.id) ||
+          (status && status !== 'succeeded') || (env.NODE_ENV !== 'production' && livemode === true))
+        throw new AppError(409, 'PAYMENT_AMOUNT_MISMATCH', 'Payment does not match the order');
       if ((payment.status === 'PAID' && order.status === 'PAID') ||
           (payment.status === 'REFUNDED' && order.status === 'REFUNDED')) {
         await client.query('COMMIT');
@@ -58,8 +73,6 @@ export const paymentService = {
       }
       if (order.status !== 'AWAITING_PAYMENT')
         throw new AppError(409, 'ORDER_NOT_PAYABLE', 'Order cannot be paid');
-      if (Number(payment.amount_cents) !== received || payment.currency.toLowerCase() !== currency)
-        throw new AppError(409, 'PAYMENT_AMOUNT_MISMATCH', 'Payment amount mismatch');
       const items = await paymentRepository.getOrderItems(client, order.id);
       const stock = await paymentRepository.lockTicketStock(client, items.map((item) => item.ticket_type_id));
       if (stock.length !== items.length ||
@@ -87,7 +100,7 @@ export const paymentService = {
     finally { client.release(); }
   },
   async refundCharge({ payment_intent: paymentIntentId, amount, amount_refunded: amountRefunded, currency }) {
-    if (!paymentIntentId || amountRefunded !== amount) return; // The v1 order model represents full refunds only.
+    if (!paymentIntentId || !Number.isSafeInteger(amount) || amount <= 0 || amountRefunded !== amount) return; // The v1 order model represents full refunds only.
     const client = await getPool().connect();
     try {
       await client.query('BEGIN');
@@ -99,12 +112,19 @@ export const paymentService = {
         await client.query('COMMIT');
         return;
       }
-      if (order.status !== 'PAID' || payment.status !== 'PAID')
-        throw new AppError(409, 'ORDER_NOT_REFUNDABLE', 'Order is not paid');
-      if (Number(payment.amount_cents) !== amountRefunded || payment.currency.toLowerCase() !== currency)
+      if (Number(payment.amount_cents) !== amountRefunded || Number(order.total_cents) !== amountRefunded ||
+          payment.currency.toLowerCase() !== currency || order.currency.toLowerCase() !== currency)
         throw new AppError(409, 'REFUND_AMOUNT_MISMATCH', 'Refund amount mismatch');
       const items = await paymentRepository.getOrderItems(client, order.id);
-      await paymentRepository.lockTicketStock(client, items.map((item) => item.ticket_type_id));
+      const stock = await paymentRepository.lockTicketStock(client, items.map((item) => item.ticket_type_id));
+      // A signed full-refund event may arrive before succeeded. Preserve the same
+      // historical tickets and reverse fulfillment atomically, without exposing valid QR codes.
+      if (order.status === 'AWAITING_PAYMENT' && ['PENDING', 'FAILED'].includes(payment.status)) {
+        if (items.some(item => Number(stock.find(row => row.id === item.ticket_type_id)?.reserved) < item.quantity))
+          throw new AppError(409, 'STOCK_RESERVATION_MISSING', 'Reserved stock is missing');
+        await paymentRepository.fulfillOrder(client, order, items, payment.id);
+      } else if (order.status !== 'PAID' || payment.status !== 'PAID')
+        throw new AppError(409, 'ORDER_NOT_REFUNDABLE', 'Order is not paid');
       for (const item of items) {
         await client.query('UPDATE ticket_types SET sold = sold - $2 WHERE id = $1',
           [item.ticket_type_id, item.quantity]);

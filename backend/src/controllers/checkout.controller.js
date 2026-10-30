@@ -10,6 +10,7 @@ export const checkoutController = {
     const key = req.get('idempotency-key');
     if (!z.uuid().safeParse(key).success)
       throw new AppError(400, 'INVALID_IDEMPOTENCY_KEY', 'A UUID Idempotency-Key is required');
+    res.set('Cache-Control', 'no-store');
     res.json({ data: await checkoutService.startCheckout(req.user.id, key) });
   }),
   listOrders: asyncHandler(async (req, res) => {

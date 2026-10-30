@@ -16,6 +16,11 @@ export function safeRequestPath(rawUrl = '') {
 }
 
 morgan.token('url', (req) => safeRequestPath(req.originalUrl ?? req.url));
+// Stripe return URLs can include client secrets; never persist their query in Referer.
+morgan.token('referrer', (req) => {
+  const referrer = req.headers.referer ?? req.headers.referrer;
+  return referrer ? safeRequestPath(String(referrer)) : undefined;
+});
 
 export const requestLoggers = [
   ...(env.NODE_ENV === 'test' ? [] : [morgan('dev')]),

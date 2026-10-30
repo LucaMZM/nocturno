@@ -42,9 +42,12 @@ export class App {
       const userId = this.auth.user()?.id;
       untracked(() => {
         if (userId === previousUserId) return;
+        // Preserve a reload's checkout only after the session resolves to its owner.
+        const preserveCheckout = !!userId && previousUserId === undefined &&
+          typeof sessionStorage !== 'undefined' && sessionStorage.getItem('nocturno_checkout_user') === userId;
         previousUserId = userId;
         this.favorites.reset();
-        this.cart.reset();
+        this.cart.reset(preserveCheckout);
         this.orders.reset();
         this.tickets.reset();
         this.dashboard.reset();
