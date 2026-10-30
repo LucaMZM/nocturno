@@ -101,8 +101,14 @@ test('Users administration protects role lifecycle and revokes both token types 
     assert.equal((await call(`/users/${memberId}`, { method: 'PATCH', token: adminToken,
       body: { isActive: true } })).status, 200);
     assert.equal((await call('/auth/refresh', { method: 'POST', cookie: memberLogin.cookie })).status, 401);
-    assert.equal((await call('/auth/login', { method: 'POST',
-      body: { email: memberEmail, password: memberPassword } })).status, 200);
+    const restoredLogin = await call('/auth/login', { method: 'POST',
+      body: { email: memberEmail, password: memberPassword } });
+    assert.equal(restoredLogin.status, 200);
+    // Even if the refresh cookie is unavailable, a bearer-authenticated logout revokes its family.
+    assert.equal((await call('/auth/logout', { method: 'POST',
+      token: restoredLogin.data.data.accessToken })).status, 204);
+    assert.equal((await call('/profile/me', { token: restoredLogin.data.data.accessToken })).status, 401);
+    assert.equal((await call('/auth/refresh', { method: 'POST', cookie: restoredLogin.cookie })).status, 401);
 
     assert.equal((await call(`/users/${memberId}`, { method: 'DELETE', token: adminToken })).status, 204);
     memberId = null;
