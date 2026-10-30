@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { patch } from './common.js';
-import { registerInput } from './auth.validator.js';
+import { registerInput } from '../auth/auth.validator.js';
 export const userCreate = registerInput.extend({
   role: z.enum(['USER', 'PROMOTER', 'ADMIN']).default('USER'),
   promoterId: z.uuid().nullable().optional()
