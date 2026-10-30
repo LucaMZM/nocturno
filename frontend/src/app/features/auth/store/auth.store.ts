@@ -77,9 +77,10 @@ export const AuthStore = signalStore(
         }
       },
       async logout() {
+        const token = store.accessToken();
         sessionVersion++;
         patchState(store, { user: null, accessToken: null, initialized: true });
-        try { await api.logout(); }
+        try { await api.logout(token); }
         catch { /* The local session still ends when the API is unavailable. */ }
         finally { patchState(store, { user: null, accessToken: null, initialized: true }); }
       },

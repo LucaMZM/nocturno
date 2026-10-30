@@ -74,6 +74,11 @@ export const authRepository = {
       throw error;
     } finally { client.release(); }
   },
+  async revokeAccessFamily(userId, familyId) {
+    await getPool().query(
+      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND family_id = $2 AND revoked_at IS NULL',
+      [userId, familyId]);
+  },
   async revokeRefreshFamily(tokenHash) {
     await getPool().query(
       `UPDATE refresh_tokens SET revoked_at = NOW()

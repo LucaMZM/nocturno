@@ -72,8 +72,22 @@ export const authService = {
     const user = publicUser(userRow);
     return { user, accessToken: await accessTokenFor(user, familyId), refreshToken: newToken };
   },
-  async logout(token) {
-    if (token) await authRepository.revokeRefreshFamily(refreshHash(token));
+  async logout(refreshToken, accessToken) {
+    if (refreshToken) await authRepository.revokeRefreshFamily(refreshHash(refreshToken));
+    if (accessToken) {
+      try {
+        const { payload } = await jwtVerify(
+          accessToken, new TextEncoder().encode(requireAuthSecrets().access),
+          { issuer, audience, algorithms: ['HS256'] });
+        if (typeof payload.sub === 'string' && typeof payload.sid === 'string' &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sid))
+          await authRepository.revokeAccessFamily(payload.sub, payload.sid);
+      } catch (error) {
+        // Invalid or expired access credentials cannot revoke another session.
+        if (error?.code && !String(error.code).startsWith('ERR_JWT_') &&
+            !String(error.code).startsWith('ERR_JWS_') && error.code !== 'ERR_JOSE_ALG_NOT_ALLOWED') throw error;
+      }
+    }
   },
   async verifyAccess(token) {
     if (!token) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');

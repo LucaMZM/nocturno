@@ -30,7 +30,8 @@ export const authController = {
   refresh: asyncHandler(async (req, res) =>
     sendSession(res, await authService.refresh(readRefreshCookie(req)))),
   logout: asyncHandler(async (req, res) => {
-    await authService.logout(readRefreshCookie(req));
+    const header = req.get('authorization');
+    await authService.logout(readRefreshCookie(req), header?.startsWith('Bearer ') ? header.slice(7) : null);
     res.clearCookie(cookieName, cookieOptions).status(204).end();
   })
 };

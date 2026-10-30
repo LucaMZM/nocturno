@@ -24,7 +24,10 @@ export class AuthApiService {
     return firstValueFrom(this.http.post<ApiResponse<AuthSession>>(`${this.root}/refresh`,
       {}, { withCredentials: true }));
   }
-  async logout(): Promise<void> {
-    await firstValueFrom(this.http.post<void>(`${this.root}/logout`, {}, { withCredentials: true }));
+  async logout(accessToken: string | null): Promise<void> {
+    await firstValueFrom(this.http.post<void>(`${this.root}/logout`, {}, {
+      withCredentials: true,
+      ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {})
+    }));
   }
 }
