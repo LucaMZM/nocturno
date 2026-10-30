@@ -39,9 +39,11 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
     assert.notEqual(rotated.cookie, registered.cookie);
     assert.equal((await call('/api/auth/refresh', { method: 'POST', cookie: registered.cookie })).status, 401);
     assert.equal((await call('/api/auth/refresh', { method: 'POST', cookie: rotated.cookie })).status, 401);
+    assert.equal((await call('/api/auth/me', { token: firstToken })).status, 401);
     const login = await call('/api/auth/login', { method: 'POST', body: { email, password: 'test-password-123' } });
     assert.equal(login.status, 200);
     assert.equal((await call('/api/auth/logout', { method: 'POST', cookie: login.cookie })).status, 204);
+    assert.equal((await call('/api/auth/me', { token: login.body.data.accessToken })).status, 401);
     assert.equal((await call('/api/auth/refresh', { method: 'POST', cookie: login.cookie })).status, 401);
   } finally {
     if (userId) await getPool().query('DELETE FROM users WHERE id = $1', [userId]);

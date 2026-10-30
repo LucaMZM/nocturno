@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { SignJWT } from 'jose';
+import { hashPassword } from '../src/utils/password.js';
 import { app } from '../src/app.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
@@ -67,11 +68,16 @@ test('Profile is separate from sessions and admin Users, with safe legacy aliase
       assert.equal((await call('/auth/login', { method: 'POST', body: { email, password } })).status, 200);
 
       const admin = randomUUID(); ids.push(admin);
-      await getPool().query(`INSERT INTO users(id,email,display_name,role) VALUES($1,$2,'Profile admin','ADMIN')`, [admin, admin + '@example.test']);
-      const adminToken = await new SignJWT({ role: 'ADMIN' }).setProtectedHeader({ alg: 'HS256' })
-        .setSubject(admin).setIssuer('nocturno-api').setAudience('nocturno-web').setIssuedAt().setExpirationTime('5m')
-        .sign(new TextEncoder().encode(env.JWT_ACCESS_SECRET));
+      const adminPassword = 'AdminFixture!2026';
+      await getPool().query(`INSERT INTO users(id,email,display_name,role,password_hash) VALUES($1,$2,'Profile admin','ADMIN',$3)`,
+        [admin, admin + '@example.test', await hashPassword(adminPassword)]);
+      const adminLogin = await call('/auth/login', { method: 'POST',
+        body: { email: admin + '@example.test', password: adminPassword } });
+      assert.equal(adminLogin.status, 200);
+      const adminToken = adminLogin.data.data.accessToken;
       assert.equal((await call('/users?limit=1', { token: adminToken })).status, 200);
+      assert.equal((await call(`/users/${admin}`, { method: 'PATCH', token: adminToken, body: { isActive: false } })).status, 409);
+      assert.equal((await call(`/users/${admin}`, { method: 'PATCH', token: adminToken, body: { role: 'USER' } })).status, 409);
       assert.equal((await call(`/users/${otherId}`, { method: 'PATCH', token: adminToken, body: { isActive: false } })).status, 200);
     } finally {
       await getPool().query('DELETE FROM users WHERE id=ANY($1::uuid[])', [ids]);

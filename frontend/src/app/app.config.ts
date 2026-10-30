@@ -3,7 +3,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 
 import { routes } from './app.routes';
-import { authInterceptor } from './features/auth/auth.interceptor';
+import { authInterceptor } from './features/auth/interceptors/auth.interceptor';
 import { NocturnoErrorHandler } from './core/errors/nocturno-error-handler';
 
 export const appConfig: ApplicationConfig = {

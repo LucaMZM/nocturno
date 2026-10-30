@@ -16,6 +16,12 @@ export const UsersStore = signalStore(
       catch (error) { patchState(store, { users: [], loading: false,
         error: toApiProblem(error, 'No hemos podido cargar los datos.').message }); }
     },
+      async removeUser(id: string) {
+        patchState(store, { saving: true, error: null });
+        try { await api.deleteUser(id); patchState(store, { saving: false }); return true; }
+        catch (error) { patchState(store, { saving: false,
+          error: toApiProblem(error, 'No hemos podido eliminar el usuario.').message }); return false; }
+      },
       async saveUser(id: string | null, payload: object) {
         patchState(store, { saving: true, error: null });
         try { const response = id ? await api.updateUser(id, payload) : await api.createUser(payload);

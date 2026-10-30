@@ -10,7 +10,8 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
   providers: [UsersStore],
   imports: [ReactiveFormsModule, FormsModule],
   template: `
-    <div class="dashboard-heading"><p class="eyebrow">ACCESO</p><h2>Usuarios<span>.</span></h2></div>
+    <div class="dashboard-heading"><p class="eyebrow">ACCESO</p><h2>Usuarios<span>.</span></h2>
+      <button class="button-primary" type="button" (click)="newUser()">+ Crear usuario</button></div>
     <form class="management-filters" (ngSubmit)="searchUsers()">
       <label>Buscar <input name="search" [(ngModel)]="query" placeholder="Nombre o correo" /></label>
       <label>Rol <select name="role" [(ngModel)]="role"><option value="">Todos</option>
@@ -27,13 +28,15 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
       @for (user of store.users(); track user.id) { <tr>
         <td>{{ user.displayName }}</td><td>{{ user.email }}</td><td><span class="state-badge state-neutral">{{ label(user.role) }}</span></td>
         <td><span [class]="'state-badge state-' + tone(user.isActive ? 'ACTIVE' : 'INACTIVE')">{{ label(user.isActive ? 'ACTIVE' : 'INACTIVE') }}</span></td>
-        <td><button class="text-action" (click)="edit(user)">Editar</button></td>
+        <td><button class="text-action" type="button" (click)="edit(user)">Editar</button>
+          <button class="text-action" type="button" [disabled]="store.saving()" (click)="toggleActive(user)">{{ user.isActive ? 'Desactivar' : 'Activar' }}</button>
+          <button class="text-action" type="button" [disabled]="store.saving() || user.role === 'ADMIN'" (click)="remove(user)">Eliminar</button></td>
       </tr> }
     </tbody></table></div>
     <div class="pagination-actions"><button class="button-outline" [disabled]="store.pagination().page <= 1" (click)="page(-1)">Anterior</button>
       <span>Página {{ store.pagination().page }} de {{ store.pagination().totalPages || 1 }}</span>
       <button class="button-outline" [disabled]="store.pagination().page >= store.pagination().totalPages" (click)="page(1)">Siguiente</button></div>
-    <section class="editor-panel management-form"><h3>{{ editingId() ? 'Editar usuario' : 'Crear usuario' }}</h3>
+    <section id="user-editor" class="editor-panel management-form"><h3>{{ editingId() ? 'Editar usuario' : 'Crear usuario' }}</h3>
       <form [formGroup]="form" (ngSubmit)="save()" class="editor-fields">
         <label>Nombre * <input formControlName="displayName" required maxlength="120" /></label>
         <label>Correo * <input type="email" formControlName="email" required /></label>
@@ -78,6 +81,20 @@ export class AdminUsersPage implements OnInit {
       role: user.role, promoterId: user.promoterId ?? '', isActive: user.isActive });
   }
   reset() { this.editingId.set(null); this.form.reset(); }
+  newUser() {
+    this.reset();
+    document.getElementById('user-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  async toggleActive(user: User) {
+    if (!window.confirm(`¿Quieres ${user.isActive ? 'desactivar' : 'activar'} la cuenta de ${user.displayName}?`)) return;
+    if (await this.store.saveUser(user.id, { isActive: !user.isActive }))
+      await this.store.loadUsers(this.store.pagination().page, this.query(), this.role());
+  }
+  async remove(user: User) {
+    if (!window.confirm(`¿Eliminar a ${user.displayName}? Solo se permite sin historial comercial.`)) return;
+    if (await this.store.removeUser(user.id))
+      await this.store.loadUsers(this.store.pagination().page, this.query(), this.role());
+  }
   searchUsers() { void this.store.loadUsers(1, this.query(), this.role()); }
   page(delta: number) { void this.store.loadUsers(this.store.pagination().page + delta, this.query(), this.role()); }
   async save() {
