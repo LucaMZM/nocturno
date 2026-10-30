@@ -29,7 +29,7 @@ export const userRepository = { ...base,
         isActive: 'is_active', promoterId: 'promoter_id' };
       const changes = { ...data, promoterId, ...(data.email ? { email: data.email.toLowerCase() } : {}) };
       const entries = Object.entries(changes).filter(([key]) => fields[key]);
-      const assignments = entries.map(([key], i) => `${fields[key]} = ${i+2}`).join(', ');
+      const assignments = entries.map(([key], i) => `${fields[key]} = $${i+2}`).join(', ');
       const { rows: [updated] } = await client.query(
         `UPDATE users SET ${assignments} WHERE id = $1 RETURNING *`,
         [id, ...entries.map(([, value]) => value)]);
