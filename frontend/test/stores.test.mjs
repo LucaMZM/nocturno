@@ -146,7 +146,7 @@ test('an old profile response cannot restore a logged-out user', async () => {
   const profile = deferred();
   const user = { id: 'user-1', displayName: 'Original', role: 'USER' };
   const api = {
-    login: async () => ({ data: { user, accessToken: 'demo-token' } }),
+    login: async () => ({ data: { user, csrfToken: 'csrf-demo' } }),
     logout: async () => {},
   };
   const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: api },
@@ -159,7 +159,7 @@ test('an old profile response cannot restore a logged-out user', async () => {
     profile.resolve({ data: { ...user, displayName: 'Nuevo' } });
     assert.equal(await updating, false);
     assert.equal(store.user(), null);
-    assert.equal(store.accessToken(), null);
+    assert.equal(store.csrfToken(), null);
   } finally { injector.destroy(); }
 });
 
@@ -198,7 +198,7 @@ test('Profile owns load/save state while session consumers share the updated use
   const user = { id: 'profile-user', displayName: 'Original', role: 'USER' };
   const pending = deferred(); let saves = 0;
   const injector = createEnvironmentInjector([
-    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, accessToken: 'memory-token' } }) } },
+    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, csrfToken: 'csrf-memory' } }) } },
     { provide: ProfileApiService, useValue: { getMine: async () => ({ data: { ...user, displayName: 'Loaded' } }),
       updateMine: () => { saves++; return pending.promise; } } }, AuthStore, ProfileStore,
   ]);
@@ -216,7 +216,7 @@ test('Profile owns load/save state while session consumers share the updated use
     assert.equal(profile.saved(), true);
     assert.equal(auth.user(), profile.user());
     assert.equal(auth.user().displayName, 'Updated');
-    assert.equal(auth.accessToken(), 'memory-token');
+    assert.equal(auth.csrfToken(), 'csrf-memory');
     assert.equal(auth.error(), null);
   } finally { injector.destroy(); }
 });
@@ -225,7 +225,7 @@ test('Profile errors and late responses cannot pollute Auth or a later login of 
   const user = { id: 'profile-user', displayName: 'Original', role: 'USER' }, pending = deferred();
   const api = { updateMine: async () => { throw new HttpErrorResponse({ status: 400 }); } };
   const injector = createEnvironmentInjector([
-    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, accessToken: 'memory-token' } }), logout: async () => {} } },
+    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, csrfToken: 'csrf-memory' } }), logout: async () => {} } },
     { provide: ProfileApiService, useValue: api }, AuthStore, ProfileStore,
   ]);
   try {
@@ -242,25 +242,29 @@ test('Profile errors and late responses cannot pollute Auth or a later login of 
   } finally { injector.destroy(); }
 });
 
-test('Profile HTTP sends Bearer and retries after access-token expiry using existing refresh', async () => {
+test('Profile HTTP sends HttpOnly cookies and CSRF header, recovers after expiry', async () => {
   const user = { id: 'profile-user', displayName: 'Original', role: 'USER' }, requests = [];
   let refreshes = 0;
   const injector = createEnvironmentInjector([
     { provide: AuthApiService, useValue: {
-      login: async () => ({ data: { user, accessToken: 'expired-token' } }),
-      refresh: async () => { refreshes++; return { data: { user, accessToken: 'fresh-token' } }; },
+      login: async () => ({ data: { user, csrfToken: 'csrf-expired' } }),
+      refresh: async () => { refreshes++; return { data: { user, csrfToken: 'csrf-fresh' } }; },
     } }, { provide: Router, useValue: { url: '/account', navigate() { throw Error('Unexpected redirect'); } } }, AuthStore,
   ]);
   try {
     const auth = injector.get(AuthStore); await auth.login('fixture@example.test', 'password');
     const response = await runInInjectionContext(injector, () => firstValueFrom(authInterceptor(
       new HttpRequest('PATCH', '/api/profile/me', { displayName: 'Updated' }), request => {
-        requests.push(request.headers.get('Authorization'));
+        requests.push({ csrf: request.headers.get('X-Nocturno-CSRF'), credentials: request.withCredentials,
+          bearer: request.headers.get('Authorization') });
         return requests.length === 1 ? throwError(() => new HttpErrorResponse({ status: 401 })) : of(new HttpResponse({ status: 200 }));
       },
     )));
     assert.equal(response.status, 200);
-    assert.deepEqual(requests, ['Bearer expired-token', 'Bearer fresh-token']); assert.equal(refreshes, 1);
+    assert.deepEqual(requests, [
+      { csrf: 'csrf-expired', credentials: true, bearer: null },
+      { csrf: 'csrf-fresh', credentials: true, bearer: null }
+    ]); assert.equal(refreshes, 1);
   } finally { injector.destroy(); }
 });
 

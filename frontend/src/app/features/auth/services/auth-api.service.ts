@@ -5,7 +5,7 @@ import { environment } from '../../../../environments/environment';
 import { ApiResponse } from '../../../core/models/api.model';
 import { User } from '../../../core/models/domain.model';
 
-export interface AuthSession { user: User; accessToken: string; }
+export interface AuthSession { user: User; csrfToken: string; }
 
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
@@ -20,14 +20,18 @@ export class AuthApiService {
     return firstValueFrom(this.http.post<ApiResponse<AuthSession>>(`${this.root}/register`,
       { email, password, displayName }, { withCredentials: true }));
   }
+  session(): Promise<ApiResponse<AuthSession>> {
+    return firstValueFrom(this.http.get<ApiResponse<AuthSession>>(`${this.root}/session`,
+      { withCredentials: true }));
+  }
   refresh(): Promise<ApiResponse<AuthSession>> {
     return firstValueFrom(this.http.post<ApiResponse<AuthSession>>(`${this.root}/refresh`,
       {}, { withCredentials: true }));
   }
-  async logout(accessToken: string | null): Promise<void> {
+  async logout(csrfToken: string | null): Promise<void> {
     await firstValueFrom(this.http.post<void>(`${this.root}/logout`, {}, {
       withCredentials: true,
-      ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {})
+      ...(csrfToken ? { headers: { 'X-Nocturno-CSRF': csrfToken } } : {})
     }));
   }
 }

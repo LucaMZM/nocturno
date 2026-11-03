@@ -6,40 +6,43 @@ import { AuthApiService, AuthSession } from '../services/auth-api.service';
 
 interface AuthState {
   user: User | null;
-  accessToken: string | null;
+  csrfToken: string | null;
   initialized: boolean;
   loading: boolean;
   error: string | null;
 }
-
 const initialState: AuthState = {
-  user: null, accessToken: null, initialized: false, loading: false, error: null
+  user: null, csrfToken: null, initialized: false, loading: false, error: null
 };
 
+// Auth credentials live only in HttpOnly cookies. This store contains display
+// state and the per-session CSRF proof, never a JWT or refresh/session secret.
 export const AuthStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withComputed(({ user }) => ({ isAuthenticated: computed(() => !!user()) })),
   withMethods((store, api = inject(AuthApiService)) => {
-    let refreshInProgress: Promise<string | null> | null = null;
+    let refreshInProgress: Promise<boolean> | null = null;
     let sessionVersion = 0;
     function acceptSession(session: AuthSession) {
-      patchState(store, { user: session.user, accessToken: session.accessToken,
+      patchState(store, { user: session.user, csrfToken: session.csrfToken,
         initialized: true, loading: false, error: null });
     }
-    async function refresh(): Promise<string | null> {
+    function endLocalSession() {
+      patchState(store, { user: null, csrfToken: null, initialized: true, loading: false });
+    }
+    async function refresh(): Promise<boolean> {
       if (refreshInProgress) return refreshInProgress;
       const requestVersion = sessionVersion;
       refreshInProgress = (async () => {
         try {
           const response = await api.refresh();
-          if (requestVersion !== sessionVersion) return null;
+          if (requestVersion !== sessionVersion) return false;
           acceptSession(response.data);
-          return response.data.accessToken;
+          return true;
         } catch {
-          if (requestVersion === sessionVersion)
-            patchState(store, { user: null, accessToken: null, initialized: true });
-          return null;
+          if (requestVersion === sessionVersion) endLocalSession();
+          return false;
         } finally { refreshInProgress = null; }
       })();
       return refreshInProgress;
@@ -48,45 +51,56 @@ export const AuthStore = signalStore(
       refresh,
       async bootstrap() {
         if (store.initialized()) return;
-        await refresh();
+        const version = sessionVersion;
+        try {
+          const response = await api.session();
+          if (version === sessionVersion) acceptSession(response.data);
+        } catch {
+          if (version === sessionVersion) await refresh();
+        }
       },
       async login(email: string, password: string): Promise<boolean> {
-        const requestVersion = ++sessionVersion;
+        const version = ++sessionVersion;
         patchState(store, { loading: true, error: null });
-        try { const session = (await api.login(email, password)).data;
-          if (requestVersion !== sessionVersion) return false;
-          acceptSession(session); return true; }
-        catch (error) {
-          if (requestVersion !== sessionVersion) return false;
+        try {
+          const session = (await api.login(email, password)).data;
+          if (version !== sessionVersion) return false;
+          acceptSession(session);
+          return true;
+        } catch (error) {
+          if (version !== sessionVersion) return false;
           patchState(store, { loading: false,
             error: toApiProblem(error, 'No hemos podido iniciar sesión. Revisa tus datos.').message });
           return false;
         }
       },
       async register(email: string, password: string, displayName: string): Promise<boolean> {
-        const requestVersion = ++sessionVersion;
+        const version = ++sessionVersion;
         patchState(store, { loading: true, error: null });
-        try { const session = (await api.register(email, password, displayName)).data;
-          if (requestVersion !== sessionVersion) return false;
-          acceptSession(session); return true; }
-        catch (error) {
-          if (requestVersion !== sessionVersion) return false;
+        try {
+          const session = (await api.register(email, password, displayName)).data;
+          if (version !== sessionVersion) return false;
+          acceptSession(session);
+          return true;
+        } catch (error) {
+          if (version !== sessionVersion) return false;
           patchState(store, { loading: false,
             error: toApiProblem(error, 'No hemos podido crear la cuenta.').message });
           return false;
         }
       },
       async logout() {
-        const token = store.accessToken();
+        const csrf = store.csrfToken();
         sessionVersion++;
-        patchState(store, { user: null, accessToken: null, initialized: true });
-        try { await api.logout(token); }
-        catch { /* The local session still ends when the API is unavailable. */ }
-        finally { patchState(store, { user: null, accessToken: null, initialized: true }); }
+        endLocalSession();
+        try { await api.logout(csrf); }
+        catch { /* A failed server logout is not proof of remote revocation. */ }
+        finally { endLocalSession(); }
       },
       getSessionVersion: () => sessionVersion,
       updateSessionUser(user: User, expectedVersion: number): boolean {
-        if (expectedVersion !== sessionVersion || !store.user() || user.id !== store.user()?.id) return false;
+        if (expectedVersion !== sessionVersion || !store.user() ||
+            user.id !== store.user()?.id) return false;
         patchState(store, { user });
         return true;
       },
