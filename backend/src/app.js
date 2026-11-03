@@ -16,6 +16,7 @@ import { requestLoggers } from './config/logging.js';
 import { profileRoutes } from './routes/profile.routes.js';
 import { authRoutes } from './auth/auth.routes.js';
 import { protectApiMutation } from './auth/auth.middleware.js';
+import { readAccessCookie } from './auth/auth.cookies.js';
 import { cartRoutes } from './routes/cart.routes.js';
 import { checkoutRoutes, orderRoutes } from './routes/checkout.routes.js';
 import { stripeController } from './controllers/stripe.controller.js';
@@ -44,6 +45,10 @@ app.use(requestLoggers);
 app.use(cors({ origin: frontendOrigins(), credentials: true }));
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), stripeController.webhook);
 app.use(express.json({ limit: '1mb' }));
+app.use('/api', (req, res, next) => {
+  if (readAccessCookie(req)) res.set('Cache-Control', 'private, no-store');
+  next();
+});
 app.use(protectApiMutation);
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/api/config/payments', (_req, res) => {

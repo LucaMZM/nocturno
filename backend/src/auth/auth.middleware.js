@@ -2,14 +2,18 @@ import { authService, validCsrfToken } from './auth.service.js';
 import { readAccessCookie } from './auth.cookies.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { frontendOrigins } from '../config/env.js';
+import { env, frontendOrigins } from '../config/env.js';
 
 function credentials(req) {
   const cookie = readAccessCookie(req);
   const header = req.get('authorization');
   // Cookie authentication takes precedence: an Authorization header must
   // not bypass CSRF checks when a browser sends a session cookie.
-  return cookie ?? (header?.startsWith('Bearer ') ? header.slice(7) : null);
+  if (cookie) return cookie;
+  // Legacy bearer fallback is exclusively for local tools and integration tests.
+  // The production web API authenticates browser requests with HttpOnly cookies.
+  if (env.NODE_ENV === 'production') return null;
+  return header?.startsWith('Bearer ') ? header.slice(7) : null;
 }
 
 export const requireAuth = asyncHandler(async (req, _res, next) => {
