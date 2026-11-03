@@ -89,13 +89,22 @@ export const AuthStore = signalStore(
           return false;
         }
       },
-      async logout() {
+      async logout(): Promise<boolean> {
+        if (!store.user()) return true;
         const csrf = store.csrfToken();
-        sessionVersion++;
-        endLocalSession();
-        try { await api.logout(csrf); }
-        catch { /* A failed server logout is not proof of remote revocation. */ }
-        finally { endLocalSession(); }
+        const version = ++sessionVersion;
+        patchState(store, { loading: true, error: null });
+        try {
+          await api.logout(csrf);
+          if (version === sessionVersion) endLocalSession();
+          return true;
+        } catch {
+          if (version === sessionVersion)
+            patchState(store, { loading: false,
+              error: 'No se ha podido cerrar la sesión en el servidor. Inténtalo de nuevo.' });
+          // Never tell the user they logged out while HttpOnly cookies might still be valid.
+          return false;
+        }
       },
       getSessionVersion: () => sessionVersion,
       updateSessionUser(user: User, expectedVersion: number): boolean {

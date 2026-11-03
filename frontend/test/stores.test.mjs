@@ -430,3 +430,21 @@ test('leaving a pending Stripe form cannot block or unlock a later form confirma
     second.resolve({paymentIntent:{status:'succeeded'}});await current;
   } finally {service.destroy();globalThis.window=oldWindow;}
 });
+
+test('a failed cookie logout cannot claim server-side revocation', async () => {
+  const user = { id: 'logout-user', displayName: 'Logout fixture', role: 'USER' };
+  const injector = createEnvironmentInjector([
+    { provide: AuthApiService, useValue: {
+      login: async () => ({ data: { user, csrfToken: 'csrf-fixture' } }),
+      logout: async () => { throw new Error('Server unavailable'); },
+    } }, AuthStore
+  ]);
+  try {
+    const auth = injector.get(AuthStore);
+    assert.equal(await auth.login('fixture@example.test', 'password'), true);
+    assert.equal(await auth.logout(), false);
+    assert.equal(auth.user()?.id, user.id);
+    assert.equal(auth.csrfToken(), 'csrf-fixture');
+    assert.match(auth.error(), /No se ha podido cerrar la sesión/);
+  } finally { injector.destroy(); }
+});

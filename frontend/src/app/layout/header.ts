@@ -36,7 +36,8 @@ import { FavoritesStore } from '../features/favorites/store/favorites.store';
               <a class="header-action" routerLink="/dashboard">Gestión</a>
             }
             <a class="header-action" routerLink="/account">Mi cuenta</a>
-            <button class="header-action" type="button" (click)="logout()">Salir</button>
+            <button class="header-action" type="button" (click)="logout()" [disabled]="auth.loading()">Salir</button>
+            @if (auth.error()) { <span role="alert" class="inline-alert">{{ auth.error() }}</span> }
           } @else {
             <a class="header-action" routerLink="/auth/login">Entrar</a>
           }
@@ -55,7 +56,8 @@ export class HeaderComponent {
   readonly locationChanged = output<string>();
 
   async logout() {
-    try { await this.auth.logout(); }
-    finally { this.favorites.reset(); await this.router.navigateByUrl('/'); }
+    if (!await this.auth.logout()) return;
+    this.favorites.reset();
+    await this.router.navigateByUrl('/');
   }
 }
