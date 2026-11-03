@@ -18,8 +18,8 @@ export const refreshCookieOptions = {
   sameSite: 'lax',
   path: env.NODE_ENV === 'production' ? '/' : '/api/auth'
 };
-// The former production refresh cookie can be read once to migrate existing
-// sessions. It is cleared after the first successful rotation.
+// The legacy unprefixed cookie is cleared, but never authenticated in production
+// to prevent session fixation through less-restricted cookie scoping.
 export const legacyRefreshCookieOptions = {
   httpOnly: true, secure: true, sameSite: 'lax', path: '/api/auth'
 };
@@ -29,6 +29,4 @@ export function cookieValue(req, name) {
   return item ? item.slice(name.length + 1) : null;
 }
 export const readAccessCookie = req => cookieValue(req, accessCookieName);
-export const readRefreshCookie = req =>
-  cookieValue(req, refreshCookieName) ??
-  (env.NODE_ENV === 'production' ? cookieValue(req, 'nocturno_refresh') : null);
+export const readRefreshCookie = req => cookieValue(req, refreshCookieName);

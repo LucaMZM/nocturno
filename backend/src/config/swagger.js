@@ -129,7 +129,7 @@ export const swaggerSpec = {
       delete: { tags: ['Favorites'], summary: 'Remove favorite', parameters: [idParam('userId'), idParam('eventId')], responses: { '204': { description: 'Deleted, no content' }, ...commonErrors } }
     }
   },
-  components: { securitySchemes: { sessionCookie: { type: 'apiKey', in: 'cookie', name: env.NODE_ENV === 'production' ? '__Host-nocturno_access' : 'nocturno_access', description: 'HttpOnly access cookie; the browser sends it automatically' }, refreshCookie: { type: 'apiKey', in: 'cookie', name: 'nocturno_refresh' } }, schemas: {
+  components: { securitySchemes: { sessionCookie: { type: 'apiKey', in: 'cookie', name: env.NODE_ENV === 'production' ? '__Host-nocturno_access' : 'nocturno_access', description: 'HttpOnly access cookie; the browser sends it automatically' }, refreshCookie: { type: 'apiKey', in: 'cookie', name: env.NODE_ENV === 'production' ? '__Host-nocturno_refresh' : 'nocturno_refresh' } }, schemas: {
     Error: error,
     EventActiveInput: object({ isActive: { type: 'boolean' } }, ['isActive']),
     ...Object.fromEntries(Object.entries(bodySchema).flatMap(([name, input]) => [
