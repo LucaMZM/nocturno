@@ -1,3 +1,4 @@
+import { env } from './env.js';
 const str = (maxLength) => ({ type: 'string', ...(maxLength ? { maxLength } : {}) });
 const nullable = (schema) => ({ ...schema, nullable: true });
 const uuid = { type: 'string', format: 'uuid' };
@@ -66,7 +67,7 @@ const ticketRef = { $ref: '#/components/schemas/TicketType' };
 const eventRef = { $ref: '#/components/schemas/Event' };
 export const swaggerSpec = {
   openapi: '3.0.3',
-  info: { title: 'Nocturno API', version: '2.0.0', description: 'Events, management, accounts and ticket commerce. Protected routes use Bearer access tokens; refresh uses an HttpOnly cookie.' },
+  info: { title: 'Nocturno API', version: '2.0.0', description: 'Events, management, accounts and ticket commerce. Protected routes use an HttpOnly access cookie. Unsafe requests include the X-Nocturno-CSRF header. Refresh uses a separate HttpOnly cookie.' },
   servers: [{ url: 'http://localhost:3000' }],
   paths: {
     '/health': { get: { tags: ['Health'], summary: 'Process health', responses: { '200': response(object({ status: { type: 'string', enum: ['ok'] } })) } } },
@@ -106,13 +107,13 @@ export const swaggerSpec = {
       }
     },
     '/api/events/{eventId}/check-in': { get: { tags: ['Tickets'], summary: 'Scoped access-control totals and recent check-ins',
-      parameters: [idParam('eventId')], security: [{ bearerAuth: [] }],
+      parameters: [idParam('eventId')], security: [{ sessionCookie: [] }],
       responses: { '200': response(wrapped(object({ eventTitle: str(), capacity: integer(), issued: integer(),
         used: integer(), pending: integer(), rejected: integer(), recent: array({ type: 'object' }) }))), ...commonErrors } } },
     '/api/events/{id}/waitlist': {
-      get: { tags: ['Waitlist'], summary: 'My waitlist status', parameters: [idParam()], security: [{ bearerAuth: [] }],
+      get: { tags: ['Waitlist'], summary: 'My waitlist status', parameters: [idParam()], security: [{ sessionCookie: [] }],
         responses: { '200': response(wrapped(object({ joined: { type: 'boolean' } }))), ...commonErrors } },
-      post: { tags: ['Waitlist'], summary: 'Join a sold-out event once per account', parameters: [idParam()], security: [{ bearerAuth: [] }],
+      post: { tags: ['Waitlist'], summary: 'Join a sold-out event once per account', parameters: [idParam()], security: [{ sessionCookie: [] }],
         responses: { '201': response(wrapped(object({ joined: { type: 'boolean' }, createdAt: date }))), ...commonErrors } }
     },
     ...crudPaths('ticket-types', 'TicketType', { noList: true }),
@@ -128,7 +129,7 @@ export const swaggerSpec = {
       delete: { tags: ['Favorites'], summary: 'Remove favorite', parameters: [idParam('userId'), idParam('eventId')], responses: { '204': { description: 'Deleted, no content' }, ...commonErrors } }
     }
   },
-  components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, refreshCookie: { type: 'apiKey', in: 'cookie', name: 'nocturno_refresh' } }, schemas: {
+  components: { securitySchemes: { sessionCookie: { type: 'apiKey', in: 'cookie', name: env.NODE_ENV === 'production' ? '__Host-nocturno_access' : 'nocturno_access', description: 'HttpOnly access cookie; the browser sends it automatically' }, refreshCookie: { type: 'apiKey', in: 'cookie', name: 'nocturno_refresh' } }, schemas: {
     Error: error,
     EventActiveInput: object({ isActive: { type: 'boolean' } }, ['isActive']),
     ...Object.fromEntries(Object.entries(bodySchema).flatMap(([name, input]) => [
@@ -151,7 +152,7 @@ swaggerSpec.paths['/api/events/{id}'].delete.summary = 'Legacy soft-delete alias
 swaggerSpec.paths['/api/events/{id}'].patch.description = 'General event fields, including status and isActive. Editing title regenerates the slug with collision handling.';
 
 const ref = (name) => ({ $ref: `#/components/schemas/${name}` });
-const secured = (operation) => ({ ...operation, security: [{ bearerAuth: [] }] });
+const secured = (operation) => ({ ...operation, security: [{ sessionCookie: [] }] });
 const simple = (tag, summary, schema = { type: 'object' }) =>
   secured({ tags: [tag], summary, responses: { '200': response(wrapped(schema)), ...commonErrors } });
 const paged = (tag, summary, schema, parameters = pages) =>
@@ -167,7 +168,7 @@ Object.assign(swaggerSpec.components.schemas, {
   ['email','displayName','password']),
   UserPatch: object({ email: { type: 'string', format: 'email' }, displayName: str(120),
     role: values(['USER','PROMOTER','ADMIN']), promoterId: nullable(uuid), isActive: { type: 'boolean' } }),
-  AuthSession: object({ user: ref('User'), accessToken: str() }, ['user','accessToken']),
+  AuthSession: object({ user: ref('User'), csrfToken: str() }, ['user','csrfToken']),
   Cart: object({ id: uuid, items: array(object({ id: uuid, ticketTypeId: uuid, quantity: integer(1),
     unitPriceCents: integer(), eventTitle: str(), name: str(), imageUrl: nullable(str()),
     venueName: str(), startsAt: date, eventEndsAt: date, available: integer(), maxPerUser: nullable(integer()),
@@ -198,13 +199,15 @@ Object.assign(swaggerSpec.paths, {
     responses: { '200': response(wrapped(object({ maxImages: integer(1) }, ['maxImages']))) } } },
   '/api/config/payments': { get: { tags: ['Payments'], summary: 'Public Stripe configuration',
     responses: { '200': response(wrapped(object({ enabled: { type: 'boolean' }, publishableKey: nullable(str()) }))) } } },
-  '/api/auth/register': { post: { tags: ['Auth'], summary: 'Register USER and set refresh cookie',
+  '/api/auth/register': { post: { tags: ['Auth'], summary: 'Register USER and issue HttpOnly access and refresh cookies',
     requestBody: jsonBody(object({ email: { type: 'string', format: 'email' }, password: str(), displayName: str(120) }, ['email','password','displayName'])),
     responses: { '201': response(wrapped(ref('AuthSession'))), ...commonErrors } } },
-  '/api/auth/login': { post: { tags: ['Auth'], summary: 'Log in and set refresh cookie',
+  '/api/auth/login': { post: { tags: ['Auth'], summary: 'Log in and issue HttpOnly access and refresh cookies',
     requestBody: jsonBody(object({ email: { type: 'string', format: 'email' }, password: str() }, ['email','password'])),
     responses: { '200': response(wrapped(ref('AuthSession'))), ...commonErrors } } },
-  '/api/auth/refresh': { post: { tags: ['Auth'], summary: 'Rotate refresh cookie and return new access JWT',
+  '/api/auth/session': { get: { tags: ['Auth'], summary: 'Current cookie-backed session (no credentials in JSON)',
+    security: [{ sessionCookie: [] }], responses: { '200': response(wrapped(ref('AuthSession'))), ...commonErrors } } },
+  '/api/auth/refresh': { post: { tags: ['Auth'], summary: 'Rotate refresh and access cookies without exposing JWT in JSON',
     security: [{ refreshCookie: [] }], responses: { '200': response(wrapped(ref('AuthSession'))), ...commonErrors } } },
   '/api/auth/logout': { post: { tags: ['Auth'], summary: 'Revoke refresh session', security: [{ refreshCookie: [] }],
     responses: { '204': { description: 'Logged out' }, ...commonErrors } } },
@@ -269,19 +272,19 @@ for (const [path, methods] of Object.entries(swaggerSpec.paths)) {
       path.startsWith('/api/ticket-types')) {
     for (const operation of Object.values(methods)) {
       if (!operation.security && path !== '/api/auth/register' && path !== '/api/auth/login' &&
-          path !== '/api/stripe/webhook') operation.security = [{ bearerAuth: [] }];
+          path !== '/api/stripe/webhook') operation.security = [{ sessionCookie: [] }];
     }
   }
   if (path === '/api/events' || path.startsWith('/api/events/{id}') || path.startsWith('/api/events/{eventId}')) {
     for (const [method, operation] of Object.entries(methods)) {
       if (method !== 'get' || path === '/api/events/{id}' || path === '/api/events/{eventId}/attendees')
-        operation.security = [{ bearerAuth: [] }];
+        operation.security = [{ sessionCookie: [] }];
     }
   }
   if (path === '/api/venues' || path.startsWith('/api/venues/') ||
       path === '/api/promoters' || path.startsWith('/api/promoters/')) {
     for (const [method, operation] of Object.entries(methods))
-      if (method !== 'get') operation.security = [{ bearerAuth: [] }];
+      if (method !== 'get') operation.security = [{ sessionCookie: [] }];
   }
 }
 
@@ -332,7 +335,7 @@ swaggerSpec.paths['/api/profile/me'] = {
     object({ displayName: str(120) }, ['displayName']), ref('User')),
 };
 for (const operation of Object.values(swaggerSpec.paths['/api/profile/me']))
-  operation.security = [{ bearerAuth: [] }];
+  operation.security = [{ sessionCookie: [] }];
 for (const operation of Object.values(swaggerSpec.paths['/api/auth/me'])) {
   operation.tags = ['Profile'];
   operation.deprecated = true;
