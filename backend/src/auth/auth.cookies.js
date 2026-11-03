@@ -4,7 +4,8 @@ import { env } from '../config/env.js';
 // Local HTTP development keeps a non-prefixed, API-scoped cookie.
 export const accessCookieName = env.NODE_ENV === 'production'
   ? '__Host-nocturno_access' : 'nocturno_access';
-export const refreshCookieName = 'nocturno_refresh';
+export const refreshCookieName = env.NODE_ENV === 'production'
+  ? '__Host-nocturno_refresh' : 'nocturno_refresh';
 export const accessCookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
@@ -15,7 +16,12 @@ export const refreshCookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
   sameSite: 'lax',
-  path: '/api/auth'
+  path: env.NODE_ENV === 'production' ? '/' : '/api/auth'
+};
+// The former production refresh cookie can be read once to migrate existing
+// sessions. It is cleared after the first successful rotation.
+export const legacyRefreshCookieOptions = {
+  httpOnly: true, secure: true, sameSite: 'lax', path: '/api/auth'
 };
 export function cookieValue(req, name) {
   const item = req.get('cookie')?.split(';').map(part => part.trim())
@@ -23,4 +29,6 @@ export function cookieValue(req, name) {
   return item ? item.slice(name.length + 1) : null;
 }
 export const readAccessCookie = req => cookieValue(req, accessCookieName);
-export const readRefreshCookie = req => cookieValue(req, refreshCookieName);
+export const readRefreshCookie = req =>
+  cookieValue(req, refreshCookieName) ??
+  (env.NODE_ENV === 'production' ? cookieValue(req, 'nocturno_refresh') : null);

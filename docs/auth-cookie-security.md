@@ -9,7 +9,8 @@ de idempotencia en sessionStorage; **no es una credencial**.
 
 - `nocturno_access` en desarrollo HTTP: JWT de 15 minutos, `HttpOnly; SameSite=Lax; Path=/api`.
 - `__Host-nocturno_access` en producción HTTPS: el mismo JWT, `HttpOnly; Secure; SameSite=Lax; Path=/`. El prefijo exige host-only (sin Domain) y Path=/.
-- `nocturno_refresh`: cookie `HttpOnly; SameSite=Lax; Path=/api/auth`, `Secure` en producción. Se rota al renovar sesión; el backend almacena solo un hash HMAC en `refresh_tokens` de PostgreSQL, nunca el valor original.
+- `nocturno_refresh` en desarrollo HTTP: cookie `HttpOnly; SameSite=Lax; Path=/api/auth`.
+- `__Host-nocturno_refresh` en producción HTTPS: cookie `HttpOnly; Secure; SameSite=Lax; Path=/`, host-only. La primera renovación acepta y limpia la cookie de formato anterior. Se rota al renovar sesión; el backend almacena solo un hash HMAC en `refresh_tokens` de PostgreSQL, nunca el valor original.
 - `POST /api/auth/login`, `register` y `refresh` establecen las cookies y responden solo `{data:{user,csrfToken}}`. La API **no devuelve tokens de autenticación en JSON**.
 - `GET /api/auth/session` devuelve usuario y CSRF si la cookie de acceso sigue vigente. Angular lo usa en el bootstrap; si ha caducado, renueva mediante la cookie refresh.
 - `POST /api/auth/logout` revoca la familia del refresh y borra ambas cookies. Los access JWT ya emitidos quedan invalidados por la comprobación de familia en PostgreSQL.

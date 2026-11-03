@@ -1,7 +1,7 @@
 import { env } from '../config/env.js';
 import { authService, refreshCookieMaxAge } from './auth.service.js';
 import { accessCookieName, refreshCookieName, accessCookieOptions, refreshCookieOptions,
-  readAccessCookie, readRefreshCookie } from './auth.cookies.js';
+  readAccessCookie, readRefreshCookie, legacyRefreshCookieOptions } from './auth.cookies.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 function accessMaxAge() {
@@ -12,6 +12,7 @@ function accessMaxAge() {
 
 function sendSession(res, session, status = 200) {
   res.set('Cache-Control', 'no-store');
+  if (env.NODE_ENV === 'production') res.clearCookie('nocturno_refresh', legacyRefreshCookieOptions);
   res.cookie(refreshCookieName, session.refreshToken, { ...refreshCookieOptions, maxAge: refreshCookieMaxAge });
   res.cookie(accessCookieName, session.accessToken, { ...accessCookieOptions, maxAge: accessMaxAge() });
   // Never expose JWTs or refresh credentials to the Angular JavaScript runtime.
@@ -35,6 +36,7 @@ export const authController = {
       readAccessCookie(req) ?? (header?.startsWith('Bearer ') ? header.slice(7) : null));
     res.set('Cache-Control', 'no-store');
     res.clearCookie(refreshCookieName, refreshCookieOptions);
+    if (env.NODE_ENV === 'production') res.clearCookie('nocturno_refresh', legacyRefreshCookieOptions);
     res.clearCookie(accessCookieName, accessCookieOptions);
     res.status(204).end();
   })
