@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
 import { env, requireAuthSecrets } from '../config/env.js';
 import { authRepository } from './auth.repository.js';
@@ -23,6 +23,18 @@ function refreshExpiry() {
   return new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1000);
 }
 
+export function csrfForFamily(familyId) {
+  return createHmac('sha256', requireAuthSecrets().refresh)
+    .update('nocturno-csrf-v1:' + familyId).digest('base64url');
+}
+
+export function validCsrfToken(familyId, supplied) {
+  if (typeof supplied !== 'string' || supplied.length !== 43) return false;
+  const expected = Buffer.from(csrfForFamily(familyId));
+  const received = Buffer.from(supplied);
+  return received.length === expected.length && timingSafeEqual(expected, received);
+}
+
 async function accessTokenFor(user, familyId) {
   const secret = new TextEncoder().encode(requireAuthSecrets().access);
   return new SignJWT({ role: user.role, sid: familyId })
@@ -44,7 +56,7 @@ async function createSession(user) {
     familyId,
     expiresAt: refreshExpiry()
   });
-  return { user, accessToken: await accessTokenFor(user, familyId), refreshToken };
+  return { user, accessToken: await accessTokenFor(user, familyId), refreshToken, csrfToken: csrfForFamily(familyId) };
 }
 
 export const authService = {
@@ -70,7 +82,7 @@ export const authService = {
     if (!row) throw new AppError(401, 'INVALID_REFRESH_TOKEN', 'Session expired');
     const { session_family_id: familyId, ...userRow } = row;
     const user = publicUser(userRow);
-    return { user, accessToken: await accessTokenFor(user, familyId), refreshToken: newToken };
+    return { user, accessToken: await accessTokenFor(user, familyId), refreshToken: newToken, csrfToken: csrfForFamily(familyId) };
   },
   async logout(refreshToken, accessToken) {
     if (refreshToken) await authRepository.revokeRefreshFamily(refreshHash(refreshToken));
@@ -89,7 +101,14 @@ export const authService = {
       }
     }
   },
+  async sessionFromAccess(token) {
+    const { user, familyId } = await this.inspectAccess(token);
+    return { user, csrfToken: csrfForFamily(familyId) };
+  },
   async verifyAccess(token) {
+    return (await this.inspectAccess(token)).user;
+  },
+  async inspectAccess(token) {
     if (!token) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
     let subject;
     let familyId;
@@ -106,7 +125,7 @@ export const authService = {
       throw new AppError(401, 'INVALID_ACCESS_TOKEN', 'Sign in again');
     const row = await authRepository.findById(subject);
     if (!row?.is_active || !(await authRepository.isSessionActive(subject, familyId))) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
-    return publicUser(row);
+    return { user: publicUser(row), familyId };
   }
 };
 

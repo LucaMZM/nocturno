@@ -1,22 +1,26 @@
-import { authService } from './auth.service.js';
+import { authService, validCsrfToken } from './auth.service.js';
+import { readAccessCookie } from './auth.cookies.js';
 import { AppError } from '../utils/AppError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { frontendOrigins } from '../config/env.js';
 
+function credentials(req) {
+  const cookie = readAccessCookie(req);
+  const header = req.get('authorization');
+  // Cookie authentication takes precedence: an Authorization header must
+  // not bypass CSRF checks when a browser sends a session cookie.
+  return cookie ?? (header?.startsWith('Bearer ') ? header.slice(7) : null);
+}
+
 export const requireAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.get('authorization');
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
-  req.user = await authService.verifyAccess(token);
+  req.user = await authService.verifyAccess(credentials(req));
   next();
 });
-
 export const optionalAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.get('authorization');
-  if (header?.startsWith('Bearer '))
-    req.user = await authService.verifyAccess(header.slice(7));
+  const token = credentials(req);
+  if (token) req.user = await authService.verifyAccess(token);
   next();
 });
-
 export function requireRole(...roles) {
   return (req, _res, next) => {
     if (!req.user) return next(new AppError(401, 'UNAUTHENTICATED', 'Sign in required'));
@@ -25,13 +29,34 @@ export function requireRole(...roles) {
     next();
   };
 }
-
 export function requireTrustedOrigin(req, _res, next) {
   const origin = req.get('origin');
   if (origin && !frontendOrigins().includes(origin))
     return next(new AppError(403, 'FORBIDDEN_ORIGIN', 'Origin is not allowed'));
   next();
 }
+
+// Apply to all unsafe API methods, except the separately signed Stripe webhook.
+// Login/refresh/logout are origin-checked and SameSite protected; authenticated
+// mutations additionally require a per-session synchronizer header.
+export const protectApiMutation = asyncHandler(async (req, _res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) ||
+      !req.path.startsWith('/api/')) return next();
+  const origin = req.get('origin');
+  if (origin && !frontendOrigins().includes(origin))
+    throw new AppError(403, 'FORBIDDEN_ORIGIN', 'Origin is not allowed');
+  if (req.get('sec-fetch-site') === 'cross-site')
+    throw new AppError(403, 'FORBIDDEN_SITE', 'Cross-site mutation is not allowed');
+  if (/^\/api\/auth\/(?:login|register|refresh|logout)$/.test(req.path))
+    return next();
+  const cookie = readAccessCookie(req);
+  if (cookie) {
+    const { familyId } = await authService.inspectAccess(cookie);
+    if (!validCsrfToken(familyId, req.get('x-nocturno-csrf')))
+      throw new AppError(403, 'INVALID_CSRF', 'Missing or invalid CSRF token');
+  }
+  next();
+});
 
 const attempts = new Map();
 export function authRateLimit(req, _res, next) {
