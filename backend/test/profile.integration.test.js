@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { SignJWT } from 'jose';
 import { hashPassword } from '../src/utils/password.js';
 import { app } from '../src/app.js';
+import { accessTokenFromResponse } from './helpers/access-cookie.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 
@@ -19,7 +20,7 @@ test('Profile is separate from sessions and admin Users, with safe legacy aliase
         headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer ' + token } : {}), ...(cookie ? { cookie } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
-      return { status: response.status, cookie: response.headers.get('set-cookie'),
+      return { status: response.status, accessToken: accessTokenFromResponse(response), cookie: response.headers.get('set-cookie'),
         data: response.status === 204 ? null : await response.json() };
     }
     try {
@@ -31,7 +32,7 @@ test('Profile is separate from sessions and admin Users, with safe legacy aliase
       ids.push(session.user.id);
       assert.equal(session.user.role, 'USER');
       assert.match(register.cookie, /HttpOnly/i);
-      const token = session.accessToken;
+      const token = register.accessToken;
       assert.equal((await call('/profile/me')).status, 401);
       assert.equal((await call('/profile/me', { method: 'PATCH', body: { displayName: 'No' } })).status, 401);
       assert.equal((await call('/users', { token })).status, 403);
@@ -61,7 +62,7 @@ test('Profile is separate from sessions and admin Users, with safe legacy aliase
       assert.equal((await call('/profile/me', { token: expired })).status, 401);
       const refreshed = await call('/auth/refresh', { method: 'POST', cookie: register.cookie.split(';')[0] });
       assert.equal(refreshed.status, 200);
-      assert.equal((await call('/profile/me', { token: refreshed.data.data.accessToken })).status, 200);
+      assert.equal((await call('/profile/me', { token: refreshed.accessToken })).status, 200);
       assert.equal(refreshed.data.data.user.displayName, 'Compatible');
       assert.equal((await call('/auth/logout', { method: 'POST', cookie: refreshed.cookie.split(';')[0] })).status, 204);
       assert.equal((await call('/auth/refresh', { method: 'POST', cookie: refreshed.cookie.split(';')[0] })).status, 401);
@@ -74,7 +75,7 @@ test('Profile is separate from sessions and admin Users, with safe legacy aliase
       const adminLogin = await call('/auth/login', { method: 'POST',
         body: { email: admin + '@example.test', password: adminPassword } });
       assert.equal(adminLogin.status, 200);
-      const adminToken = adminLogin.data.data.accessToken;
+      const adminToken = adminLogin.accessToken;
       assert.equal((await call('/users?limit=1', { token: adminToken })).status, 200);
       assert.equal((await call(`/users/${admin}`, { method: 'PATCH', token: adminToken, body: { isActive: false } })).status, 409);
       assert.equal((await call(`/users/${admin}`, { method: 'PATCH', token: adminToken, body: { role: 'USER' } })).status, 409);

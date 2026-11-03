@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { app } from '../src/app.js';
+import { accessTokenFromResponse } from './helpers/access-cookie.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
@@ -32,7 +33,7 @@ test('Users administration protects role lifecycle and revokes both token types 
       ...(body === undefined ? {} : { body: JSON.stringify(body) })
     });
     const setCookie = response.headers.get('set-cookie')?.split(';')[0] ?? null;
-    return { status: response.status, data: response.status === 204 ? null : await response.json(), cookie: setCookie };
+    return { status: response.status, data: response.status === 204 ? null : await response.json(), cookie: setCookie, accessToken: accessTokenFromResponse(response) };
   }
 
   try {
@@ -44,7 +45,7 @@ test('Users administration protects role lifecycle and revokes both token types 
     const adminLogin = await call('/auth/login', { method: 'POST',
       body: { email: adminEmail, password: adminPassword } });
     assert.equal(adminLogin.status, 200);
-    const adminToken = adminLogin.data.data.accessToken;
+    const adminToken = adminLogin.accessToken;
     assert.ok(adminToken);
 
     const created = await call('/users', { method: 'POST', token: adminToken,
@@ -58,7 +59,7 @@ test('Users administration protects role lifecycle and revokes both token types 
     const firstLogin = await call('/auth/login', { method: 'POST',
       body: { email: memberEmail, password: memberPassword } });
     assert.equal(firstLogin.status, 200);
-    const firstToken = firstLogin.data.data.accessToken;
+    const firstToken = firstLogin.accessToken;
     const firstCookie = firstLogin.cookie;
     assert.equal((await call('/users', { token: firstToken })).status, 403);
     assert.equal((await call('/users', { method: 'POST', token: firstToken,
@@ -74,7 +75,7 @@ test('Users administration protects role lifecycle and revokes both token types 
       body: { email: memberEmail, password: memberPassword } });
     assert.equal(elevatedLogin.status, 200);
     assert.equal(elevatedLogin.data.data.user.role, 'ADMIN');
-    assert.equal((await call('/users', { token: elevatedLogin.data.data.accessToken })).status, 200);
+    assert.equal((await call('/users', { token: elevatedLogin.accessToken })).status, 200);
 
     assert.equal((await call(`/users/${adminId}`, { method: 'PATCH', token: adminToken,
       body: { isActive: false } })).status, 409);
@@ -85,7 +86,7 @@ test('Users administration protects role lifecycle and revokes both token types 
     const downgraded = await call(`/users/${memberId}`, { method: 'PATCH', token: adminToken,
       body: { role: 'USER' } });
     assert.equal(downgraded.status, 200, JSON.stringify(downgraded.data));
-    assert.equal((await call('/users', { token: elevatedLogin.data.data.accessToken })).status, 401);
+    assert.equal((await call('/users', { token: elevatedLogin.accessToken })).status, 401);
     assert.equal((await call('/auth/refresh', { method: 'POST', cookie: elevatedLogin.cookie })).status, 401);
 
     const memberLogin = await call('/auth/login', { method: 'POST',
@@ -93,7 +94,7 @@ test('Users administration protects role lifecycle and revokes both token types 
     assert.equal(memberLogin.status, 200);
     assert.equal((await call(`/users/${memberId}`, { method: 'PATCH', token: adminToken,
       body: { isActive: false } })).status, 200);
-    assert.equal((await call('/profile/me', { token: memberLogin.data.data.accessToken })).status, 401);
+    assert.equal((await call('/profile/me', { token: memberLogin.accessToken })).status, 401);
     assert.equal((await call('/auth/refresh', { method: 'POST', cookie: memberLogin.cookie })).status, 401);
     assert.equal((await call('/auth/login', { method: 'POST',
       body: { email: memberEmail, password: memberPassword } })).status, 401);
@@ -106,8 +107,8 @@ test('Users administration protects role lifecycle and revokes both token types 
     assert.equal(restoredLogin.status, 200);
     // Even if the refresh cookie is unavailable, a bearer-authenticated logout revokes its family.
     assert.equal((await call('/auth/logout', { method: 'POST',
-      token: restoredLogin.data.data.accessToken })).status, 204);
-    assert.equal((await call('/profile/me', { token: restoredLogin.data.data.accessToken })).status, 401);
+      token: restoredLogin.accessToken })).status, 204);
+    assert.equal((await call('/profile/me', { token: restoredLogin.accessToken })).status, 401);
     assert.equal((await call('/auth/refresh', { method: 'POST', cookie: restoredLogin.cookie })).status, 401);
 
     assert.equal((await call(`/users/${memberId}`, { method: 'DELETE', token: adminToken })).status, 204);

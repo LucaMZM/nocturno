@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { app } from '../src/app.js';
+import { accessTokenFromResponse } from './helpers/access-cookie.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
@@ -19,7 +20,7 @@ test('HTTP flow: admin publishes, user favorites and buys two free tickets, admi
           ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
         ...(body === undefined ? {} : { body: JSON.stringify(body) })
       });
-      return { status: response.status, body: response.status === 204 ? null : await response.json() };
+      return { status: response.status, accessToken: accessTokenFromResponse(response), body: response.status === 204 ? null : await response.json() };
     };
     try {
       const adminEmail = `admin-${adminId}@example.com`;
@@ -28,13 +29,13 @@ test('HTTP flow: admin publishes, user favorites and buys two free tickets, admi
       const adminLogin = await request('/api/auth/login', 'POST',
         { email: adminEmail, password: 'flow-password-123' });
       assert.equal(adminLogin.status, 200);
-      const adminToken = adminLogin.body.data.accessToken;
+      const adminToken = adminLogin.accessToken;
 
       const registered = await request('/api/auth/register', 'POST',
         { email: `buyer-${randomUUID()}@example.com`, password: 'buyer-password-123', displayName: 'Flow buyer' });
       assert.equal(registered.status, 201);
       userId = registered.body.data.user.id;
-      const buyerToken = registered.body.data.accessToken;
+      const buyerToken = registered.accessToken;
       const venue = await request('/api/venues', 'POST', { name: 'Flow venue', type: 'CLUB',
         province: 'Valencia', municipality: 'Valencia', address: 'Flow street' }, adminToken);
       assert.equal(venue.status, 201);

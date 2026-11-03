@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { app } from '../src/app.js';
+import { accessTokenFromResponse } from './helpers/access-cookie.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
@@ -20,7 +21,7 @@ test('active, inactive and deleted Event views preserve the restore invariant',
       const response = await fetch(origin + path, { method, headers: {
         'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-      return { status: response.status, body: response.status === 204 ? null : await response.json() };
+      return { status: response.status, accessToken: accessTokenFromResponse(response), body: response.status === 204 ? null : await response.json() };
     };
     const ids = async (path) => (await call(path)).body.data.map((event) => event.id);
     const manage = (deleted = 'exclude', active = 'all', extra = '') =>
@@ -35,7 +36,7 @@ test('active, inactive and deleted Event views preserve the restore invariant',
       [adminId,email,await hashPassword('RestoreFixture!2026')]);
       const login = await call('/api/auth/login', 'POST', { email, password: 'RestoreFixture!2026' });
       assert.equal(login.status, 200);
-      token = login.body.data.accessToken;
+      token = login.accessToken;
       const base = { venueId, eventType: 'CLUB', status: 'PUBLISHED',
         startsAt: '2027-02-01T22:00:00+01:00', endsAt: '2027-02-02T04:00:00+01:00' };
       for (const [suffix, isActive] of [['A',true],['B',false],['C',true]]) {

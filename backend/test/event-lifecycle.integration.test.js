@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { app } from '../src/app.js';
+import { accessTokenFromResponse } from './helpers/access-cookie.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { hashPassword } from '../src/utils/password.js';
@@ -22,7 +23,7 @@ test('event lifecycle keeps UUID relations and public slug visibility', { skip: 
       method, headers: { 'content-type': 'application/json', ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) })
     });
-    return { status: response.status, body: response.status === 204 ? null : await response.json() };
+    return { status: response.status, accessToken: accessTokenFromResponse(response), body: response.status === 204 ? null : await response.json() };
   };
   try {
     await getPool().query(`INSERT INTO venues (id, name, slug, type, province, municipality, address)
@@ -33,7 +34,7 @@ test('event lifecycle keeps UUID relations and public slug visibility', { skip: 
       VALUES ($1, $2, 'Lifecycle fixture', 'ADMIN', $3)`, [userId, email, await hashPassword('fixture-password-123')]);
     const login = await call('/api/auth/login', 'POST', { email, password: 'fixture-password-123' });
     assert.equal(login.status, 200);
-    accessToken = login.body.data.accessToken;
+    accessToken = login.accessToken;
     const name = `Lifecycle test ${randomUUID().slice(0, 8)}`;
     const payload = { venueId, title: name,
       eventType: 'CLUB', startsAt: '2027-01-01T21:00:00+01:00', endsAt: '2027-01-02T05:00:00+01:00', status: 'PUBLISHED',

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { app } from '../src/app.js';
+import { accessTokenFromResponse } from './helpers/access-cookie.js';
 import { env } from '../src/config/env.js';
 import { getPool, closePool } from '../src/config/db.js';
 
@@ -19,7 +20,7 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
       ...(body ? { body: JSON.stringify(body) } : {})
     });
     return { status: response.status, body: response.status === 204 ? null : await response.json(),
-      cookie: response.headers.get('set-cookie')?.split(';')[0] };
+      cookie: response.headers.get('set-cookie')?.split(';')[0], accessToken: accessTokenFromResponse(response) };
   };
   try {
     const registered = await call('/api/auth/register', { method: 'POST',
@@ -28,7 +29,9 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
     userId = registered.body.data.user.id;
     assert.equal(registered.body.data.user.email, email);
     assert.ok(!JSON.stringify(registered.body).includes('passwordHash'));
-    const firstToken = registered.body.data.accessToken;
+    assert.equal(Object.hasOwn(registered.body.data, 'accessToken'), false);
+    assert.ok(registered.body.data.csrfToken);
+    const firstToken = registered.accessToken;
     assert.equal((await call('/api/auth/me', { token: firstToken })).body.data.id, userId);
     assert.equal((await call('/api/events', { method: 'POST', token: firstToken, body: {} })).status, 403);
     assert.equal((await call(`/api/users/${userId}/favorites`, { token: firstToken })).status, 200);
@@ -43,7 +46,7 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
     const login = await call('/api/auth/login', { method: 'POST', body: { email, password: 'test-password-123' } });
     assert.equal(login.status, 200);
     assert.equal((await call('/api/auth/logout', { method: 'POST', cookie: login.cookie })).status, 204);
-    assert.equal((await call('/api/auth/me', { token: login.body.data.accessToken })).status, 401);
+    assert.equal((await call('/api/auth/me', { token: login.accessToken })).status, 401);
     assert.equal((await call('/api/auth/refresh', { method: 'POST', cookie: login.cookie })).status, 401);
   } finally {
     if (userId) await getPool().query('DELETE FROM users WHERE id = $1', [userId]);
