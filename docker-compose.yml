@@ -31,7 +31,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -44,7 +44,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "4200:80"
+      - "127.0.0.1:4200:80"
 
 volumes:
   nocturno_pgdata:
