@@ -19,10 +19,10 @@ test('event lifecycle keeps UUID relations and public slug visibility', { skip: 
   let accessToken = null;
   const call = async (path, method = 'GET', payload) => {
     const response = await fetch(origin + path, {
-      method, headers: { 'content-type': 'application/json', ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
+      method, headers: { 'content-type': 'application/json', 'x-nocturno-csrf': '1', ...(accessToken ? { cookie: `nocturno_access=${accessToken}` } : {}) },
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) })
     });
-    return { status: response.status, body: response.status === 204 ? null : await response.json() };
+    return { accessToken: response.headers.getSetCookie().find(value => value.startsWith('nocturno_access='))?.split(';')[0].slice('nocturno_access='.length), status: response.status, body: response.status === 204 ? null : await response.json() };
   };
   try {
     await getPool().query(`INSERT INTO venues (id, name, slug, type, province, municipality, address)
@@ -33,7 +33,7 @@ test('event lifecycle keeps UUID relations and public slug visibility', { skip: 
       VALUES ($1, $2, 'Lifecycle fixture', 'ADMIN', $3)`, [userId, email, await hashPassword('fixture-password-123')]);
     const login = await call('/api/auth/login', 'POST', { email, password: 'fixture-password-123' });
     assert.equal(login.status, 200);
-    accessToken = login.body.data.accessToken;
+    accessToken = login.accessToken;
     const name = `Lifecycle test ${randomUUID().slice(0, 8)}`;
     const payload = { venueId, title: name,
       eventType: 'CLUB', startsAt: '2027-01-01T21:00:00+01:00', endsAt: '2027-01-02T05:00:00+01:00', status: 'PUBLISHED',

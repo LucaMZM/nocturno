@@ -18,9 +18,9 @@ test('active, inactive and deleted Event views preserve the restore invariant',
     let token;
     const call = async (path, method = 'GET', body) => {
       const response = await fetch(origin + path, { method, headers: {
-        'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        'content-type': 'application/json', 'x-nocturno-csrf': '1', ...(token ? { cookie: `nocturno_access=${token}` } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-      return { status: response.status, body: response.status === 204 ? null : await response.json() };
+      return { accessToken: response.headers.getSetCookie().find(value => value.startsWith('nocturno_access='))?.split(';')[0].slice('nocturno_access='.length), status: response.status, body: response.status === 204 ? null : await response.json() };
     };
     const ids = async (path) => (await call(path)).body.data.map((event) => event.id);
     const manage = (deleted = 'exclude', active = 'all', extra = '') =>
@@ -35,7 +35,7 @@ test('active, inactive and deleted Event views preserve the restore invariant',
       [adminId,email,await hashPassword('RestoreFixture!2026')]);
       const login = await call('/api/auth/login', 'POST', { email, password: 'RestoreFixture!2026' });
       assert.equal(login.status, 200);
-      token = login.body.data.accessToken;
+      token = login.accessToken;
       const base = { venueId, eventType: 'CLUB', status: 'PUBLISHED',
         startsAt: '2027-02-01T22:00:00+01:00', endsAt: '2027-02-02T04:00:00+01:00' };
       for (const [suffix, isActive] of [['A',true],['B',false],['C',true]]) {

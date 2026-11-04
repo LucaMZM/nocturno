@@ -24,7 +24,7 @@ export class App {
   readonly yomogan = inject(YomoganStore);
   readonly year = new Date().getFullYear();
   readonly location = inject(LocationStore);
-  private readonly auth = inject(AuthStore);
+  readonly auth = inject(AuthStore);
   private readonly favorites = inject(FavoritesStore);
   private readonly cart = inject(CartStore);
   private readonly orders = inject(OrdersStore);

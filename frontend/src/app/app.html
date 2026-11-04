@@ -3,6 +3,11 @@
   [municipalities]="location.municipalities()"
   (locationChanged)="changeLocation($event)"
 />
+@if (auth.initialized() && auth.error()) {
+  <div class="page-width inline-alert" role="alert">{{ auth.error() }}
+    <button type="button" class="text-action" (click)="auth.retrySession()">Reintentar sesión</button>
+  </div>
+}
 <main id="main-content"><router-outlet /></main>
 <footer class="site-footer">
   <div class="page-width footer-inner">

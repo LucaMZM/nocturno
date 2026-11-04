@@ -39,7 +39,7 @@ test('existing commerce survives migrations and the demo USED fixture seeds cons
       await closePool();
       env.DATABASE_URL = url.toString();
       const pool = getPool();
-      await t.test('012 and 013 add constraints and audit storage without changing existing commercial rows', async () => {
+      await t.test('012–014 add constraints and audit storage without changing existing commercial rows', async () => {
         await pool.query('CREATE TABLE schema_migrations(name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT NOW())');
         const oldFiles = (await listMigrationFiles()).filter(name => Number(name.slice(0, 3)) < 12);
         for (const name of oldFiles) {
@@ -64,6 +64,8 @@ test('existing commerce survives migrations and the demo USED fixture seeds cons
           VALUES($1,$2,$3,$4,$5,'USED',NOW()-interval '2 days')`, [ticket, item, user, event, type]);
         const before = await snapshot(pool);
         await migrate();
+        // The only additive user field is nullable; every pre-existing value stays identical.
+        before.users.forEach(user => { user.avatar_url = null; });
         assert.deepEqual(await snapshot(pool), before);
         assert.equal((await pool.query('SELECT count(*)::int AS n FROM event_deletion_audit')).rows[0].n, 0);
         const constraints = await pool.query(`SELECT conname,convalidated FROM pg_constraint WHERE conname IN

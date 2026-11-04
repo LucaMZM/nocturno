@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { protectCsrf } from './auth/auth.middleware.js';
 import swaggerUi from 'swagger-ui-express';
 import helmet from 'helmet';
 import { env, frontendOrigins } from './config/env.js';
@@ -42,6 +44,8 @@ app.use((req, res, next) => (req.path.startsWith('/api/docs') ? swaggerHelmet : 
 app.use(requestLoggers);
 app.use(cors({ origin: frontendOrigins(), credentials: true }));
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), stripeController.webhook);
+app.use(cookieParser());
+app.use('/api', protectCsrf);
 app.use(express.json({ limit: '1mb' }));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/api/config/payments', (_req, res) => {
@@ -52,7 +56,9 @@ app.get('/api/config/events', (_req, res) => res.json({ data: {
   maxImages: env.EVENT_GALLERY_MAX_IMAGES
 } }));
 app.get('/api/openapi.json', (_req, res) => res.json(swaggerSpec));
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { swaggerOptions: { requestInterceptor: (req) => {
+  req.headers['X-Nocturno-CSRF'] = '1'; req.credentials = 'include'; return req;
+} } }));
 app.use('/api/yomogan',yomoganRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);

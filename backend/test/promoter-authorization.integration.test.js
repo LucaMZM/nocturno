@@ -17,9 +17,9 @@ test('isolated PROMOTER can manage only owned events and sees scoped dashboard',
     const base = `http://127.0.0.1:${server.address().port}`;
     const request = async (path, token, method = 'GET', body) => {
       const response = await fetch(base + path, { method, headers: {
-        'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        'content-type': 'application/json', 'x-nocturno-csrf': '1', ...(token ? { cookie: `nocturno_access=${token}` } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}) });
-      return { status: response.status, body: await response.json() };
+      return { accessToken: response.headers.getSetCookie().find(value => value.startsWith('nocturno_access='))?.split(';')[0].slice('nocturno_access='.length), status: response.status, body: await response.json() };
     };
     try {
       for (const [promoterId, name] of [[ownPromoter, 'Fixture owner'], [otherPromoter, 'Fixture foreign']])
@@ -38,7 +38,7 @@ test('isolated PROMOTER can manage only owned events and sees scoped dashboard',
         [userId,email,ownPromoter,await hashPassword('FixturePassword!2026')]);
       const login = await request('/api/auth/login',null,'POST',{ email,password:'FixturePassword!2026' });
       assert.equal(login.status,200);
-      const token = login.body.data.accessToken;
+      const token = login.accessToken;
       const publicProfile = await request(`/api/promoters/slug/fixture-${ownPromoter}`, null);
       assert.equal(publicProfile.status, 200);
       assert.equal(publicProfile.body.data.promoter.id, ownPromoter);

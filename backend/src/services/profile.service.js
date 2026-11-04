@@ -7,7 +7,7 @@ function requireProfile(user) {
 }
 export const profileService = {
   async getMine(userId) { return requireProfile(await profileRepository.findById(userId)); },
-  async updateMine(userId, { displayName }) {
-    return requireProfile(await profileRepository.updateDisplayName(userId, displayName));
+  async updateMine(userId, data) {
+    return requireProfile(await profileRepository.updateMine(userId, data));
   },
 };

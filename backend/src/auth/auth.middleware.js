@@ -4,16 +4,15 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { frontendOrigins } from '../config/env.js';
 
 export const requireAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.get('authorization');
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = req.cookies?.nocturno_access;
   req.user = await authService.verifyAccess(token);
+  _res.set('Cache-Control', 'no-store');
   next();
 });
 
 export const optionalAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.get('authorization');
-  if (header?.startsWith('Bearer '))
-    req.user = await authService.verifyAccess(header.slice(7));
+  if (req.cookies?.nocturno_access)
+    req.user = await authService.verifyAccess(req.cookies.nocturno_access);
   next();
 });
 
@@ -31,6 +30,16 @@ export function requireTrustedOrigin(req, _res, next) {
   if (origin && !frontendOrigins().includes(origin))
     return next(new AppError(403, 'FORBIDDEN_ORIGIN', 'Origin is not allowed'));
   next();
+}
+
+export function protectCsrf(req, res, next) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  requireTrustedOrigin(req, res, (error) => {
+    if (error) return next(error);
+    if (req.get('sec-fetch-site') === 'cross-site' || req.get('x-nocturno-csrf') !== '1')
+      return next(new AppError(403, 'CSRF_REJECTED', 'Request could not be verified'));
+    next();
+  });
 }
 
 const attempts = new Map();
