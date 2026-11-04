@@ -24,12 +24,12 @@ export const ProfileStore = signalStore(
           return false;
         } finally { if (request === version) patchState(store, { loading: false }); }
       },
-      async save(displayName: string): Promise<boolean> {
+      async save(displayName: string, avatarUrl?: string | null): Promise<boolean> {
         if (store.loading() || store.saving() || !auth.user()) return false;
         const request = ++version, session = auth.getSessionVersion();
         patchState(store, { saving: true, saved: false, error: null });
         try {
-          const user = (await api.updateMine(displayName)).data;
+          const user = (await api.updateMine(displayName, avatarUrl)).data;
           if (request !== version || !auth.updateSessionUser(user, session)) return false;
           patchState(store, { saved: true });
           return true;

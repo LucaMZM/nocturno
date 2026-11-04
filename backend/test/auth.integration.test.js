@@ -14,12 +14,12 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
   const call = async (path, { method = 'GET', body, cookie, token } = {}) => {
     const response = await fetch(origin + path, {
       method,
-      headers: { 'content-type': 'application/json',
-        ...(cookie ? { cookie } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      headers: { 'content-type': 'application/json', 'x-nocturno-csrf': '1',
+        ...(cookie ? { cookie } : {}), ...(token ? { cookie: `nocturno_access=${token}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {})
     });
-    return { status: response.status, body: response.status === 204 ? null : await response.json(),
-      cookie: response.headers.get('set-cookie')?.split(';')[0] };
+    return { accessToken: response.headers.getSetCookie().find(value => value.startsWith('nocturno_access='))?.split(';')[0].slice('nocturno_access='.length), status: response.status, body: response.status === 204 ? null : await response.json(),
+      cookie: response.headers.getSetCookie().find(value => value.startsWith('nocturno_refresh='))?.split(';')[0] };
   };
   try {
     const registered = await call('/api/auth/register', { method: 'POST',
@@ -28,7 +28,7 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
     userId = registered.body.data.user.id;
     assert.equal(registered.body.data.user.email, email);
     assert.ok(!JSON.stringify(registered.body).includes('passwordHash'));
-    const firstToken = registered.body.data.accessToken;
+    const firstToken = registered.accessToken;
     assert.equal((await call('/api/auth/me', { token: firstToken })).body.data.id, userId);
     assert.equal((await call('/api/events', { method: 'POST', token: firstToken, body: {} })).status, 403);
     assert.equal((await call(`/api/users/${userId}/favorites`, { token: firstToken })).status, 200);
@@ -43,7 +43,7 @@ test('auth rotates refresh tokens and blocks cross-account writes', { skip: !env
     const login = await call('/api/auth/login', { method: 'POST', body: { email, password: 'test-password-123' } });
     assert.equal(login.status, 200);
     assert.equal((await call('/api/auth/logout', { method: 'POST', cookie: login.cookie })).status, 204);
-    assert.equal((await call('/api/auth/me', { token: login.body.data.accessToken })).status, 401);
+    assert.equal((await call('/api/auth/me', { token: login.accessToken })).status, 401);
     assert.equal((await call('/api/auth/refresh', { method: 'POST', cookie: login.cookie })).status, 401);
   } finally {
     if (userId) await getPool().query('DELETE FROM users WHERE id = $1', [userId]);

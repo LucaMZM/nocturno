@@ -35,6 +35,7 @@ await build({
       export { StripeCheckoutService } from './src/app/features/checkout/services/stripe-checkout.service.ts';
       export { CartStore } from './src/app/features/cart/store/cart.store.ts';
       export { CartApiService } from './src/app/features/cart/services/cart-api.service.ts';
+      export { authGuard, roleGuard } from './src/app/features/auth/guards/auth.guard.ts';
       export { authInterceptor } from './src/app/features/auth/auth.interceptor.ts';
     `,
     resolveDir: process.cwd(),
@@ -52,7 +53,7 @@ after(() => rm(bundlePath, { force: true }));
 const {
   EventsStore, EventsApiService, EventDetailStore, VenuesApiService,
   PromotersApiService, TicketTypesApiService, AuthStore, AuthApiService,
-  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, CartStore, CartApiService, CheckoutStore, CheckoutApiService, StripeCheckoutService,
+  ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, authGuard, roleGuard, CartStore, CartApiService, CheckoutStore, CheckoutApiService, StripeCheckoutService,
 } = await import(pathToFileURL(bundlePath).href);
 
 function deferred() {
@@ -146,7 +147,7 @@ test('an old profile response cannot restore a logged-out user', async () => {
   const profile = deferred();
   const user = { id: 'user-1', displayName: 'Original', role: 'USER' };
   const api = {
-    login: async () => ({ data: { user, accessToken: 'demo-token' } }),
+    login: async () => ({ data: { user } }),
     logout: async () => {},
   };
   const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: api },
@@ -159,7 +160,7 @@ test('an old profile response cannot restore a logged-out user', async () => {
     profile.resolve({ data: { ...user, displayName: 'Nuevo' } });
     assert.equal(await updating, false);
     assert.equal(store.user(), null);
-    assert.equal(store.accessToken(), null);
+    assert.equal('accessToken' in store, false);
   } finally { injector.destroy(); }
 });
 
@@ -198,7 +199,7 @@ test('Profile owns load/save state while session consumers share the updated use
   const user = { id: 'profile-user', displayName: 'Original', role: 'USER' };
   const pending = deferred(); let saves = 0;
   const injector = createEnvironmentInjector([
-    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, accessToken: 'memory-token' } }) } },
+    { provide: AuthApiService, useValue: { login: async () => ({ data: { user } }) } },
     { provide: ProfileApiService, useValue: { getMine: async () => ({ data: { ...user, displayName: 'Loaded' } }),
       updateMine: () => { saves++; return pending.promise; } } }, AuthStore, ProfileStore,
   ]);
@@ -216,7 +217,7 @@ test('Profile owns load/save state while session consumers share the updated use
     assert.equal(profile.saved(), true);
     assert.equal(auth.user(), profile.user());
     assert.equal(auth.user().displayName, 'Updated');
-    assert.equal(auth.accessToken(), 'memory-token');
+    assert.equal('accessToken' in auth, false);
     assert.equal(auth.error(), null);
   } finally { injector.destroy(); }
 });
@@ -225,7 +226,7 @@ test('Profile errors and late responses cannot pollute Auth or a later login of 
   const user = { id: 'profile-user', displayName: 'Original', role: 'USER' }, pending = deferred();
   const api = { updateMine: async () => { throw new HttpErrorResponse({ status: 400 }); } };
   const injector = createEnvironmentInjector([
-    { provide: AuthApiService, useValue: { login: async () => ({ data: { user, accessToken: 'memory-token' } }), logout: async () => {} } },
+    { provide: AuthApiService, useValue: { login: async () => ({ data: { user } }), logout: async () => {} } },
     { provide: ProfileApiService, useValue: api }, AuthStore, ProfileStore,
   ]);
   try {
@@ -242,25 +243,25 @@ test('Profile errors and late responses cannot pollute Auth or a later login of 
   } finally { injector.destroy(); }
 });
 
-test('Profile HTTP sends Bearer and retries after access-token expiry using existing refresh', async () => {
+test('Profile HTTP sends credentials and CSRF without Bearer and retries once', async () => {
   const user = { id: 'profile-user', displayName: 'Original', role: 'USER' }, requests = [];
   let refreshes = 0;
   const injector = createEnvironmentInjector([
     { provide: AuthApiService, useValue: {
-      login: async () => ({ data: { user, accessToken: 'expired-token' } }),
-      refresh: async () => { refreshes++; return { data: { user, accessToken: 'fresh-token' } }; },
+      login: async () => ({ data: { user } }),
+      refresh: async () => { refreshes++; return { data: { user } }; },
     } }, { provide: Router, useValue: { url: '/account', navigate() { throw Error('Unexpected redirect'); } } }, AuthStore,
   ]);
   try {
     const auth = injector.get(AuthStore); await auth.login('fixture@example.test', 'password');
     const response = await runInInjectionContext(injector, () => firstValueFrom(authInterceptor(
       new HttpRequest('PATCH', '/api/profile/me', { displayName: 'Updated' }), request => {
-        requests.push(request.headers.get('Authorization'));
+        requests.push([request.headers.get('Authorization'), request.withCredentials, request.headers.get('X-Nocturno-CSRF')]);
         return requests.length === 1 ? throwError(() => new HttpErrorResponse({ status: 401 })) : of(new HttpResponse({ status: 200 }));
       },
     )));
     assert.equal(response.status, 200);
-    assert.deepEqual(requests, ['Bearer expired-token', 'Bearer fresh-token']); assert.equal(refreshes, 1);
+    assert.deepEqual(requests, [[null, true, '1'], [null, true, '1']]); assert.equal(refreshes, 1);
   } finally { injector.destroy(); }
 });
 
@@ -275,7 +276,7 @@ test('Users administration delegates listing and writes to UsersApiService', asy
   ]);
   try {
     const users = injector.get(UsersStore); await users.loadUsers(2, 'User', 'USER');
-    assert.deepEqual(calls, [[2, 'User', 'USER']]); assert.equal(users.users()[0], user);
+    assert.deepEqual(calls, [[2, 'User', 'USER', 'all']]); assert.equal(users.users()[0], user);
     assert.equal(users.pagination().page, 2);
     assert.equal((await users.saveUser(null, { displayName: 'Created' })).displayName, 'Created');
     assert.equal((await users.saveUser(user.id, { isActive: false })).isActive, false);
@@ -425,4 +426,105 @@ test('leaving a pending Stripe form cannot block or unlock a later form confirma
     await assert.rejects(()=>service.confirm('current'),/ya se está procesando/);
     second.resolve({paymentIntent:{status:'succeeded'}});await current;
   } finally {service.destroy();globalThis.window=oldWindow;}
+});
+
+test('bootstrap is deduplicated and restores user without exposing credentials', async () => {
+  const pending = deferred(); let calls = 0;
+  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: {
+    refresh: () => { calls++; return pending.promise; },
+  } }, AuthStore]);
+  try {
+    const auth = injector.get(AuthStore), a = auth.bootstrap(), b = auth.bootstrap();
+    await Promise.resolve(); assert.equal(calls, 1); assert.equal(auth.initialized(), false);
+    pending.resolve({ data: { user: { id: 'restored', role: 'USER', avatarUrl: 'https://example.test/avatar.png' } } });
+    await Promise.all([a,b]); assert.equal(auth.initialized(), true); assert.equal(auth.user().id, 'restored');
+    assert.equal('accessToken' in auth, false); await auth.bootstrap(); assert.equal(calls, 1);
+  } finally { injector.destroy(); }
+});
+
+test('logout waits for in-flight refresh cookies and a new login waits for logout', async () => {
+  const pending = deferred(), logout = deferred(), calls = [];
+  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: {
+    refresh: () => { calls.push('refresh'); return pending.promise; },
+    logout: () => { calls.push('logout'); return logout.promise; },
+    login: async () => { calls.push('login'); return { data: { user: { id: 'new', role: 'USER' } } }; },
+  } }, AuthStore]);
+  try {
+    const auth = injector.get(AuthStore), refreshing = auth.refresh(); await Promise.resolve();
+    const ending = auth.logout(), loggingIn = auth.login('new@example.test', 'password');
+    assert.equal(auth.user(), null); assert.deepEqual(calls, ['refresh']);
+    pending.resolve({ data: { user: { id: 'old', role: 'ADMIN' } } });
+    assert.equal(await refreshing, false);
+    await new Promise(resolve => setImmediate(resolve)); assert.deepEqual(calls, ['refresh', 'logout']);
+    logout.resolve(); await ending; assert.equal(await loggingIn, true);
+    assert.deepEqual(calls, ['refresh', 'logout', 'login']); assert.equal(auth.user().id, 'new');
+  } finally { injector.destroy(); }
+});
+
+test('logout blocks automatic session restoration and network failure is explicit', async () => {
+  let refreshes = 0;
+  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: {
+    refresh: async () => { refreshes++; throw new HttpErrorResponse({ status: 503 }); },
+    logout: async () => { throw new Error('offline'); },
+  } }, AuthStore]);
+  try {
+    const auth = injector.get(AuthStore); await auth.bootstrap();
+    assert.equal(auth.initialized(), true); assert.ok(auth.error());
+    await auth.logout(); assert.match(auth.error(), /servidor/);
+    assert.equal(await auth.refresh(), false); assert.equal(refreshes, 1);
+  } finally { injector.destroy(); }
+});
+
+test('concurrent 401s share refresh, never replay across logout and never send cookies externally', async () => {
+  const pending = deferred(); let refreshes = 0, retries = 0;
+  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: {
+    refresh: () => { refreshes++; return pending.promise; }, logout: async () => {},
+  } }, { provide: Router, useValue: { url: '/', navigate: () => {} } }, AuthStore]);
+  try {
+    const auth = injector.get(AuthStore);
+    const run = () => runInInjectionContext(injector, () => firstValueFrom(authInterceptor(new HttpRequest('GET','/api/profile/me'), () => {
+      retries++; return throwError(() => new HttpErrorResponse({ status: 401 }));
+    }))).catch(error => error.status);
+    const a = run(), b = run(); await Promise.resolve(); assert.equal(refreshes, 1);
+    const ending = auth.logout(); pending.resolve({ data: { user: { id: 'old' } } });
+    assert.deepEqual(await Promise.all([a,b]), [401,401]); await ending; assert.equal(retries, 2);
+    runInInjectionContext(injector, () => authInterceptor(new HttpRequest('POST','https://external.test/api', {}), request => {
+      assert.equal(request.withCredentials, false); assert.equal(request.headers.has('X-Nocturno-CSRF'), false);
+      return of(new HttpResponse({ status: 200 }));
+    }));
+  } finally { injector.destroy(); }
+});
+
+test('avatar edits immediately update the same user signal used by navbar and profile', async () => {
+  const user = { id: 'avatar-user', role: 'USER', displayName: 'Before', avatarUrl: null };
+  const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: { login: async () => ({ data: { user } }) } },
+    { provide: ProfileApiService, useValue: { updateMine: async (displayName, avatarUrl) => ({ data: { ...user, displayName, avatarUrl } }) } }, AuthStore, ProfileStore]);
+  try {
+    const auth = injector.get(AuthStore), profile = injector.get(ProfileStore); await auth.login('user@example.test','pass');
+    assert.equal(await profile.save('After','https://example.test/avatar.png'), true);
+    assert.equal(auth.user(), profile.user()); assert.equal(auth.user().avatarUrl, 'https://example.test/avatar.png');
+    assert.equal(await profile.save('After',null), true); assert.equal(auth.user().avatarUrl,null);
+  } finally { injector.destroy(); }
+});
+
+test('guards wait for bootstrap, preserve destination and distinguish USER/PROMOTER/ADMIN', async () => {
+  for (const role of [null,'USER','PROMOTER','ADMIN']) {
+    const pending = deferred();
+    const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: {
+      refresh: () => pending.promise,
+    } }, { provide: Router, useValue: { createUrlTree: (path, options) => ({ path, options }) } }, AuthStore]);
+    try {
+      let settled = false;
+      const result = runInInjectionContext(injector, () => roleGuard({ data: { roles: ['ADMIN'] } }, { url: '/dashboard/users' }));
+      result.then(() => { settled = true; }); await Promise.resolve(); assert.equal(settled, false);
+      if (role) pending.resolve({ data: { user: { id: 'fixture', role } } });
+      else pending.reject(new HttpErrorResponse({ status: 401 }));
+      const route = await result;
+      if (role === 'ADMIN') assert.equal(route,true);
+      else assert.equal(route.path[0], role ? '/error/403' : '/error/401');
+      if (!role) assert.equal(route.options.queryParams.returnUrl,'/dashboard/users');
+      const account = await runInInjectionContext(injector, () => authGuard({}, { url: '/account' }));
+      assert.equal(account === true, !!role);
+    } finally { injector.destroy(); }
+  }
 });

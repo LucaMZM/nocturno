@@ -86,7 +86,7 @@ test('two concurrent PostgreSQL checkouts cannot oversell; duplicate webhook doe
         .update(`${timestamp}.${raw}`).digest('hex');
       const webhook = (signature) => fetch(
         `http://127.0.0.1:${server.address().port}/api/stripe/webhook`,
-        { method: 'POST', headers: { 'content-type': 'application/json',
+        { method: 'POST', headers: { 'content-type': 'application/json', 'x-nocturno-csrf': '1',
           'stripe-signature': signature }, body: raw });
       assert.equal((await webhook(`t=${timestamp},v1=bad`)).status, 400);
       const wrongAmount = JSON.stringify({ type: 'payment_intent.succeeded',
@@ -95,7 +95,7 @@ test('two concurrent PostgreSQL checkouts cannot oversell; duplicate webhook doe
         .update(`${timestamp}.${wrongAmount}`).digest('hex');
       const rejectedAmount = await fetch(
         `http://127.0.0.1:${server.address().port}/api/stripe/webhook`,
-        { method: 'POST', headers: { 'content-type': 'application/json',
+        { method: 'POST', headers: { 'content-type': 'application/json', 'x-nocturno-csrf': '1',
           'stripe-signature': `t=${timestamp},v1=${wrongDigest}` }, body: wrongAmount });
       assert.equal(rejectedAmount.status, 409);
       assert.equal((await getPool().query('SELECT count(*) AS total FROM tickets WHERE event_id = $1',
@@ -105,7 +105,7 @@ test('two concurrent PostgreSQL checkouts cannot oversell; duplicate webhook doe
         const signed = createHmac('sha256', env.STRIPE_WEBHOOK_SECRET)
           .update(`${timestamp}.${body}`).digest('hex');
         return fetch(`http://127.0.0.1:${server.address().port}/api/stripe/webhook`, {
-          method: 'POST', headers: { 'content-type': 'application/json',
+          method: 'POST', headers: { 'content-type': 'application/json', 'x-nocturno-csrf': '1',
             'stripe-signature': `t=${timestamp},v1=${signed}` }, body,
         });
       };

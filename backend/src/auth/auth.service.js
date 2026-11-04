@@ -8,6 +8,13 @@ import { AppError } from '../utils/AppError.js';
 
 const issuer = 'nocturno-api';
 const audience = 'nocturno-web';
+const isRefreshToken = value => typeof value === 'string' && /^[A-Za-z0-9_-]{64}$/.test(value);
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function validClaims(payload) {
+  return payload && [payload.sub, payload.sid, payload.jti].every(value => typeof value === 'string' && uuid.test(value))
+    && ['USER', 'PROMOTER', 'ADMIN'].includes(payload.role)
+    && Number.isInteger(payload.iat) && Number.isInteger(payload.exp);
+}
 const refreshDays = Number.parseInt(env.JWT_REFRESH_EXPIRES_IN, 10);
 
 function publicUser(row) {
@@ -28,6 +35,7 @@ async function accessTokenFor(user, familyId) {
   return new SignJWT({ role: user.role, sid: familyId })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(user.id)
+    .setJti(randomUUID())
     .setIssuer(issuer)
     .setAudience(audience)
     .setIssuedAt()
@@ -39,7 +47,7 @@ async function createSession(user) {
   const refreshToken = randomBytes(48).toString('base64url');
   const familyId = randomUUID();
   await authRepository.storeRefreshToken({
-    userId: user.id,
+    userId: user.id, role: user.role,
     tokenHash: refreshHash(refreshToken),
     familyId,
     expiresAt: refreshExpiry()
@@ -63,7 +71,7 @@ export const authService = {
     return createSession(publicUser(row));
   },
   async refresh(oldToken) {
-    if (!oldToken) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
+    if (!isRefreshToken(oldToken)) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
     const newToken = randomBytes(48).toString('base64url');
     const row = await authRepository.rotateRefreshToken(
       refreshHash(oldToken), refreshHash(newToken), refreshExpiry());
@@ -73,39 +81,29 @@ export const authService = {
     return { user, accessToken: await accessTokenFor(user, familyId), refreshToken: newToken };
   },
   async logout(refreshToken, accessToken) {
-    if (refreshToken) await authRepository.revokeRefreshFamily(refreshHash(refreshToken));
-    if (accessToken) {
-      try {
-        const { payload } = await jwtVerify(
-          accessToken, new TextEncoder().encode(requireAuthSecrets().access),
-          { issuer, audience, algorithms: ['HS256'] });
-        if (typeof payload.sub === 'string' && typeof payload.sid === 'string' &&
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sid))
-          await authRepository.revokeAccessFamily(payload.sub, payload.sid);
-      } catch (error) {
-        // Invalid or expired access credentials cannot revoke another session.
-        if (error?.code && !String(error.code).startsWith('ERR_JWT_') &&
-            !String(error.code).startsWith('ERR_JWS_') && error.code !== 'ERR_JOSE_ALG_NOT_ALLOWED') throw error;
+    // Verify cryptography before using claims; expired/invalid cookies still get cleared.
+    let payload;
+    if (typeof accessToken === 'string') {
+      try { ({ payload } = await jwtVerify(accessToken,
+        new TextEncoder().encode(requireAuthSecrets().access),
+        { issuer, audience, algorithms: ['HS256'] })); }
+      catch (error) {
+        if (!String(error?.code).startsWith('ERR_J')) throw error;
       }
     }
+    await authRepository.revokeSession(isRefreshToken(refreshToken) ? refreshHash(refreshToken) : null,
+      validClaims(payload) ? payload : null);
   },
   async verifyAccess(token) {
-    if (!token) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
-    let subject;
-    let familyId;
+    if (typeof token !== 'string' || token.length > 4096) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
+    let payload;
     try {
-      const { payload } = await jwtVerify(
-        token, new TextEncoder().encode(requireAuthSecrets().access),
-        { issuer, audience, algorithms: ['HS256'] });
-      subject = payload.sub;
-      familyId = payload.sid;
-    } catch {
-      throw new AppError(401, 'INVALID_ACCESS_TOKEN', 'Sign in again');
-    }
-    if (typeof familyId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(familyId))
-      throw new AppError(401, 'INVALID_ACCESS_TOKEN', 'Sign in again');
-    const row = await authRepository.findById(subject);
-    if (!row?.is_active || !(await authRepository.isSessionActive(subject, familyId))) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
+      ({ payload } = await jwtVerify(token, new TextEncoder().encode(requireAuthSecrets().access),
+        { issuer, audience, algorithms: ['HS256'] }));
+    } catch { throw new AppError(401, 'INVALID_ACCESS_TOKEN', 'Sign in again'); }
+    if (!validClaims(payload)) throw new AppError(401, 'INVALID_ACCESS_TOKEN', 'Sign in again');
+    const row = await authRepository.findAuthenticatedUser(payload);
+    if (!row) throw new AppError(401, 'UNAUTHENTICATED', 'Sign in required');
     return publicUser(row);
   }
 };

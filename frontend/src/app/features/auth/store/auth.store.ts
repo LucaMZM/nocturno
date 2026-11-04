@@ -6,14 +6,13 @@ import { AuthApiService, AuthSession } from '../services/auth-api.service';
 
 interface AuthState {
   user: User | null;
-  accessToken: string | null;
   initialized: boolean;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
-  user: null, accessToken: null, initialized: false, loading: false, error: null
+  user: null, initialized: false, loading: false, error: null
 };
 
 export const AuthStore = signalStore(
@@ -21,31 +20,50 @@ export const AuthStore = signalStore(
   withState(initialState),
   withComputed(({ user }) => ({ isAuthenticated: computed(() => !!user()) })),
   withMethods((store, api = inject(AuthApiService)) => {
-    let refreshInProgress: Promise<string | null> | null = null;
+    let refreshInProgress: Promise<boolean> | null = null;
     let sessionVersion = 0;
+    let loggedOut = false;
+    // Serialize cookie-writing responses, not just state updates. Logout waits for a
+    // pending refresh/login before clearing cookies, and a new login waits for logout.
+    let authQueue: Promise<unknown> = Promise.resolve();
+    function serialize<T>(operation: () => Promise<T>): Promise<T> {
+      const pending = authQueue.then(operation, operation);
+      authQueue = pending.catch(() => {});
+      return pending;
+    }
     function acceptSession(session: AuthSession) {
-      patchState(store, { user: session.user, accessToken: session.accessToken,
+      patchState(store, { user: session.user,
         initialized: true, loading: false, error: null });
     }
-    async function refresh(): Promise<string | null> {
+    async function refresh(): Promise<boolean> {
+      if (loggedOut) return false;
       if (refreshInProgress) return refreshInProgress;
       const requestVersion = sessionVersion;
       refreshInProgress = (async () => {
         try {
-          const response = await api.refresh();
-          if (requestVersion !== sessionVersion) return null;
+          const response = await serialize(() => api.refresh());
+          if (requestVersion !== sessionVersion) return false;
           acceptSession(response.data);
-          return response.data.accessToken;
-        } catch {
+          return true;
+        } catch (error) {
           if (requestVersion === sessionVersion)
-            patchState(store, { user: null, accessToken: null, initialized: true });
-          return null;
+            patchState(store, { user: null, initialized: true,
+              error: (error as { status?: number })?.status === 401 ? null : 'No hemos podido comprobar la sesión. Inténtalo de nuevo.' });
+          return false;
         } finally { refreshInProgress = null; }
       })();
       return refreshInProgress;
     }
     return {
       refresh,
+      async retrySession() {
+        if (loggedOut) {
+          const requestVersion = sessionVersion;
+          try { await serialize(() => api.logout());
+            if (requestVersion === sessionVersion) patchState(store, { error: null });
+          } catch { /* Keep the explicit logout failure visible. */ }
+        } else await refresh();
+      },
       async bootstrap() {
         if (store.initialized()) return;
         await refresh();
@@ -53,9 +71,9 @@ export const AuthStore = signalStore(
       async login(email: string, password: string): Promise<boolean> {
         const requestVersion = ++sessionVersion;
         patchState(store, { loading: true, error: null });
-        try { const session = (await api.login(email, password)).data;
+        try { const session = (await serialize(() => api.login(email, password))).data;
           if (requestVersion !== sessionVersion) return false;
-          acceptSession(session); return true; }
+          loggedOut = false; acceptSession(session); return true; }
         catch (error) {
           if (requestVersion !== sessionVersion) return false;
           patchState(store, { loading: false,
@@ -66,9 +84,9 @@ export const AuthStore = signalStore(
       async register(email: string, password: string, displayName: string): Promise<boolean> {
         const requestVersion = ++sessionVersion;
         patchState(store, { loading: true, error: null });
-        try { const session = (await api.register(email, password, displayName)).data;
+        try { const session = (await serialize(() => api.register(email, password, displayName))).data;
           if (requestVersion !== sessionVersion) return false;
-          acceptSession(session); return true; }
+          loggedOut = false; acceptSession(session); return true; }
         catch (error) {
           if (requestVersion !== sessionVersion) return false;
           patchState(store, { loading: false,
@@ -77,12 +95,16 @@ export const AuthStore = signalStore(
         }
       },
       async logout() {
-        const token = store.accessToken();
-        sessionVersion++;
-        patchState(store, { user: null, accessToken: null, initialized: true });
-        try { await api.logout(token); }
-        catch { /* The local session still ends when the API is unavailable. */ }
-        finally { patchState(store, { user: null, accessToken: null, initialized: true }); }
+        const requestVersion = ++sessionVersion;
+        loggedOut = true;
+        patchState(store, { user: null, initialized: true, loading: true, error: null });
+        try { await serialize(() => api.logout()); }
+        catch {
+          if (requestVersion === sessionVersion)
+            patchState(store, { error: 'No se ha podido cerrar la sesión en el servidor. Reintenta al recuperar la conexión.' });
+        } finally {
+          if (requestVersion === sessionVersion) patchState(store, { user: null, initialized: true, loading: false });
+        }
       },
       getSessionVersion: () => sessionVersion,
       updateSessionUser(user: User, expectedVersion: number): boolean {

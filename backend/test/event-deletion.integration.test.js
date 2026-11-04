@@ -21,7 +21,7 @@ test('event deletion impact, history preservation and transaction integrity', {
   const call = async (id, suffix, method = 'GET', body, actor = 'admin') => {
     const response = await fetch(`${origin}/api/events/${id}/${suffix}`, {
       method,
-      headers: { authorization: `Bearer ${tokens[actor]}`, 'content-type': 'application/json' },
+      headers: { cookie: `nocturno_access=${tokens[actor]}`, 'content-type': 'application/json', 'x-nocturno-csrf': '1' },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     return { status: response.status, body: await response.json() };
@@ -75,7 +75,7 @@ test('event deletion impact, history preservation and transaction integrity', {
       await pool.query(`INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
         VALUES ($1, $2, $3, NOW() + interval '1 hour')`,
       [id, randomBytes(32).toString('hex'), familyId]);
-      tokens[name] = await new SignJWT({ sid: familyId }).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
+      tokens[name] = await new SignJWT({ sid: familyId, role: { admin: 'ADMIN', user: 'USER', outsider: 'PROMOTER' }[name] }).setJti(randomUUID()).setProtectedHeader({ alg: 'HS256' }).setSubject(id)
         .setIssuer('nocturno-api').setAudience('nocturno-web').setIssuedAt().setExpirationTime('10m')
         .sign(new TextEncoder().encode(env.JWT_ACCESS_SECRET));
     }
@@ -200,7 +200,7 @@ test('event deletion impact, history preservation and transaction integrity', {
         await transaction.query('SELECT id FROM events WHERE id=$1 FOR UPDATE', [event.id]);
         await transaction.query('UPDATE events SET deleted_at=NOW(),is_active=FALSE WHERE id=$1', [event.id]);
         selection = fetch(origin + '/api/cart/items', {
-          method: 'POST', headers: { authorization: `Bearer ${tokens.user}`, 'content-type': 'application/json' },
+          method: 'POST', headers: { cookie: `nocturno_access=${tokens.user}`, 'content-type': 'application/json', 'x-nocturno-csrf': '1' },
           body: JSON.stringify({ ticketTypeId: event.type, quantity: 1 }),
         });
         let blocked = false;

@@ -5,14 +5,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{accessToken}}",
-        "type": "string"
-      }
-    ]
+    "type": "noauth"
   },
   "variable": [
     {
@@ -30,10 +23,6 @@
     {
       "key": "displayName",
       "value": "Usuario Postman"
-    },
-    {
-      "key": "accessToken",
-      "value": ""
     },
     {
       "key": "userId",
@@ -111,6 +100,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/auth/register",
@@ -128,7 +122,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data; pm.collectionVariables.set(\"accessToken\", data.accessToken); pm.collectionVariables.set(\"userId\", data.user.id);"
+                  "const data = pm.response.json().data; pm.collectionVariables.set(\"userId\", data.user.id);"
                 ]
               }
             }
@@ -142,6 +136,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/auth/login",
@@ -159,7 +158,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data; pm.collectionVariables.set(\"accessToken\", data.accessToken); pm.collectionVariables.set(\"userId\", data.user.id);"
+                  "const data = pm.response.json().data; pm.collectionVariables.set(\"userId\", data.user.id);"
                 ]
               }
             }
@@ -173,6 +172,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/auth/refresh",
@@ -190,7 +194,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const data = pm.response.json().data; pm.collectionVariables.set(\"accessToken\", data.accessToken); pm.collectionVariables.set(\"userId\", data.user.id);"
+                  "const data = pm.response.json().data; pm.collectionVariables.set(\"userId\", data.user.id);"
                 ]
               }
             }
@@ -204,6 +208,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/auth/logout",
@@ -319,6 +328,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events",
@@ -347,6 +361,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events/{{eventId}}",
@@ -375,6 +394,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events/{{eventId}}",
@@ -392,6 +416,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events/{{eventId}}/soft-delete",
@@ -409,6 +438,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events/{{eventId}}/active",
@@ -422,7 +456,13 @@
           "name": "Delete event (soft-delete alias)",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/events/{{eventId}}",
             "description": "Mismo borrado lógico que /soft-delete."
           }
@@ -451,6 +491,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/venues",
@@ -479,6 +524,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/venues/{{venueId}}",
@@ -507,6 +557,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/promoters",
@@ -535,6 +590,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/promoters/{{promoterId}}",
@@ -552,6 +612,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/users",
@@ -578,6 +643,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/users/{{userId}}",
@@ -591,7 +661,13 @@
           "name": "Admin delete user",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/users/{{userId}}",
             "description": "Elimina el usuario indicado. Solo ADMIN."
           }
@@ -608,7 +684,13 @@
           "name": "Delete promoter",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/promoters/{{promoterId}}",
             "description": "Requiere ADMIN y que el promotor no tenga eventos relacionados."
           }
@@ -625,7 +707,13 @@
           "name": "Delete venue",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/venues/{{venueId}}",
             "description": "Requiere ADMIN y que el local no tenga eventos relacionados."
           }
@@ -665,6 +753,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events/{{eventId}}/ticket-types",
@@ -693,6 +786,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/ticket-types/{{ticketTypeId}}",
@@ -714,7 +812,13 @@
           "name": "Add favorite",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/me/favorites/{{eventId}}"
           }
         },
@@ -722,7 +826,13 @@
           "name": "Remove favorite",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/me/favorites/{{eventId}}"
           }
         },
@@ -738,7 +848,13 @@
           "name": "Delete ticket type",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/ticket-types/{{ticketTypeId}}",
             "description": "Puede fallar si ya hay compras relacionadas."
           }
@@ -756,7 +872,13 @@
           "name": "Legacy add user favorite",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/users/{{userId}}/favorites/{{eventId}}",
             "description": "Solo el dueño o ADMIN."
           }
@@ -765,7 +887,13 @@
           "name": "Legacy remove user favorite",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/users/{{userId}}/favorites/{{eventId}}",
             "description": "Solo el dueño o ADMIN."
           }
@@ -791,6 +919,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/cart/items",
@@ -819,6 +952,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}",
@@ -832,7 +970,13 @@
           "name": "Remove item",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/cart/items/{{cartItemId}}"
           }
         },
@@ -840,7 +984,13 @@
           "name": "Empty cart",
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
+              }
+            ],
             "url": "{{baseUrl}}/api/cart/items"
           }
         },
@@ -867,6 +1017,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/checkout",
@@ -977,6 +1132,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/tickets/{{ticketCode}}/check-in",
@@ -1071,6 +1231,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "body": {
@@ -1117,6 +1282,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/events/{{eventId}}/deletion",
@@ -1147,6 +1317,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "body": {
@@ -1173,6 +1348,11 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Nocturno-CSRF",
+                "value": "1",
+                "type": "text"
               }
             ],
             "url": "{{baseUrl}}/api/auth/me",

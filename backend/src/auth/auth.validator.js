@@ -9,4 +9,4 @@ export const registerInput = z.object({
   displayName: z.string().trim().min(1).max(120)
 }).strict();
 
-export const loginInput = z.object({ email, password: z.string().min(1) }).strict();
+export const loginInput = z.object({ email, password: z.string().min(1).max(128) }).strict();
