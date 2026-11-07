@@ -32,6 +32,7 @@ export class SearchBarComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const value = this.initial();
+      clearTimeout(this.timer);
       this.lastEmitted = value;
       this.control.setValue(value, { emitEvent: false });
     });

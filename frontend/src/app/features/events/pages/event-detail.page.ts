@@ -106,7 +106,7 @@ import { EventImageCarouselComponent } from '../components/event-image-carousel.
               } @else if (eventDetailStore.tickets().length) {
                 <div class="ticket-list">
                   @for (ticket of eventDetailStore.tickets(); track ticket.id) {
-                    <app-ticket-type-card [ticket]="ticket" [canBuy]="event.status === 'PUBLISHED'"
+                    <app-ticket-type-card [ticket]="ticket" [canBuy]="ticket.purchasable"
                       [pending]="cart.pending()" (add)="addToCart($event.ticketTypeId, $event.quantity)" />
                   }
                 </div>
