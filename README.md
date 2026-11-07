@@ -174,3 +174,9 @@ Los pedidos, pagos, tickets y snapshots comerciales se conservan.
 [Políticas, migraciones 012–013, hallazgos y pruebas](docs/data-integrity-and-deletion.md).
 
 El [catálogo incremental y carrito](docs/catalogue-expansion.md) documenta cómo añadir diez propuestas sin sobrescribir eventos ni historial comercial.
+
+### Catálogo Shop
+
+Home incorpora categorías, promotores y locales del catálogo público. El listado
+reproducible está en `/events` y mantiene mapa, geolocalización y filtros.
+Consulta [la arquitectura de Shop, sus seis endpoints y pruebas](docs/shop.md).

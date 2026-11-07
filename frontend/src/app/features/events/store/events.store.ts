@@ -1,4 +1,5 @@
-import { computed, inject } from '@angular/core';
+import { firstValueFrom, Subject, takeUntil } from 'rxjs';
+import { computed, inject, DestroyRef } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { Pagination } from '../../../core/models/api.model';
 import { Event, EventFilters } from '../../../core/models/domain.model';
@@ -64,12 +65,15 @@ export const EventsStore = signalStore(
   })),
   // HTTP remains in EventsApiService; request IDs protect against stale responses.
   withMethods((store, eventsApiService = inject(EventsApiService)) => {
+    const cancelList = new Subject<void>();
+    inject(DestroyRef).onDestroy(() => { cancelList.next(); cancelList.complete(); });
     let latestListRequestId = 0;
     let latestDetailRequestId = 0;
 
     /** Only the latest response may update the list after rapid filter changes. */
     async function loadEvents() {
       const requestId = ++latestListRequestId;
+      cancelList.next();
       const eventFilters = store.filters();
       const isLoadingAnotherPage = eventFilters.page > DEFAULT_EVENT_PAGE;
       patchState(store, {
@@ -80,10 +84,10 @@ export const EventsStore = signalStore(
         initialized: true,
       });
       try {
-        const response = await eventsApiService.getEvents(eventFilters);
+        const response = await firstValueFrom(eventsApiService.observeEvents(eventFilters).pipe(takeUntil(cancelList)));
         if (requestId !== latestListRequestId) return;
         patchState(store, {
-          events: isLoadingAnotherPage ? [...store.events(), ...response.data] : response.data,
+          events: response.data,
           pagination: response.pagination,
           loading: false,
           loadingMore: false,
