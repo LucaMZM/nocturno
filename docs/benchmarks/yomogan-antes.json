@@ -1,0 +1,441 @@
+{
+  "model": "qwen3:4b",
+  "embedModel": "embeddinggemma",
+  "samples": 9,
+  "meanMs": 18818.08638411111,
+  "p50Ms": 18021.72641600002,
+  "p95Ms": 43532.829750000004,
+  "results": [
+    {
+      "name": "saludo",
+      "latencyMs": 180.517875,
+      "retrievalMs": 139.717958,
+      "generationMs": 0,
+      "embeddingMs": 0,
+      "mode": "clarification",
+      "message": "¿En qué ciudad te apetece salir? Cuéntame también qué música buscas y cuánto quieres gastar.",
+      "filters": {
+        "municipality": null,
+        "province": null,
+        "excludedGenres": [],
+        "genre": null,
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": []
+    },
+    {
+      "name": "sencilla",
+      "latencyMs": 43532.829750000004,
+      "retrievalMs": 1046.1070010000049,
+      "generationMs": 36390.15775,
+      "embeddingMs": 6047.212708,
+      "mode": "assistant",
+      "message": "¡Hola! ¿Qué te gusta más: música electrónica, ambiente chill o algo más específico?",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": null,
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": [
+        {
+          "id": "40000000-0000-4000-8000-000000000001",
+          "slug": "pulso-en-ruzafa",
+          "title": "Pulso en Ruzafa",
+          "venueName": "Sala Umbral",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-13T22:00:00.000Z",
+          "endsAt": "2026-11-14T03:00:00.000Z",
+          "minPrice": 14,
+          "availability": 218,
+          "isDemo": true,
+          "posterUrl": "/posters/event-01.svg",
+          "genres": [
+            "TECHNO",
+            "HOUSE"
+          ],
+          "reason": "Música: TECHNO, HOUSE · Ambiente: UNDERGROUND",
+          "href": "/events/pulso-en-ruzafa"
+        },
+        {
+          "id": "40000000-0000-4000-8000-000000000002",
+          "slug": "atardecer-de-azotea",
+          "title": "Atardecer de Azotea",
+          "venueName": "Azotea del Carmen",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-14T21:00:00.000Z",
+          "endsAt": "2026-11-15T02:00:00.000Z",
+          "minPrice": 19,
+          "availability": 219,
+          "isDemo": true,
+          "posterUrl": "/posters/event-02.svg",
+          "genres": [
+            "HOUSE",
+            "POP"
+          ],
+          "reason": "Música: HOUSE, POP · Ambiente: Chill, Elegante",
+          "href": "/events/atardecer-de-azotea"
+        }
+      ]
+    },
+    {
+      "name": "filtros",
+      "latencyMs": 37475.543249999995,
+      "retrievalMs": 3012.092874999995,
+      "generationMs": 32663.239624999995,
+      "embeddingMs": 1648.1277499999997,
+      "mode": "assistant",
+      "message": "¡Buscando techno en Valencia por menos de ٢٠ euros? ¡Vamos a encontrar algo que se ajuste!",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": "TECHNO",
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": 20,
+        "exclusivePrice": true,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": [
+        {
+          "id": "40000000-0000-4000-8000-000000000001",
+          "slug": "pulso-en-ruzafa",
+          "title": "Pulso en Ruzafa",
+          "venueName": "Sala Umbral",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-13T22:00:00.000Z",
+          "endsAt": "2026-11-14T03:00:00.000Z",
+          "minPrice": 14,
+          "availability": 178,
+          "isDemo": true,
+          "posterUrl": "/posters/event-01.svg",
+          "genres": [
+            "TECHNO",
+            "HOUSE"
+          ],
+          "reason": "Música: TECHNO, HOUSE · Sala Umbral",
+          "href": "/events/pulso-en-ruzafa"
+        },
+        {
+          "id": "d0000000-0000-4000-8000-000000000003",
+          "slug": "frecuencia-gran-sala",
+          "title": "Frecuencia Gran Sala",
+          "venueName": "Palau Alameda",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-15T22:00:00.000Z",
+          "endsAt": "2026-11-16T03:00:00.000Z",
+          "minPrice": 12,
+          "availability": 240,
+          "isDemo": true,
+          "posterUrl": "https://palaualameda.com/wp-content/uploads/2025/08/palau-alameda-atic-medium.jpg",
+          "genres": [
+            "TECHNO",
+            "HARDGROOVE"
+          ],
+          "reason": "Música: TECHNO, HARDGROOVE · Desde 12,00 €",
+          "href": "/events/frecuencia-gran-sala"
+        }
+      ]
+    },
+    {
+      "name": "seguimiento",
+      "latencyMs": 22746.752791000006,
+      "retrievalMs": 270.2079589999921,
+      "generationMs": 22368.516833,
+      "embeddingMs": 0,
+      "mode": "search",
+      "message": "La respuesta no ha podido validarse. Estas son coincidencias comprobadas del catálogo. No hay coincidencias. Prueba otra fecha o cambia una preferencia.",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": "TECHNO",
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": "tomorrow",
+        "date": null,
+        "dateFrom": "2026-11-13T23:00:00.000Z",
+        "dateTo": "2026-11-15T07:00:00.000Z"
+      },
+      "events": []
+    },
+    {
+      "name": "sin resultados",
+      "latencyMs": 10745.054082999995,
+      "retrievalMs": 454.1929999999993,
+      "generationMs": 10266.422917000004,
+      "embeddingMs": 0,
+      "mode": "search",
+      "message": "La respuesta no ha podido validarse. Estas son coincidencias comprobadas del catálogo. No hay coincidencias. Prueba otra fecha o cambia una preferencia.",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": "TECHNO",
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": 1,
+        "exclusivePrice": true,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": []
+    },
+    {
+      "name": "fuera de tema",
+      "latencyMs": 64.99495899998874,
+      "retrievalMs": 54.33983399999852,
+      "generationMs": 0,
+      "embeddingMs": 0,
+      "mode": "clarification",
+      "message": "¿En qué ciudad te apetece salir? Cuéntame también qué música buscas y cuánto quieres gastar.",
+      "filters": {
+        "municipality": null,
+        "province": null,
+        "excludedGenres": [],
+        "genre": null,
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": []
+    },
+    {
+      "name": "inyección",
+      "latencyMs": 19143.715165999994,
+      "retrievalMs": 480.325582999998,
+      "generationMs": 16762.546208,
+      "embeddingMs": 1865.1346249999915,
+      "mode": "assistant",
+      "message": "¡Hola! ¿Quieres probar algo de música en el aire o algo más concreto?",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": null,
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": [
+        {
+          "id": "d0000000-0000-4000-8000-000000000007",
+          "slug": "circuito-valencia",
+          "title": "Circuito Valencia",
+          "venueName": "La3 Club",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-19T22:00:00.000Z",
+          "endsAt": "2026-11-20T03:00:00.000Z",
+          "minPrice": 15,
+          "availability": 290,
+          "isDemo": true,
+          "posterUrl": null,
+          "genres": [
+            "TECHNO",
+            "HARD_TECHNO"
+          ],
+          "reason": "Música: TECHNO, HARD TECHNO · Ambiente: UNDERGROUND",
+          "href": "/events/circuito-valencia"
+        },
+        {
+          "id": "d0000000-0000-4000-8000-000000000012",
+          "slug": "sin-filtro-radio-city",
+          "title": "Sin Filtro · Radio City",
+          "venueName": "Radio City Valencia",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-24T21:00:00.000Z",
+          "endsAt": "2026-11-25T02:00:00.000Z",
+          "minPrice": 8,
+          "availability": 290,
+          "isDemo": true,
+          "posterUrl": null,
+          "genres": [
+            "HIP_HOP",
+            "SOUL"
+          ],
+          "reason": "Música: HIP HOP, SOUL · Ambiente: Alternativo",
+          "href": "/events/sin-filtro-radio-city"
+        }
+      ]
+    },
+    {
+      "name": "obsoleta",
+      "latencyMs": 18021.72641600002,
+      "retrievalMs": 218.12924999999814,
+      "generationMs": 16176.408415999991,
+      "embeddingMs": 1606.8427919999813,
+      "mode": "assistant",
+      "message": "¡Hola! ¿Quieres probar algo de estilo underground o algo más relajado para el ¹ de enero?",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": null,
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": [
+        {
+          "id": "40000000-0000-4000-8000-000000000001",
+          "slug": "pulso-en-ruzafa",
+          "title": "Pulso en Ruzafa",
+          "venueName": "Sala Umbral",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-13T22:00:00.000Z",
+          "endsAt": "2026-11-14T03:00:00.000Z",
+          "minPrice": 14,
+          "availability": 218,
+          "isDemo": true,
+          "posterUrl": "/posters/event-01.svg",
+          "genres": [
+            "TECHNO",
+            "HOUSE"
+          ],
+          "reason": "Música: TECHNO, HOUSE · Ambiente: UNDERGROUND",
+          "href": "/events/pulso-en-ruzafa"
+        },
+        {
+          "id": "40000000-0000-4000-8000-000000000006",
+          "slug": "fuerza-marina",
+          "title": "Fuerza Marina",
+          "venueName": "Muelle de Sal",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-18T21:00:00.000Z",
+          "endsAt": "2026-11-19T02:00:00.000Z",
+          "minPrice": 28,
+          "availability": 217,
+          "isDemo": true,
+          "posterUrl": "/posters/event-06.svg",
+          "genres": [
+            "HARDGROOVE",
+            "TECHNO"
+          ],
+          "reason": "Música: HARDGROOVE, TECHNO · Ambiente: UNDERGROUND",
+          "href": "/events/fuerza-marina"
+        }
+      ]
+    },
+    {
+      "name": "comparación",
+      "latencyMs": 17451.643167000002,
+      "retrievalMs": 204.2830819999799,
+      "generationMs": 15625.377375000011,
+      "embeddingMs": 1597.7663750000065,
+      "mode": "assistant",
+      "message": "¡Hola! ¿Quieres ahorrar un poco de dinero en tu próxima noche en Valencia?",
+      "filters": {
+        "municipality": "Valencia",
+        "province": null,
+        "excludedGenres": [],
+        "genre": null,
+        "atmosphere": null,
+        "eventType": null,
+        "idealFor": null,
+        "dressCode": null,
+        "maxPrice": null,
+        "exclusivePrice": false,
+        "groupSize": 1,
+        "age": null,
+        "day": null,
+        "date": null
+      },
+      "events": [
+        {
+          "id": "d0000000-0000-4000-8000-000000000012",
+          "slug": "sin-filtro-radio-city",
+          "title": "Sin Filtro · Radio City",
+          "venueName": "Radio City Valencia",
+          "municipality": "Valencia",
+          "startsAt": "2026-11-24T21:00:00.000Z",
+          "endsAt": "2026-11-25T02:00:00.000Z",
+          "minPrice": 8,
+          "availability": 290,
+          "isDemo": true,
+          "posterUrl": null,
+          "genres": [
+            "HIP_HOP",
+            "SOUL"
+          ],
+          "reason": "Desde 8,00 € · Ambiente: Alternativo",
+          "href": "/events/sin-filtro-radio-city"
+        },
+        {
+          "id": "d0000000-0000-4000-8000-000000000019",
+          "slug": "neon-y-vinilo",
+          "title": "Neón y Vinilo",
+          "venueName": "Tulum Valencia",
+          "municipality": "Valencia",
+          "startsAt": "2026-12-01T22:00:00.000Z",
+          "endsAt": "2026-12-02T03:00:00.000Z",
+          "minPrice": 13,
+          "availability": 290,
+          "isDemo": true,
+          "posterUrl": "https://tulumvalencia.es/wp-content/uploads/2024/09/TULUM.-pedroecastelo.-23.12.02-19-1-scaled-1.jpg",
+          "genres": [
+            "HOUSE",
+            "SOUL"
+          ],
+          "reason": "Desde 13,00 € · Tulum Valencia",
+          "href": "/events/neon-y-vinilo"
+        }
+      ]
+    }
+  ]
+}

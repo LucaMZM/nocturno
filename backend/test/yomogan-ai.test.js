@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { z } from 'zod';
-import { env } from '../src/config/env.js';
-import { yomoganAiService } from '../src/services/yomogan-ai.service.js';
+import { env } from '../ai/config/env.js';
+import { yomoganAiService } from '../ai/services/yomogan-ai.service.js';
 test('AI adapter uses both protocols, validates structured output and redacts provider errors', async () => {
   const requests = [];
   const server = createServer(async (req, res) => {

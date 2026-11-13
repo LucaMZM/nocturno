@@ -209,7 +209,7 @@ Object.assign(swaggerSpec.paths, {
   '/api/auth/logout': { post: { tags: ['Auth'], summary: 'Revoke refresh session', security: [{ refreshCookie: [] }],
     responses: { '204': { description: 'Logged out' }, ...commonErrors } } },
   '/api/auth/me': { get: simple('Auth', 'Current user', ref('User')),
-    patch: post('Auth', 'Update display name', object({ displayName: str(120), avatarUrl: nullable({ type: 'string', format: 'uri', maxLength: 2048 }) }), ref('User')) },
+    patch: post('Auth', 'Update display name', object({ displayName: str(120) }), ref('User')) },
   '/api/me/favorites': { get: paged('Favorites', 'My favorite events', eventRef) },
   '/api/me/favorites/{eventId}': {
     post: secured({ tags: ['Favorites'], summary: 'Add my favorite', parameters: [idParam('eventId')],
@@ -329,7 +329,7 @@ swaggerSpec.paths['/api/events/{id}/deletion'] = { post: secured({
 swaggerSpec.paths['/api/profile/me'] = {
   get: simple('Profile', 'Get my authenticated profile', ref('User')),
   patch: post('Profile', 'Update my display name or HTTPS avatar',
-    object({ displayName: str(120), avatarUrl: nullable({ type: 'string', format: 'uri', maxLength: 2048 }) }), ref('User')),
+    object({ displayName: str(120) }), ref('User')),
 };
 for (const operation of Object.values(swaggerSpec.paths['/api/profile/me']))
   operation.security = [{ accessCookie: [] }];
@@ -348,7 +348,6 @@ for (const [path, operations] of Object.entries(swaggerSpec.paths)) {
     }
   }
 }
-swaggerSpec.components.schemas.User.properties.avatarUrl = nullable({ type: 'string', format: 'uri', maxLength: 2048 });
 swaggerSpec.paths['/api/users'].get.parameters.push(query('active', values(['all','true','false'])));
 
 // Shop reutiliza los contratos públicos sin cambiar los endpoints anteriores.
@@ -368,3 +367,17 @@ swaggerSpec.paths['/api/shop/events/{slug}/variants'] = { get: {
   responses: { 200: { description: 'data: tipos con available y purchasable; sin reservas de stock' },
     404: { description: 'Evento no público o inexistente' } },
 } };
+
+swaggerSpec.paths['/api/dashboard/most-visited'] = { get: secured({
+  tags:['Dashboard'], summary:'Visitas voluntarias agregadas, restringidas por propietario',
+  parameters:[query('days',{type:'integer',enum:[7,30],default:7})],
+  responses:{200:{description:'Ranking real; colección vacía cuando no hay mediciones'}},
+}) };
+swaggerSpec.paths['/api/shop/events/{slug}/view'] = { post: {
+  tags:['Shop'], summary:'Registrar visita tras autorización explícita del visitante',
+  parameters:[{name:'slug',in:'path',required:true,schema:{type:'string'}}],
+  responses:{204:{description:'Recibida o descartada por duplicado/bot'},429:{description:'Límite de uso'}},
+} };
+swaggerSpec.paths['/api/dashboard/events'].get.parameters.push(
+  query('sort', {type:'string',enum:['dateAsc','dateDesc','titleAsc','titleDesc','recent','sold','views'],default:'recent'})
+);

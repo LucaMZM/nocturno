@@ -1,3 +1,4 @@
+import { catalogContextRoutes } from './routes/catalog-context.routes.js';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -24,7 +25,6 @@ import { stripeController } from './controllers/stripe.controller.js';
 import { stripeApiService } from './services/stripe-api.service.js';
 import { paymentRoutes } from './routes/payment.routes.js';
 import { ticketRoutes } from './routes/ticket.routes.js';
-import { yomoganRoutes } from './routes/yomogan.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 
 export const app = express();
@@ -60,7 +60,6 @@ app.get('/api/openapi.json', (_req, res) => res.json(swaggerSpec));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { swaggerOptions: { requestInterceptor: (req) => {
   req.headers['X-Nocturno-CSRF'] = '1'; req.credentials = 'include'; return req;
 } } }));
-app.use('/api/yomogan',yomoganRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 // Compatibility alias: both URLs delegate to Profile, never to Auth logic.
@@ -76,6 +75,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/me', myFavoriteRoutes);
 app.use('/api/promoters', promoterRoutes);
 app.use('/api/venues', venueRoutes);
+app.use('/api/catalog-context', catalogContextRoutes);
 app.use('/api/shop', shopRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/ticket-types', ticketTypeRoutes);

@@ -117,7 +117,7 @@ export const dashboardRepository = {
       tickets: row.tickets }));
   },
   async listEvents(actor, { page, limit, search, status, deleted = 'exclude', active = 'all',
-    promoterId, venueId, municipality, dateFrom, dateTo }) {
+    promoterId, venueId, municipality, dateFrom, dateTo, sort = 'recent' }) {
     const values = [];
     const where = [scope(actor, values), deleted === 'only' ? 'e.deleted_at IS NOT NULL' : 'e.deleted_at IS NULL'];
     if (deleted !== 'only' && active !== 'all') {
@@ -131,13 +131,17 @@ export const dashboardRepository = {
     if (dateFrom) { values.push(dateFrom); where.push(`e.starts_at >= $${values.length}`); }
     if (dateTo) { values.push(dateTo); where.push(`e.starts_at <= $${values.length}`); }
     const clause = where.join(' AND ');
+    const order = { dateAsc: 'e.starts_at ASC', dateDesc: 'e.starts_at DESC',
+      titleAsc: 'e.title ASC', titleDesc: 'e.title DESC', recent: 'e.created_at DESC', sold: 'sold_count DESC', views: 'view_count DESC' }[sort] ?? 'e.created_at DESC';
     const count = await getPool().query(
       `SELECT count(*) AS total FROM events e JOIN venues v ON v.id = e.venue_id WHERE ${clause}`, values);
     values.push(limit, (page - 1) * limit);
     const { rows } = await getPool().query(
-      `SELECT e.*, v.name AS venue_name, v.municipality, v.province
+      `SELECT e.*, v.name AS venue_name, v.municipality, v.province,
+         (SELECT coalesce(sum(t.sold),0)::int FROM ticket_types t WHERE t.event_id=e.id) AS sold_count,
+         (SELECT coalesce(sum(d.views),0)::int FROM event_daily_views d WHERE d.event_id=e.id AND d.day >= (NOW() AT TIME ZONE 'Europe/Madrid')::date-29) AS view_count
        FROM events e JOIN venues v ON v.id = e.venue_id WHERE ${clause}
-       ORDER BY e.created_at DESC, e.id LIMIT $${values.length - 1} OFFSET $${values.length}`,
+       ORDER BY ${order}, e.id LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values);
     return { rows: rows.map(mapEvent), total: Number(count.rows[0].total) };
   },

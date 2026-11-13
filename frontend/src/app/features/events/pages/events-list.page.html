@@ -20,17 +20,6 @@
         <span class="hero-index">NOCTURNO / 001 — DESCUBRIR</span>
       </section>
 
-      @if (isHome) {
-        @if (discovery.loading()) { <p role="status">Cargando categorías, promotores y locales…</p> }
-        @else if (discovery.error()) {
-          <p role="alert">No se han podido cargar las secciones del catálogo.</p>
-          <button class="button-outline" (click)="discovery.load()">Reintentar</button>
-        } @else {
-          <app-shop-carousel title="Encuentra tu sonido" kind="category" [entries]="discovery.categories()" />
-          <app-shop-carousel title="Quién mueve la noche" kind="host" [entries]="discovery.hosts()" />
-          <app-shop-carousel title="Espacios para descubrir" kind="location" [entries]="discovery.locations()" />
-        }
-      }
       <section class="discovery-controls" aria-label="Filtrar eventos">
         <div class="controls-intro">
           <div>

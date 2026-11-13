@@ -57,17 +57,17 @@ test('cookie authentication, CSRF, persistent revocation and profile contracts',
       assert.equal((await call('/profile/me', { method: 'PATCH', cookies: session.cookies, headers: { origin: env.FRONTEND_URL }, body: { displayName: 'Allowed' } })).status, 200);
       assert.equal((await call('/stripe/webhook', { method: 'POST', csrf: false, body: {} })).data.error.code, 'INVALID_STRIPE_SIGNATURE');
     });
-    await t.test('profile avatar persists through refresh and forbids privilege/mass assignment', async () => {
-      const avatar = 'https://example.test/avatar.png';
-      const result = await call('/profile/me', { method: 'PATCH', cookies: session.cookies, body: { avatarUrl: avatar, displayName: 'Updated' } });
-      assert.equal(result.status, 200); assert.equal(result.data.data.avatarUrl, avatar);
+    await t.test('el perfil conserva nombre, oculta avatar histórico y bloquea asignación masiva', async () => {
+      await pool.query("UPDATE users SET avatar_url='https://example.test/legacy.png' WHERE id=$1", [ids[0]]);
+      const result = await call('/profile/me', { method: 'PATCH', cookies: session.cookies, body: { displayName: 'Updated' } });
+      assert.equal(result.status, 200); assert.equal(result.data.data.avatarUrl, undefined);
       for (const avatarUrl of ['javascript:alert(1)', 'data:image/svg+xml,bad', 'http://example.test/x', 'https://user:pass@example.test/x'])
         assert.equal((await call('/profile/me', { method: 'PATCH', cookies: session.cookies, body: { avatarUrl } })).status, 400);
       assert.equal((await call('/profile/me', { method: 'PATCH', cookies: session.cookies, body: { role: 'ADMIN' } })).status, 400);
       session = await call('/auth/refresh', { method: 'POST', cookies: session.cookies });
-      assert.equal(session.status, 200); assert.equal(session.data.data.user.avatarUrl, avatar);
+      assert.equal(session.status, 200); assert.equal(session.data.data.user.avatarUrl, undefined);
       assert.equal((await call('/profile/me', { cookies: session.cookies })).data.data.displayName, 'Updated');
-      assert.equal((await call('/profile/me', { method: 'PATCH', cookies: session.cookies, body: { avatarUrl: null } })).status, 200);
+      assert.equal((await call('/profile/me', { method: 'PATCH', cookies: session.cookies, body: { avatarUrl: null } })).status, 400);
     });
     await t.test('signed but malformed, expired, tampered and obsolete-role JWTs rejected', async () => {
       const payload = decodeJwt(tokenOf(session.cookies));

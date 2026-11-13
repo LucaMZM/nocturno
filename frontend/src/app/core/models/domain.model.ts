@@ -1,5 +1,4 @@
 export interface User {
-  avatarUrl?: string | null;
   id: string;
   email: string;
   displayName: string;
@@ -46,6 +45,7 @@ export interface Venue {
 }
 
 export interface Event {
+  soldCount?: number;
   id: string;
   venueId: string;
   promoterId: string | null;
