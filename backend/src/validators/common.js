@@ -3,7 +3,10 @@ import { AppError } from '../utils/AppError.js';
 
 export const id = z.uuid();
 export const publicSlug = z.object({ slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(220) }).strict();
-export const optionalUrl = z.url().nullable().optional();
+export const optionalUrl = z.url().max(2048).refine(value => {
+  const url = new URL(value);
+  return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password;
+}, 'Use an HTTP/HTTPS URL without credentials').nullable().optional();
 export const optionalText = z.string().trim().max(5000).nullable().optional();
 export const patch = (schema) => z.object(Object.fromEntries(Object.entries(schema.shape).map(([key, field]) =>
   [key, (field instanceof z.ZodDefault ? field.removeDefault() : field).optional()]
@@ -15,7 +18,8 @@ export const pageQuery = {
 export const listQuery = z.object(pageQuery).strict();
 const adminSearch = z.string().trim().max(120).optional();
 export const userListQuery = z.object({ ...pageQuery, search: adminSearch,
-  role: z.enum(['USER', 'PROMOTER', 'ADMIN']).optional() }).strict();
+  role: z.enum(['USER', 'PROMOTER', 'ADMIN']).optional(),
+  active: z.enum(['all', 'true', 'false']).default('all') }).strict();
 export const orderListQuery = z.object({ ...pageQuery, search: adminSearch,
   status: z.enum(['AWAITING_PAYMENT', 'PAID', 'CANCELLED', 'EXPIRED', 'REFUNDED']).optional(),
   eventId: id.optional(), dateFrom: z.iso.datetime({ offset: true }).optional(),

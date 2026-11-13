@@ -1,6 +1,6 @@
 # Probar Nocturno con Postman
 
-Importa [`Nocturno.postman_collection.json`](Nocturno.postman_collection.json). La colección usa `baseUrl = http://localhost:3000` y guarda el access token tras login o registro. Postman conserva la cookie HttpOnly de refresh en su cookie jar.
+Importa [`Nocturno.postman_collection.json`](Nocturno.postman_collection.json). La colección usa `baseUrl = http://localhost:3000` y conserva ambas cookies HttpOnly en su cookie jar tras login o registro. No utiliza Bearer ni guarda JWT en variables. Las mutaciones incluyen `X-Nocturno-CSRF: 1`.
 
 Orden recomendado:
 

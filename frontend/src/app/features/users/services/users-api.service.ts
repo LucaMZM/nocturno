@@ -9,8 +9,8 @@ import { User } from '../../../core/models/domain.model';
 export class UsersApiService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiUrl;
-  getUsers(page = 1, search = '', role = '') { return firstValueFrom(this.http.get<PaginatedResponse<User>>(
-    `${this.base}/users`, { params: { page, limit: 20, ...(search ? { search } : {}), ...(role ? { role } : {}) } })); }
+  getUsers(page = 1, search = '', role = '', active = 'all') { return firstValueFrom(this.http.get<PaginatedResponse<User>>(
+    `${this.base}/users`, { params: { page, limit: 20, active, ...(search ? { search } : {}), ...(role ? { role } : {}) } })); }
   createUser(payload: object) { return firstValueFrom(this.http.post<ApiResponse<User>>(`${this.base}/users`, payload)); }
   deleteUser(id: string) { return firstValueFrom(this.http.delete<void>(
     `${this.base}/users/${encodeURIComponent(id)}`)); }

@@ -10,30 +10,32 @@ await mkdir(output, { recursive: true });
 const api = await request.newContext({ baseURL: origin });
 async function call(path, method, data, token) {
   const response = await api.fetch('/api' + path, { method, data,
-    headers: token ? { authorization: 'Bearer ' + token } : {} });
+    headers: { 'X-Nocturno-CSRF': '1', ...(token ? { cookie: token } : {}) } });
   assert.ok(response.ok(), `${method} ${path}: ${response.status()} ${await response.text()}`);
-  return response.status() === 204 ? null : (await response.json()).data;
+  const result = response.status() === 204 ? null : (await response.json()).data;
+  if (path === '/auth/login') return { ...result, cookies: (await api.storageState()).cookies.map(c => c.name + '=' + c.value).join('; ') };
+  return result;
 }
 const admin = await call('/auth/login', 'POST', { email: 'admin@nocturno.test', password: 'AdminDemo!2026' });
-const venues = await call('/venues?limit=1', 'GET', undefined, admin.accessToken);
+const venues = await call('/venues?limit=1', 'GET', undefined, admin.cookies);
 const venueId = venues[0].id;
 const stamp = randomUUID().slice(0, 8);
 async function fixture(title) {
   return call('/events', 'POST', { title: `${title} · ${stamp}`, venueId, eventType: 'CLUB',
     startsAt: new Date(Date.now() + 2 * 86400000).toISOString(),
     endsAt: new Date(Date.now() + 3 * 86400000).toISOString(), status: 'PUBLISHED',
-    musicGenres: ['TECHNO'], atmosphere: ['UNDERGROUND'] }, admin.accessToken);
+    musicGenres: ['TECHNO'], atmosphere: ['UNDERGROUND'] }, admin.cookies);
 }
 const clean = await fixture('Sesión de prueba sin ventas');
 const historic = await fixture('Sesión con entradas emitidas');
 const type = await call(`/events/${historic.id}/ticket-types`, 'POST', {
   name: 'Invitación de prueba', price: 0, quantity: 5,
-}, admin.accessToken);
+}, admin.cookies);
 const user = await call('/auth/login', 'POST', { email: 'user@nocturno.test', password: 'UserDemo!2026' });
-await call('/cart/items', 'DELETE', undefined, user.accessToken);
-await call('/cart/items', 'POST', { ticketTypeId: type.id, quantity: 1 }, user.accessToken);
+await call('/cart/items', 'DELETE', undefined, user.cookies);
+await call('/cart/items', 'POST', { ticketTypeId: type.id, quantity: 1 }, user.cookies);
 const orderResponse = await api.post('/api/checkout', { headers: {
-  authorization: 'Bearer ' + user.accessToken, 'Idempotency-Key': randomUUID(),
+  cookie: user.cookies, 'X-Nocturno-CSRF': '1', 'Idempotency-Key': randomUUID(),
 } });
 assert.equal(orderResponse.status(), 200, await orderResponse.text());
 assert.equal((await orderResponse.json()).data.order.status, 'PAID');
@@ -90,7 +92,7 @@ try {
   assert.equal(await dialog.getByRole('button', { name: 'Cerrar análisis de eliminación' }).evaluate(button => button === document.activeElement), true);
   await page.screenshot({ path: output + '/01-delete-impact-desktop.png' });
   // A genuine dependency change invalidates the preview, including unchanged operation kind.
-  await call(`/me/favorites/${clean.id}`, 'POST', undefined, user.accessToken);
+  await call(`/me/favorites/${clean.id}`, 'POST', undefined, user.cookies);
   await remove.click();
   await dialog.getByText(/Las dependencias han cambiado/).waitFor();
   await dialog.getByRole('button', { name: 'Actualizar análisis' }).click();

@@ -15,11 +15,11 @@ test('HTTP flow: admin publishes, user favorites and buys two free tickets, admi
     let userId, venueId, eventId, ticketTypeId, orderId;
     const request = async (path, method = 'GET', body, token, headers = {}) => {
       const response = await fetch(origin + path, {
-        method, headers: { 'content-type': 'application/json',
-          ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
+        method, headers: { 'content-type': 'application/json', 'x-nocturno-csrf': '1',
+          ...(token ? { cookie: `nocturno_access=${token}` } : {}), ...headers },
         ...(body === undefined ? {} : { body: JSON.stringify(body) })
       });
-      return { status: response.status, body: response.status === 204 ? null : await response.json() };
+      return { accessToken: response.headers.getSetCookie().find(value => value.startsWith('nocturno_access='))?.split(';')[0].slice('nocturno_access='.length), status: response.status, body: response.status === 204 ? null : await response.json() };
     };
     try {
       const adminEmail = `admin-${adminId}@example.com`;
@@ -28,13 +28,13 @@ test('HTTP flow: admin publishes, user favorites and buys two free tickets, admi
       const adminLogin = await request('/api/auth/login', 'POST',
         { email: adminEmail, password: 'flow-password-123' });
       assert.equal(adminLogin.status, 200);
-      const adminToken = adminLogin.body.data.accessToken;
+      const adminToken = adminLogin.accessToken;
 
       const registered = await request('/api/auth/register', 'POST',
         { email: `buyer-${randomUUID()}@example.com`, password: 'buyer-password-123', displayName: 'Flow buyer' });
       assert.equal(registered.status, 201);
       userId = registered.body.data.user.id;
-      const buyerToken = registered.body.data.accessToken;
+      const buyerToken = registered.accessToken;
       const venue = await request('/api/venues', 'POST', { name: 'Flow venue', type: 'CLUB',
         province: 'Valencia', municipality: 'Valencia', address: 'Flow street' }, adminToken);
       assert.equal(venue.status, 201);

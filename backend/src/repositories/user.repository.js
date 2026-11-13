@@ -44,13 +44,13 @@ export const userRepository = { ...base,
       throw error;
     } finally { client.release(); }
   },
-  async list({ page, limit, search, role }) {
-    const params = [search ? `%${search}%` : null, role ?? null];
+  async list({ page, limit, search, role, active }) {
+    const params = [search ? `%${search}%` : null, role ?? null, active === 'true' ? true : active === 'false' ? false : null];
     const where = `WHERE ($1::text IS NULL OR display_name ILIKE $1 OR email ILIKE $1)
-      AND ($2::text IS NULL OR role = $2)`;
+      AND ($2::text IS NULL OR role = $2) AND ($3::boolean IS NULL OR is_active = $3)`;
     const { rows } = await getPool().query(
       `SELECT *, count(*) OVER() AS total_count FROM users ${where}
-       ORDER BY created_at DESC, id LIMIT $3 OFFSET $4`, [...params, limit, (page - 1) * limit]);
+       ORDER BY created_at DESC, id LIMIT $4 OFFSET $5`, [...params, limit, (page - 1) * limit]);
     const total = rows.length ? Number(rows[0].total_count)
       : Number((await getPool().query(`SELECT count(*) AS total FROM users ${where}`, params)).rows[0].total);
     return { rows: rows.map(({ total_count: _count, ...row }) => mapUser(row)), total };

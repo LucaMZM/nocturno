@@ -124,7 +124,7 @@ GET /api/events?latitude=39.47&longitude=-0.37&radiusKm=10&sort=distance
 
 ## Seguridad
 
-Zod valida entradas; las consultas SQL usan parámetros; JWT de acceso y refresh cookie `HttpOnly` protegen sesiones, mientras roles y propiedad de recursos se verifican en backend. Helmet aplica cabeceras y CORS limita orígenes. Precio y stock se comprueban en servidor; los webhooks requieren firma y se procesan de forma idempotente; el check-in bloquea el doble uso. PostgreSQL impone la regla de soft-delete. La posición del usuario no se guarda en PostgreSQL. Estas medidas no equivalen a una auditoría externa de seguridad. Para desplegar hay que usar HTTPS, secretos nuevos, CORS del dominio final y copias de seguridad; el seed demo no debe ejecutarse en producción.
+Zod valida entradas; las consultas SQL usan parámetros; Cookies de acceso y refresh `HttpOnly` protegen sesiones, sin JWT accesible a Angular; una blacklist persistente y la comparación del rol con PostgreSQL revocan privilegios. Las mutaciones requieren cabecera CSRF y origen permitido; roles y propiedad se verifican en backend. Helmet aplica cabeceras y CORS limita orígenes. Precio y stock se comprueban en servidor; los webhooks requieren firma y se procesan de forma idempotente; el check-in bloquea el doble uso. PostgreSQL impone la regla de soft-delete. La posición del usuario no se guarda en PostgreSQL. Estas medidas no equivalen a una auditoría externa de seguridad. Para desplegar hay que usar HTTPS, secretos nuevos, CORS del dominio final y copias de seguridad; el seed demo no debe ejecutarse en producción.
 
 ## Variables de entorno y Stripe test
 

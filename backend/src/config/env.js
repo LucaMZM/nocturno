@@ -32,6 +32,8 @@ export const env = schema.parse(process.env);
 export function frontendOrigins() {
   const origins = new Set([env.CORS_ORIGIN, env.FRONTEND_URL]);
   if (env.NODE_ENV !== 'production') {
+    // Swagger UI is served by this API during local development.
+    origins.add(`http://localhost:${env.PORT}`);
     for (const origin of [...origins]) {
       const url = new URL(origin);
       if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
