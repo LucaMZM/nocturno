@@ -1,4 +1,8 @@
-import { Component, computed, effect, inject, OnInit, signal, untracked } from '@angular/core';
+import { firstValueFrom, Subject, takeUntil } from 'rxjs';
+import { ShopCarouselComponent } from '../../shop/components/shop-carousel';
+import { ShopPaginationComponent } from '../../shop/components/shop-pagination';
+import { ShopDiscoveryStore } from '../../shop/store/shop-discovery.store';
+import { Component, computed, effect, inject, OnInit, OnDestroy, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { Event, EventFilters } from '../../../core/models/domain.model';
@@ -23,7 +27,7 @@ import {
   serializeEventFilters,
 } from '../../../shared/utils/event-filter-contract';
 import { DatePreset, dateRangeFor } from '../../../shared/utils/format';
-import { EventsStore } from '../store/events.store';
+import { ShopStore } from '../../shop/store/shop.store';
 import { FavoritesStore } from '../../favorites/store/favorites.store';
 import { LocationStore } from '../../location/store/location.store';
 import { AuthStore } from '../../auth/store/auth.store';
@@ -32,8 +36,9 @@ import { toApiProblem } from '../../../shared/utils/api-error';
 
 @Component({
   selector: 'app-events-list-page',
+  providers: [ShopDiscoveryStore],
   imports: [
-    SearchBarComponent,
+    ShopCarouselComponent, ShopPaginationComponent, SearchBarComponent,
     QuickDateFiltersComponent,
     EventFiltersComponent,
     ActiveFiltersComponent,
@@ -46,9 +51,11 @@ import { toApiProblem } from '../../../shared/utils/api-error';
   ],
   templateUrl: './events-list.page.html',
 })
-export class EventsListPage implements OnInit {
+export class EventsListPage implements OnInit, OnDestroy {
   // State exposed to the template: the list store owns results; map data stays local to this page.
-  readonly eventsStore = inject(EventsStore);
+  readonly eventsStore = inject(ShopStore);
+  readonly discovery = inject(ShopDiscoveryStore);
+  readonly isHome = inject(ActivatedRoute).snapshot.routeConfig?.path === '';
   readonly favoritesStore = inject(FavoritesStore);
   readonly locationStore = inject(LocationStore);
   readonly auth = inject(AuthStore);
@@ -74,6 +81,13 @@ export class EventsListPage implements OnInit {
       ? { latitude, longitude } : null;
   });
   private latestMapRequestId = 0;
+  private readonly cancelMap = new Subject<void>();
+
+  ngOnDestroy() {
+    this.latestMapRequestId++;
+    this.cancelMap.next();
+    this.cancelMap.complete();
+  }
   readonly selectedDatePreset = computed<DatePreset | null>(() => {
     const { dateFrom, dateTo } = this.eventsStore.filters();
     if (!dateFrom || !dateTo) return null;
@@ -100,6 +114,7 @@ export class EventsListPage implements OnInit {
 
   ngOnInit() {
     void this.favoritesStore.load();
+    if (this.isHome) void this.discovery.load();
   }
 
   // Search, quick dates and modal controls all converge on the same URL update.
@@ -228,10 +243,11 @@ export class EventsListPage implements OnInit {
   // Map requests mirror list filters but fetch up to 100 results for markers.
   async loadMap(filters = this.eventsStore.filters()) {
     const requestId = ++this.latestMapRequestId;
+    this.cancelMap.next();
     this.mapLoading.set(true);
     this.mapError.set(null);
     try {
-      const response = await this.eventsApi.getEvents({ ...filters, page: 1, limit: 100 });
+      const response = await firstValueFrom(this.eventsApi.observeEvents({ ...filters, page: 1, limit: 100 }).pipe(takeUntil(this.cancelMap)));
       if (requestId !== this.latestMapRequestId) return;
       this.mapEvents.set(response.data);
       this.mapTotal.set(response.pagination.total);
