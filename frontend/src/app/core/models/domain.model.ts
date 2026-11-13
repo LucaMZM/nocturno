@@ -1,5 +1,4 @@
 export interface User {
-  avatarUrl?: string | null;
   id: string;
   email: string;
   displayName: string;

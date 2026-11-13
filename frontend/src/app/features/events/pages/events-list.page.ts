@@ -1,7 +1,5 @@
 import { firstValueFrom, Subject, takeUntil } from 'rxjs';
-import { ShopCarouselComponent } from '../../shop/components/shop-carousel';
 import { ShopPaginationComponent } from '../../shop/components/shop-pagination';
-import { ShopDiscoveryStore } from '../../shop/store/shop-discovery.store';
 import { Component, computed, effect, inject, OnInit, OnDestroy, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -36,9 +34,8 @@ import { toApiProblem } from '../../../shared/utils/api-error';
 
 @Component({
   selector: 'app-events-list-page',
-  providers: [ShopDiscoveryStore],
   imports: [
-    ShopCarouselComponent, ShopPaginationComponent, SearchBarComponent,
+    ShopPaginationComponent, SearchBarComponent,
     QuickDateFiltersComponent,
     EventFiltersComponent,
     ActiveFiltersComponent,
@@ -54,8 +51,6 @@ import { toApiProblem } from '../../../shared/utils/api-error';
 export class EventsListPage implements OnInit, OnDestroy {
   // State exposed to the template: the list store owns results; map data stays local to this page.
   readonly eventsStore = inject(ShopStore);
-  readonly discovery = inject(ShopDiscoveryStore);
-  readonly isHome = inject(ActivatedRoute).snapshot.routeConfig?.path === '';
   readonly favoritesStore = inject(FavoritesStore);
   readonly locationStore = inject(LocationStore);
   readonly auth = inject(AuthStore);
@@ -114,7 +109,6 @@ export class EventsListPage implements OnInit, OnDestroy {
 
   ngOnInit() {
     void this.favoritesStore.load();
-    if (this.isHome) void this.discovery.load();
   }
 
   // Search, quick dates and modal controls all converge on the same URL update.
