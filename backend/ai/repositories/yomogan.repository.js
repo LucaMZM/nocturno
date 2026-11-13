@@ -14,6 +14,7 @@ async function read(path, input) {
 }
 export const yomoganRepository = {
   candidates: (filters={},query='',ids=null) => read('events',{filters,query,ids}),
+  variants: (slug) => read('variants?slug='+encodeURIComponent(slug)),
   locations: () => read('locations'),
   async cached(ids,key) {return ids.map(id=>cache.get(key+id)).filter(Boolean);},
   async cache(id,key,hash,embedding) {

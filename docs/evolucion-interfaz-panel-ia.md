@@ -90,3 +90,73 @@ y limita concurrencia; no se confía en X-Forwarded-For enviado por visitantes.
 
 La migración 015 no se ha aplicado a la base habitual. El arranque contra datos
 habituales requiere aplicarla explícitamente; no ejecutar db:seed ni db:reset.
+
+## D: Yomogan y mediciones reales
+
+Se mantienen qwen3:4b y embeddinggemma. Se añade:
+- YOMOGAN_KEEP_ALIVE=5m para el modelo de conversación.
+- YOMOGAN_EMBED_KEEP_ALIVE=0 para liberar embeddings antes de generar en equipos
+  con poca memoria; vectores/documentos se conservan en cachés acotadas de AI.
+- YOMOGAN_WARMUP=false, opcionalmente true para indexar y calentar al arrancar.
+- Concurrencia de proveedor limitada a una llamada; contexto de 4096 tokens,
+  hasta tres candidatos en el prompt. No se cambian a modelos mayores.
+- Sin generación para saludos, rechazo de temas ajenos o catálogo vacío.
+- Sin embeddings cuando solo hay hasta tres candidatos estructurados.
+- Fechas civiles en español, contexto de seguimiento, orden por precio en
+  comparaciones y General/VIP leído de variantes públicas, sin inventar ventajas.
+- Se revalida publicación/stock tras la inferencia; el modelo no construye SQL
+  ni enlaces ni puede ejecutar acciones.
+- npm run db:index:yomogan prepara la caché del proceso AI por su endpoint local
+  /internal/index; no escribe la base crítica y no se publica por el Gateway.
+
+### Batería de nueve consultas
+
+Mediciones reales en Apple M2 usando Ollama temporal en 11435 y catálogo de
+desarrollo almacenado en PostgreSQL efímero. Ningún proveedor simulado se utiliza
+como evidencia de rendimiento real. Se conserva la salida completa:
+
+| Métrica | Antes | Después |
+| --- | ---: | ---: |
+| Media total | 18,82 s | 5,40 s |
+| p50 | 18,02 s | 0,008 s |
+| p95 | 43,53 s | 21,89 s |
+| Media recuperación | 0,653 s | 0,066 s |
+| Media generación (incluye consultas que no generan) | 16,69 s | 4,44 s |
+
+Son nueve muestras por versión, no una estimación de rendimiento bajo carga.
+La mediana baja sobre todo porque seis consultas ya no necesitan generación.
+Las tres respuestas generadas siguen tardando aproximadamente 12,9–21,9 s.
+La ronda intermedia con tests/build concurrentes sufrió presión de memoria,
+fallback y un error; se conserva como yomogan-despues-con-carga.json y NO se
+utiliza para la comparación final. No ejecutar inferencia y builds simultáneos
+en un Mac con memoria limitada.
+
+Calidad observada: el caso de fecha histórica antes podía recomendar eventos
+futuros; ahora no devuelve coincidencias. Fuera de tema e inyección se redirigen
+sin invocar el modelo. La batería posterior terminó sin errores; referencias,
+precios y disponibilidad proceden del catálogo y se revalidan. Esto NO equivale
+a demostrar ausencia universal de alucinaciones ni a una evaluación estadística
+del lenguaje. Se mantienen pruebas automáticas para documentos maliciosos,
+IDs inventados, stock cambiado durante la inferencia y fallo del proveedor.
+Las comparaciones General/VIP adicionales se verifican automáticamente con
+variantes controladas; no se incluyen en la tabla de latencias.
+
+Repetir en backend (con Core arrancado y variables AI exportadas):
+node ai/benchmark.js /tmp/yomogan-benchmark.json
+El script mide recuperación, generación, embeddings y latencia por consulta.
+No exportar DATABASE_URL, STRIPE_* o JWT_* al servidor AI.
+
+## Verificación y límites de cierre
+
+- Frontend: 53 tests y build de producción correctos; avisos CommonJS existentes.
+- Backend: 92/92 tests sin omisiones, sintaxis y auditoría sobre PostgreSQL temporal.
+- Aislamiento: rechazo al arrancar con secretos Core; rutas privadas ausentes en
+  AI; Gateway elimina credenciales; webhook conserva bytes y firma; con AI caída
+  siguen funcionando registro real, perfil, cookies HttpOnly y logout/blacklist.
+- Regresión: roles, usuarios, reservas, pagos, tickets, doble uso, refunds y
+  soft-delete incluidos en la suite existente.
+- Navegador headless: cadena Core/AI/Gateway, perfil, Home, filtros F5, grid y
+  calendario en 390/768/1280 sin overflow; capturas reales actualizadas.
+- No se ha realizado una nueva compra Stripe Sandbox ni verificado Docker
+  runtime. Las pruebas de contratos/webhooks no deben describirse como Stripe E2E.
+- La migración 015 sigue pendiente en la base habitual; no se ha modificado.

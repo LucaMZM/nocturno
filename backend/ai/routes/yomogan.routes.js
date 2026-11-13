@@ -3,7 +3,7 @@ import { validate } from '../../src/validators/common.js';
 import { chatInput } from '../validators/yomogan.validator.js';
 import { yomoganController } from '../controllers/yomogan.controller.js';
 import { AppError } from '../../src/utils/AppError.js';
-export function createChatLimit({ limit = 12, windowMs = 60000, concurrency = 2 } = {}) {
+export function createChatLimit({ limit = 12, windowMs = 60000, concurrency = 1 } = {}) {
   const clients = new Map();
   let running = 0;
   return (req, res, next) => {

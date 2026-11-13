@@ -1,9 +1,6 @@
-import { yomoganRepository } from '../ai/repositories/yomogan.repository.js';
-import { indexEvents } from '../ai/services/yomogan.service.js';
-try {
-  const events = await yomoganRepository.candidates({});
-  for (let i = 0; i < events.length; i += 16) await indexEvents(events.slice(i, i + 16));
-  console.log('Yomogan public events indexed:', events.length);
-} finally {
-  // La caché es local al proceso; el calentamiento persistente se ejecuta en AI.
-}
+// Solo opera sobre la caché del proceso AI, nunca sobre PostgreSQL.
+const response = await fetch((process.env.AI_URL ?? 'http://127.0.0.1:3001') + '/internal/index', {
+  method:'POST', headers:{'content-type':'application/json'}, body:'{}', signal:AbortSignal.timeout(180000),
+});
+if (!response.ok) throw new Error('No se ha podido preparar la caché de IA: HTTP '+response.status);
+console.log('Catálogo público indexado:', (await response.json()).data.indexed);

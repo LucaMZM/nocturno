@@ -67,10 +67,11 @@ type EventView = 'all' | 'active' | 'inactive' | 'deleted';
       @for (item of displays; track item.id) { <button [attr.aria-pressed]="filters().view === item.id" [class.selected]="filters().view === item.id" (click)="change('view',item.id)">{{ item.label }}</button> }
     </div>
     @if (filters().view === 'calendar') {
-      <div class="row-between"><button class="button-outline" (click)="month(-1)">Mes anterior</button>
+      <div class="calendar-toolbar"><button class="button-outline" (click)="month(-1)">Mes anterior</button>
         <label>Mes <input type="month" [ngModel]="filters().month" (ngModelChange)="change('month',$event)" /></label>
         <button class="button-outline" (click)="month(1)">Mes siguiente</button></div>
       <p class="muted">Horario de Europe/Madrid · {{ dashboard.events().length }} eventos en el periodo filtrado</p>
+      <div class="calendar-weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span></div>
       <div class="admin-calendar">
         @for (day of days(); track day) {
           <section class="calendar-day" [style.grid-column-start]="day.endsWith('-01') ? firstWeekday() : null"><h3>{{ day.slice(-2) }}</h3>
@@ -135,13 +136,16 @@ type EventView = 'all' | 'active' | 'inactive' | 'deleted';
     }
   `,
   styles: [`
+    .calendar-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-top:1.5rem}
+    .calendar-toolbar input{background:#171717;color:#f5f2ec;border:1px solid #444;padding:.7rem;color-scheme:dark;max-width:100%}
+    .calendar-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:1rem;color:#aaa6a0}
     .admin-event-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:1rem}
     .admin-event-card{padding:1rem;background:#171717;border:1px solid #333}
     .admin-event-card img{width:100%;height:170px;object-fit:cover}
     .admin-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:1rem 0}
     .calendar-day{min-width:0;min-height:100px;border:1px solid #333;padding:.5rem}
     .calendar-day a{display:block;white-space:normal;overflow-wrap:anywhere;margin:.4rem 0}
-    @media(max-width:700px){.admin-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-day{grid-column-start:auto!important}}
+    @media(max-width:700px){.calendar-weekdays{display:none}.admin-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}.calendar-day{grid-column-start:auto!important}}
   `],
 })
 export class DashboardEventsPage implements OnInit {

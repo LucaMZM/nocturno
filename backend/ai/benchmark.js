@@ -37,4 +37,4 @@ const latencies=results.map(r=>r.latencyMs).sort((a,b)=>a-b);
 const report={model:'qwen3:4b',embedModel:'embeddinggemma',samples:results.length,
  meanMs:latencies.reduce((a,b)=>a+b,0)/latencies.length,p50Ms:latencies[Math.ceil(latencies.length*.5)-1],
  p95Ms:latencies[Math.ceil(latencies.length*.95)-1],results};
-await writeFile(process.argv[2],JSON.stringify(report,null,2));
+await writeFile(process.argv[2] ?? '/tmp/nocturno-yomogan-benchmark.json',JSON.stringify(report,null,2));

@@ -1,3 +1,4 @@
+import { eventSlug } from '../validators/event.validator.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { validate } from '../validators/common.js';
@@ -14,3 +15,4 @@ const input=z.object({
 }).strict();
 catalogContextRoutes.get('/locations',catalogContextController.locations);
 catalogContextRoutes.post('/events',validate(input),catalogContextController.events);
+catalogContextRoutes.get('/variants',validate(eventSlug,'query'),catalogContextController.variants);

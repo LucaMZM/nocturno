@@ -68,3 +68,34 @@ test('AI arranca como proceso sin secretos y consulta Core solamente por HTTP',a
   const body=await response.json();assert.equal(body.data.events.length,0);
  }finally{child.kill('SIGTERM');await new Promise(r=>child.once('exit',r));await close(core);}
 });
+
+test('Gateway → Core real mantiene registro, perfil y logout cuando AI está caída',async()=>{
+ const {env}=await import('../src/config/env.js');
+ if(!env.DATABASE_URL)return;
+ const {app}=await import('../src/app.js');
+ const {getPool,closePool}=await import('../src/config/db.js');
+ const {randomUUID}=await import('node:crypto');
+ const core=app.listen(0,'127.0.0.1');await new Promise(r=>core.once('listening',r));
+ const coreUrl='http://127.0.0.1:'+core.address().port;
+ const gateway=createGateway({core:coreUrl,ai:'http://127.0.0.1:1',timeout:500});
+ const root=await listen(gateway);
+ let userId;
+ try{
+  assert.equal((await fetch(root+'/api/yomogan/config')).status,502);
+  assert.equal((await fetch(root+'/api/catalog-context/locations')).status,404);
+  const response=await fetch(root+'/api/auth/register',{method:'POST',headers:{'content-type':'application/json','x-nocturno-csrf':'1'},body:JSON.stringify({
+    email:'gateway-'+randomUUID()+'@example.test',displayName:'Prueba aislada',password:'GatewayTest!2026',
+  })});
+  assert.equal(response.status,201);
+  userId=(await response.json()).data.user.id;
+  const cookies=response.headers.getSetCookie();assert.ok(cookies.every(value=>value.includes('HttpOnly')));
+  const cookie=cookies.map(value=>value.split(';')[0]).join('; ');
+  assert.equal((await fetch(root+'/api/profile/me',{headers:{cookie}})).status,200);
+  assert.equal((await fetch(root+'/api/auth/logout',{method:'POST',headers:{cookie,'x-nocturno-csrf':'1'}})).status,204);
+  assert.equal((await fetch(root+'/api/profile/me',{headers:{cookie}})).status,401);
+ }finally{
+  await close(gateway);await close(core);
+  if(userId)await getPool().query('DELETE FROM users WHERE id=$1',[userId]);
+  await closePool();
+ }
+});

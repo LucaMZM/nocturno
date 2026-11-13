@@ -7,7 +7,10 @@ const unavailable = () =>
     'YOMOGAN_UNAVAILABLE',
     'Yomogan no puede responder ahora. Puedes seguir buscando eventos.',
   );
+let activeRequests = 0;
 async function request(base, path, key, body) {
+  if (activeRequests >= 1) throw unavailable();
+  activeRequests++;
   try {
     const response = await fetch(base.replace(/\/$/, '') + path, {
       method: 'POST',
@@ -30,8 +33,9 @@ async function request(base, path, key, body) {
     const error = unavailable();
     error.cause = cause;
     throw error;
-  }
+  } finally { activeRequests--; }
 }
+const queryEmbeddings = new Map();
 export const yomoganAiService = {
   get modelKey() {
     return [env.YOMOGAN_EMBED_PROVIDER, env.YOMOGAN_EMBED_URL, env.YOMOGAN_EMBED_MODEL].join('|');
@@ -50,8 +54,8 @@ export const yomoganAiService = {
           format,
           stream: false,
           think: false,
-          keep_alive: 0,
-          options: { temperature: 0.2, num_predict: 600, num_ctx: 8192 },
+          keep_alive: env.YOMOGAN_KEEP_ALIVE,
+          options: { temperature: 0.2, num_predict: 600, num_ctx: 4096 },
         }
       : {
           model: env.YOMOGAN_MODEL,
@@ -94,6 +98,8 @@ export const yomoganAiService = {
   },
   async embed(texts) {
     if (env.YOMOGAN_EMBED_PROVIDER === 'disabled') throw unavailable();
+    const cacheKey = yomoganAiService.modelKey + JSON.stringify(texts);
+    if (queryEmbeddings.has(cacheKey)) return queryEmbeddings.get(cacheKey);
     const ollama = env.YOMOGAN_EMBED_PROVIDER === 'ollama';
     const result = await request(
       env.YOMOGAN_EMBED_URL,
@@ -102,7 +108,7 @@ export const yomoganAiService = {
       {
         model: env.YOMOGAN_EMBED_MODEL,
         input: texts,
-        ...(ollama ? { keep_alive: '0', truncate: true } : {}),
+        ...(ollama ? { keep_alive: env.YOMOGAN_EMBED_KEEP_ALIVE, truncate: true } : {}),
       },
     );
     const vectors = ollama
@@ -124,6 +130,8 @@ export const yomoganAiService = {
       vectors.some((v) => v.length !== vectors[0].length)
     )
       throw unavailable();
+    if (queryEmbeddings.size >= 256) queryEmbeddings.delete(queryEmbeddings.keys().next().value);
+    queryEmbeddings.set(cacheKey, vectors);
     return vectors;
   },
 };
