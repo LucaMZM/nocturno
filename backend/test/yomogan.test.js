@@ -2,16 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import { chatInput, replySchema } from '../src/validators/yomogan.validator.js';
+import { chatInput, replySchema } from '../ai/validators/yomogan.validator.js';
 import {
   explicitFilters,
   withDateWindow,
   indexEvents,
   yomoganService,
   cosine,
-} from '../src/services/yomogan.service.js';
+} from '../ai/services/yomogan.service.js';
 import { buildRecommendationQuery } from '../src/repositories/yomogan.repository.js';
-import { createChatLimit } from '../src/routes/yomogan.routes.js';
+import { createChatLimit } from '../ai/routes/yomogan.routes.js';
 import { AppError } from '../src/utils/AppError.js';
 
 const preference = {

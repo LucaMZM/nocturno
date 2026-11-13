@@ -7,7 +7,7 @@ try {
   requireAuthSecrets();
   const connection = await getPool().connect();
   connection.release();
-  const server = app.listen(env.PORT, () => console.log(`Nocturno API listening on http://localhost:${env.PORT}`));
+  const server = app.listen(env.PORT, process.env.CORE_HOST ?? '127.0.0.1', () => console.log(`Nocturno API listening on http://localhost:${env.PORT}`));
   let expiring = false;
   const expiryTimer = setInterval(async () => {
     if (expiring) return;

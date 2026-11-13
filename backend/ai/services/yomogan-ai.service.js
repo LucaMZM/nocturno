@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { env } from '../config/env.js';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../../src/utils/AppError.js';
 const unavailable = () =>
   new AppError(
     503,

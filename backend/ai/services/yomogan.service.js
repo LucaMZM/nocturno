@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { yomoganRepository } from '../repositories/yomogan.repository.js';
 import { yomoganAiService } from './yomogan-ai.service.js';
 import { preferenceSchema, replySchema } from '../validators/yomogan.validator.js';
-import { AppError } from '../utils/AppError.js';
+import { AppError } from '../../src/utils/AppError.js';
 
 const normalize = (text) =>
   text

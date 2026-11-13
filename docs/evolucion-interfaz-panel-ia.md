@@ -45,3 +45,48 @@ calendario, cambio de mes y recarga con filtros. Capturas en screenshots/evoluci
 ## Continuidad
 Los hitos C (separación Core/AI/Gateway) y D (mejoras y mediciones Ollama) deben
 verificarse por separado. No inferir aislamiento por la existencia de este documento.
+
+## C: arquitectura separada
+Core conserva npm start y escucha 127.0.0.1:3000. AI arranca con npm run start:ai
+en 127.0.0.1:3001; Gateway con npm run start:gateway en 127.0.0.1:8080.
+Angular npm start usa proxy 8080. Las rutas públicas de Yomogan no cambian.
+
+AI no carga backend/.env y rechaza arrancar si hereda DATABASE_URL, PGPASSWORD,
+PGUSER, STRIPE_* o JWT_*. Su configuración reside exclusivamente en ai/.env
+(copiar ai/.env.example). No copiar allí el .env de Core. El código RAG y el
+adaptador Ollama se han trasladado a ai/, sin segunda implementación en Core.
+La caché de embeddings es acotada y propia del proceso AI, no escribe PostgreSQL.
+
+La proyección Core /api/catalog-context es de solo lectura y filtra publicación,
+stock, precios y datos públicos en SQL. El Gateway bloquea su acceso externo;
+AI la consulta directamente sin cookies ni credenciales. No tiene herramientas
+para ejecutar acciones, consultar usuarios o comercio. Gateway pasa los bytes
+del webhook sin parsearlos; las cookies y cabeceras CSRF llegan solo a Core.
+Tiene límites de cuerpo, timeout, rutas explícitas y errores sin secretos.
+
+### Límites de aislamiento
+Puertos y procesos NO constituyen una frontera de seguridad frente a código
+arbitrario con el mismo usuario de macOS. Localmente se separan responsabilidades
+y entornos; el despliegue debe usar usuarios/contenedores distintos, sin volúmenes
+de secretos compartidos. Compose separa PostgreSQL en red data, inaccesible para
+AI, y no publica Core/AI. Solo frontend expone acceso al host. Compose es opcional
+y su runtime no se declara verificado sin daemon. La red de catálogo permite
+salida al proveedor; aplicar una allowlist de egress en producción.
+Los logs de Core siguen su configuración previa; Gateway y AI no registran
+tokens ni cuerpos. El límite de AI se aplica globalmente al tráfico del Gateway
+y limita concurrencia; no se confía en X-Forwarded-For enviado por visitantes.
+
+### Arranque en Mac
+1. Iniciar PostgreSQL desde Postgres.app.
+2. brew services start ollama (modelos existentes: qwen3:4b y embeddinggemma).
+3. En backend: npm run db:migrate antes del primer arranque de esta versión.
+4. En terminales separadas dentro de backend:
+   npm start
+   npm run start:ai
+   npm run start:gateway
+5. En frontend: npm start.
+6. Stripe CLI: stripe listen --forward-to localhost:8080/api/stripe/webhook.
+   Guardar el whsec del listener solo en backend/.env, nunca en AI ni Git.
+
+La migración 015 no se ha aplicado a la base habitual. El arranque contra datos
+habituales requiere aplicarla explícitamente; no ejecutar db:seed ni db:reset.

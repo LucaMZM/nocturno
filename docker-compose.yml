@@ -1,5 +1,6 @@
 services:
   postgres:
+    networks: [data]
     image: postgres:17.11-alpine3.24
     environment:
       POSTGRES_DB: nocturno
@@ -14,10 +15,12 @@ services:
       retries: 15
 
   backend:
+    networks: [data, catalog]
     build: ./backend
     environment:
       NODE_ENV: development
       PORT: 3000
+      CORE_HOST: 0.0.0.0
       DATABASE_URL: postgresql://nocturno:${POSTGRES_PASSWORD:-nocturno_local_only}@postgres:5432/nocturno
       CORS_ORIGIN: http://localhost:4200
       FRONTEND_URL: http://localhost:4200
@@ -30,15 +33,35 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose: ["3000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 10
 
+  ai:
+    build: ./backend
+    command: ["node", "ai/server.js"]
+    environment:
+      AI_HOST: 0.0.0.0
+      YOMOGAN_CORE_URL: http://backend:3000
+      YOMOGAN_CHAT_URL: http://host.docker.internal:11434
+      YOMOGAN_EMBED_URL: http://host.docker.internal:11434
+    expose: ["3001"]
+    networks: [catalog]
+  gateway:
+    build: ./backend
+    command: ["node", "gateway/server.js"]
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      CORE_URL: http://backend:3000
+      AI_URL: http://ai:3001
+    expose: ["8080"]
+    networks: [catalog, edge]
+
   frontend:
+    networks: [edge]
     build: ./frontend
     depends_on:
       backend:
@@ -48,3 +71,9 @@ services:
 
 volumes:
   nocturno_pgdata:
+
+networks:
+  data:
+    internal: true
+  catalog: {}
+  edge: {}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { yomoganService } from '../src/services/yomogan.service.js';
+import { yomoganService } from '../ai/services/yomogan.service.js';
 import { yomoganRepository } from '../src/repositories/yomogan.repository.js';
-import { yomoganAiService } from '../src/services/yomogan-ai.service.js';
+import { yomoganAiService } from '../ai/services/yomogan-ai.service.js';
 import { getPool, closePool } from '../src/config/db.js';
 import { env } from '../src/config/env.js';
 try {

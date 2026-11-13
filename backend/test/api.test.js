@@ -14,7 +14,7 @@ import { venueRoutes } from '../src/routes/venue.routes.js';
 import { eventRoutes } from '../src/routes/event.routes.js';
 import { ticketTypeRoutes } from '../src/routes/ticket-type.routes.js';
 import { favoriteRoutes, myFavoriteRoutes } from '../src/routes/favorite.routes.js';
-import { yomoganRoutes } from '../src/routes/yomogan.routes.js';
+import { yomoganRoutes } from '../ai/routes/yomogan.routes.js';
 import { profileRoutes } from '../src/routes/profile.routes.js';
 import { authRoutes } from '../src/routes/auth.routes.js';
 import { cartRoutes } from '../src/routes/cart.routes.js';
