@@ -367,3 +367,17 @@ swaggerSpec.paths['/api/shop/events/{slug}/variants'] = { get: {
   responses: { 200: { description: 'data: tipos con available y purchasable; sin reservas de stock' },
     404: { description: 'Evento no público o inexistente' } },
 } };
+
+swaggerSpec.paths['/api/dashboard/most-visited'] = { get: secured({
+  tags:['Dashboard'], summary:'Visitas voluntarias agregadas, restringidas por propietario',
+  parameters:[query('days',{type:'integer',enum:[7,30],default:7})],
+  responses:{200:{description:'Ranking real; colección vacía cuando no hay mediciones'}},
+}) };
+swaggerSpec.paths['/api/shop/events/{slug}/view'] = { post: {
+  tags:['Shop'], summary:'Registrar visita tras autorización explícita del visitante',
+  parameters:[{name:'slug',in:'path',required:true,schema:{type:'string'}}],
+  responses:{204:{description:'Recibida o descartada por duplicado/bot'},429:{description:'Límite de uso'}},
+} };
+swaggerSpec.paths['/api/dashboard/events'].get.parameters.push(
+  query('sort', {type:'string',enum:['dateAsc','dateDesc','titleAsc','titleDesc','recent','sold','views'],default:'recent'})
+);

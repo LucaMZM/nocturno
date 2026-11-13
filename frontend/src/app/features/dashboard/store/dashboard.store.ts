@@ -1,3 +1,6 @@
+import { VenuesApiService } from '../../../core/services/venues-api.service';
+import { PromotersApiService } from '../../../core/services/promoters-api.service';
+import { managementDefaults, ManagementFilters, managementQuery } from '../utils/management-filters';
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Pagination } from '../../../core/models/api.model';
@@ -10,6 +13,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 const emptyPagination: Pagination = { page: 1, limit: 20, total: 0, totalPages: 0 };
 interface DashboardState {
+  mostVisited: {id:string;title:string;slug:string;views:number;sold:number}[];
+  visitsError: string | null;
+  eventFilters: ManagementFilters;
+  filterVenues: { id: string; name: string }[];
+  filterPromoters: { id: string; name: string }[];
   deletionEventId: string | null;
   deletionTitle: string;
   deletionImpact: EventDeletionImpact | null;
@@ -34,15 +42,16 @@ interface DashboardState {
 const emptyDeletion = { deletionEventId: null, deletionTitle: '', deletionImpact: null,
   deletionLoading: false, deletionSaving: false, deletionError: null,
   deletionStale: false, deletionResult: null };
-const initialState: DashboardState = { ...emptyDeletion, summary: null, events: [], sales: [], attendees: [],
+const initialState: DashboardState = { mostVisited: [], visitsError: null, eventFilters: { ...managementDefaults }, filterVenues: [], filterPromoters: [], ...emptyDeletion, summary: null, events: [], sales: [], attendees: [],
   checkInOverview: null, checkInResult: null, checkInMessage: null, checkingIn: false,
   pagination: emptyPagination, loading: false, saving: false, error: null };
 
 export const DashboardStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withMethods((store, api = inject(DashboardApiService), eventsApi = inject(EventsApiService), ticketsApi = inject(TicketsApiService)) => {
+  withMethods((store, api = inject(DashboardApiService), venuesApi = inject(VenuesApiService), promotersApi = inject(PromotersApiService), eventsApi = inject(EventsApiService), ticketsApi = inject(TicketsApiService)) => {
     let version = 0;
+    let visitsRequest = 0;
     let deletionVersion = 0;
     let deletionRequestId = "";
     const requestIds = { summary: 0, events: 0, sales: 0, attendees: 0 };
@@ -61,6 +70,54 @@ export const DashboardStore = signalStore(
       }
     }
     return {
+      async loadFilterOptions() {
+        async function all(fetchPage: (page: number) => Promise<{ data: { id: string; name: string }[]; pagination: Pagination }>) {
+          const items: { id: string; name: string }[] = [];
+          let page = 1, total = 1;
+          do { const result = await fetchPage(page++); items.push(...result.data); total = result.pagination.totalPages; } while (page <= total);
+          return items;
+        }
+        try {
+          const [filterVenues, filterPromoters] = await Promise.all([
+            all(page => venuesApi.getVenues(page)), all(page => promotersApi.getPromoters(page)),
+          ]);
+          patchState(store, { filterVenues, filterPromoters });
+        } catch { patchState(store, { error: 'No hemos podido cargar los selectores. Vuelve a entrar en la página.' }); }
+      },
+      async loadFilteredEvents(filters: ManagementFilters) {
+        const current = ++requestIds.events;
+        const requestVersion = version;
+        patchState(store, { eventFilters: filters, loading: true, error: null });
+        try {
+          const query = managementQuery(filters);
+          if (query['dateFrom'] && query['dateTo'] && query['dateFrom'] > query['dateTo']) {
+            patchState(store, { events: [], pagination: emptyPagination, loading: false }); return;
+          }
+          const events: Event[] = [];
+          let page = filters.view === 'calendar' ? 1 : Number(filters.page);
+          let pagination = emptyPagination;
+          do {
+            const response = await api.getFilteredEvents({ ...query, page: String(page) });
+            if (current !== requestIds.events || requestVersion !== version) return;
+            events.push(...response.data); pagination = response.pagination;
+            page++;
+          } while (filters.view === 'calendar' && page <= pagination.totalPages);
+          patchState(store, { events, pagination, loading: false });
+        } catch (error) {
+          if (current === requestIds.events && requestVersion === version)
+            patchState(store, { loading: false, error: toApiProblem(error, 'No hemos podido cargar la gestión.').message });
+        }
+      },
+      async loadMostVisited(days = 7) {
+        const current = ++visitsRequest, session = version;
+        patchState(store, { mostVisited: [], visitsError: null });
+        try {
+          const result = await api.getMostVisited(days);
+          if (current === visitsRequest && session === version) patchState(store, { mostVisited: result.data });
+        } catch {
+          if (current === visitsRequest && session === version) patchState(store, { visitsError: 'No se ha podido cargar el ranking de visitas.' });
+        }
+      },
       loadSummary: () => load(() => api.getSummary(), 'summary'),
       loadEvents: (page = 1, search = '', status = '', deleted: 'exclude' | 'only' = 'exclude', active: 'all' | 'true' | 'false' = 'all') =>
         load(() => api.getEvents(page, search, status, deleted, active), 'events'),

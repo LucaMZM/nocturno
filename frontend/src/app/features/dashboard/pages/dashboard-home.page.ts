@@ -64,6 +64,16 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
       </section>
       <a class="button-primary" routerLink="/dashboard/events">Gestionar eventos <span>↗</span></a>
     }
+
+    <section class="editor-panel"><h2>Eventos más visitados</h2>
+      <p class="muted">Visitas voluntarias agregadas; no equivalen a personas únicas ni a ventas.</p>
+      <button class="button-outline" (click)="dashboard.loadMostVisited(7)">Últimos 7 días</button>
+      <button class="button-outline" (click)="dashboard.loadMostVisited(30)">Últimos 30 días</button>
+      @if (dashboard.visitsError()) { <p role="alert">{{ dashboard.visitsError() }}</p> }
+      @for (event of dashboard.mostVisited(); track event.id) {
+        <p><a [routerLink]="['/dashboard/events', event.id, 'edit']">{{ event.title }}</a> · {{ event.views }} visitas · {{ event.sold }} entradas vendidas</p>
+      } @empty { <p>No hay visitas registradas en este periodo.</p> }
+    </section>
   `,
 })
 export class DashboardHomePage implements OnInit {
@@ -76,7 +86,7 @@ export class DashboardHomePage implements OnInit {
   readonly topEvents = signal<TopEvent[]>([]);
   readonly topLoading = signal(false);
   readonly topError = signal<string | null>(null);
-  ngOnInit() { void this.dashboard.loadSummary(); void this.loadTopEvents(); }
+  ngOnInit() { void this.dashboard.loadSummary(); void this.dashboard.loadMostVisited(); void this.loadTopEvents(); }
   changeTopSort(value: string) {
     if (value !== 'revenue' && value !== 'tickets' && value !== 'date') return;
     this.topSort.set(value); void this.loadTopEvents();

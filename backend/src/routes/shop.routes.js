@@ -1,3 +1,4 @@
+import { eventViewsController } from '../controllers/event-views.controller.js';
 import { Router } from 'express';
 import { shopController } from '../controllers/shop.controller.js';
 import { validate } from '../validators/common.js';
@@ -10,3 +11,5 @@ shopRoutes.get('/locations', shopController.locations);
 shopRoutes.get('/events', validate(eventQuery, 'query'), shopController.events);
 shopRoutes.get('/events/:slug/variants', validate(eventSlug, 'params'), shopController.variants);
 shopRoutes.get('/events/:slug', validate(eventSlug, 'params'), shopController.detail);
+
+shopRoutes.post('/events/:slug/view', validate(eventSlug, 'params'), eventViewsController.record);

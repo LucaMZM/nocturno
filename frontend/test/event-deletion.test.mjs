@@ -12,7 +12,9 @@ const dir = join(process.cwd(), 'node_modules/.cache/nocturno-deletion-tests');
 const file = join(dir, `store-${process.pid}.mjs`);
 await mkdir(dir, { recursive: true });
 await build({
-  stdin: { contents: `export { DashboardStore } from './src/app/features/dashboard/store/dashboard.store.ts';
+  stdin: { contents: `export { VenuesApiService } from './src/app/core/services/venues-api.service.ts';
+export { PromotersApiService } from './src/app/core/services/promoters-api.service.ts';
+export { DashboardStore } from './src/app/features/dashboard/store/dashboard.store.ts';
     export { DashboardApiService } from './src/app/features/dashboard/services/dashboard-api.service.ts';
     export { EventsApiService } from './src/app/features/events/services/events-api.service.ts';
     export { TicketsApiService } from './src/app/features/tickets/services/tickets-api.service.ts';
@@ -21,12 +23,13 @@ await build({
   bundle: true, packages: 'external', platform: 'node', format: 'esm', outfile: file,
 });
 after(() => rm(file, { force: true }));
-const { DashboardStore, DashboardApiService, EventsApiService, TicketsApiService, EventDeletionDialogComponent } = await import(pathToFileURL(file).href);
+const { VenuesApiService, PromotersApiService, DashboardStore, DashboardApiService, EventsApiService, TicketsApiService, EventDeletionDialogComponent } = await import(pathToFileURL(file).href);
 const impact = { eventId: 'event-a', title: 'Pulso', analysisToken: 'fresh-analysis', operation: 'delete',
   recoverable: false, relations: [], blockers: [], warnings: [] };
 function setup(eventsApi) {
   const injector = createEnvironmentInjector([
     { provide: DashboardApiService, useValue: {} },
+    { provide: VenuesApiService, useValue: {} }, { provide: PromotersApiService, useValue: {} },
     { provide: EventsApiService, useValue: eventsApi },
     { provide: TicketsApiService, useValue: {} }, DashboardStore,
   ]);

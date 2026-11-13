@@ -45,6 +45,7 @@ export interface Venue {
 }
 
 export interface Event {
+  soldCount?: number;
   id: string;
   venueId: string;
   promoterId: string | null;
