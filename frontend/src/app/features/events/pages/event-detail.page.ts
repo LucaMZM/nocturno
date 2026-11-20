@@ -106,7 +106,7 @@ import { EventImageCarouselComponent } from '../components/event-image-carousel.
               } @else if (eventDetailStore.tickets().length) {
                 <div class="ticket-list">
                   @for (ticket of eventDetailStore.tickets(); track ticket.id) {
-                    <app-ticket-type-card [ticket]="ticket" [canBuy]="event.status === 'PUBLISHED'"
+                    <app-ticket-type-card [ticket]="ticket" [canBuy]="ticket.purchasable"
                       [pending]="cart.pending()" (add)="addToCart($event.ticketTypeId, $event.quantity)" />
                   }
                 </div>
@@ -195,6 +195,15 @@ import { EventImageCarouselComponent } from '../components/event-image-carousel.
         </div>
       }
     </div>
+    @if (eventsStore.selectedEvent(); as viewedEvent) {
+      <div class="page-width">
+        <p class="muted">Medición opcional: contabiliza esta visita en el ranking agregado. No se guardan datos personales en el contador.</p>
+        <button class="text-action" [disabled]="eventDetailStore.viewPending() || eventDetailStore.viewRecorded()"
+          (click)="eventDetailStore.recordConsentedView(viewedEvent.slug)">
+          {{ eventDetailStore.viewRecorded() ? 'Visita contabilizada' : 'Permitir contabilizar esta visita' }}
+        </button>
+      </div>
+    }
   `,
 })
 export class EventDetailPage {

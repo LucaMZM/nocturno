@@ -4,6 +4,7 @@ import { statuses } from './event.validator.js';
 
 export const dashboardListQuery = z.object({
   ...pageQuery,
+  sort: z.enum(['dateAsc','dateDesc','titleAsc','titleDesc','recent','sold','views']).default('recent'),
   search: z.string().trim().max(160).optional(),
   status: z.enum(statuses).optional(),
   deleted: z.enum(['exclude', 'only']).default('exclude'),

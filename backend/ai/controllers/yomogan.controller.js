@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import { asyncHandler } from '../../src/utils/asyncHandler.js';
 import { yomoganService } from '../services/yomogan.service.js';
 export const yomoganController = {
   config: (_req, res) => res.json({ data: { avatarUrl: env.YOMOGAN_AVATAR_PATH ?? null } }),

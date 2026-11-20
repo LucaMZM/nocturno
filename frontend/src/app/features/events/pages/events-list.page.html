@@ -127,21 +127,9 @@
             [pendingIds]="favoritesStore.pendingIds()"
             (favoriteClicked)="onFavoriteToggle($event)"
           />
-          @if (eventsStore.pagination().page < eventsStore.pagination().totalPages) {
-            <div class="load-more">
-              <p>
-                Mostrando {{ eventsStore.events().length }} de
-                {{ eventsStore.totalEvents() }} planes
-              </p>
-              <button
-                class="button-outline"
-                type="button"
-                [disabled]="eventsStore.loadingMore()"
-                (click)="onPageChange(eventsStore.pagination().page + 1)"
-              >
-                {{ eventsStore.loadingMore() ? 'Cargando…' : 'Ver más planes' }} <span>↓</span>
-              </button>
-            </div>
+          @if (eventsStore.pagination().totalPages > 1) {
+            <app-shop-pagination [page]="eventsStore.pagination().page" [pages]="eventsStore.pagination().totalPages"
+              [busy]="eventsStore.loading() || eventsStore.loadingMore()" (changed)="onPageChange($event)" />
           }
         }
       </section>

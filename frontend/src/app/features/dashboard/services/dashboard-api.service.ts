@@ -64,6 +64,10 @@ export class DashboardApiService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/dashboard`;
 
+  getMostVisited(days: number) {
+    return firstValueFrom(this.http.get<ApiResponse<{id:string;title:string;slug:string;views:number;sold:number}[]>>(
+      `${this.base}/most-visited`, { params: { days } }));
+  }
   getSummary() { return firstValueFrom(this.http.get<ApiResponse<DashboardSummary>>(this.base)); }
   getTopEvents(sort: 'revenue' | 'tickets' | 'date') {
     return firstValueFrom(this.http.get<ApiResponse<TopEvent[]>>(`${this.base}/top-events`, { params: { sort } }));
@@ -71,6 +75,9 @@ export class DashboardApiService {
   getEvents(page = 1, search = '', status = '', deleted: 'exclude' | 'only' = 'exclude', active: 'all' | 'true' | 'false' = 'all') {
     return firstValueFrom(this.http.get<PaginatedResponse<Event>>(`${this.base}/events`,
       { params: { page, limit: 20, deleted, active, ...(search ? { search } : {}), ...(status ? { status } : {}) } }));
+  }
+  getFilteredEvents(params: Record<string,string>) {
+    return firstValueFrom(this.http.get<PaginatedResponse<Event>>(`${this.base}/events`, { params }));
   }
   getEventOptions() { return firstValueFrom(this.http.get<PaginatedResponse<Event>>(`${this.base}/events`,
     { params: { page: 1, limit: 100, deleted: 'exclude', active: 'all' } })); }

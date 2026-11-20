@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { genres, atmospheres, eventTypes, ideals } from './event.validator.js';
+import { genres, atmospheres, eventTypes, ideals } from '../../src/models/catalog-taxonomy.js';
 export const chatInput = z
   .object({
     messages: z

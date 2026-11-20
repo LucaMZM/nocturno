@@ -1,7 +1,7 @@
 import { AppError } from '../utils/AppError.js';
 import { getPool } from '../config/db.js';
 
-const publicColumns = 'id, email, display_name, avatar_url, role, is_active, promoter_id, created_at, updated_at';
+const publicColumns = 'id, email, display_name, role, is_active, promoter_id, created_at, updated_at';
 
 export const authRepository = {
   async findByEmail(email) {

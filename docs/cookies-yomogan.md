@@ -24,7 +24,7 @@ El historial se mantiene solo en memoria durante la conversación. «Nueva conve
 lo borra y descarta respuestas antiguas pendientes. El componente gestiona presentación,
 controles, foco y scroll; el Store gestiona peticiones, errores y respuestas.
 El chat distingue «IA · contexto del catálogo» de «Búsqueda · sin respuesta IA».
-Si falta una ciudad se pide aclaración. No hay respuestas de IA simuladas en producción.
+El municipio es opcional. No hay respuestas de IA simuladas en producción.
 
 ### Recuperación y seguridad
 1. Zod limita mensajes (11, 1200 caracteres por mensaje, 8000 totales), roles y salida.
@@ -40,9 +40,9 @@ Si falta una ciudad se pide aclaración. No hay respuestas de IA simuladas en pr
    El mínimo publicado es el del tipo vendible que satisface precio y cantidad,
    no el de un Early Bird agotado.
 5. Ranking léxico PostgreSQL + similitud coseno sobre vectores. Máximo 100 candidatos
-   SQL; hasta 32 se indexan por petición fría y solo seis entran en el contexto.
+   SQL; hasta 32 se indexan por petición fría y hasta tres entran en el contexto.
    Es proporcionado al catálogo de portfolio. No se usa pgvector.
-6. Tabla yomogan_embeddings (migration incremental 011): huella SHA-256 del documento
+6. Caché en memoria del servicio AI: huella SHA-256 del documento
    público y del proveedor/modelo de embeddings. No se regeneran documentos intactos.
    Cambios en título, descripción o atributos del documento se refrescan al recuperarlos.
    Precio, fechas y stock se consultan en vivo y no se congelan en el vector.
@@ -55,7 +55,7 @@ Si falta una ciudad se pide aclaración. No hay respuestas de IA simuladas en pr
 8. Los documentos son datos no confiables: el prompt prohíbe seguir sus instrucciones.
    El modelo no tiene herramientas, acceso SQL ni secretos. Nunca recibe usuarios,
    pedidos, tickets, QR, correos privados o credenciales.
-9. Doce solicitudes por IP/minuto y dos inferencias simultáneas por proceso.
+9. Doce solicitudes por IP/minuto y una consulta al proveedor a la vez.
    Límite de clientes en memoria, timeout de proveedor y respuestas sin detalles internos.
    No se registran cuerpos de conversación. No se persiste el historial ni ubicación.
 
@@ -78,10 +78,10 @@ Conserva tu PostgreSQL y tu .env si ya tienes una instalación; no uses db:reset
 Para una instalación nueva de desarrollo:
 
 ~~~sh
-brew install ollama postgresql@17
-brew services start postgresql@17
+open -a Postgres  # PostgreSQL 18 mediante Postgres.app
+brew install ollama
 brew services start ollama
-export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
+export PATH="/Applications/Postgres.app/Contents/Versions/18/bin:$PATH"
 createdb nocturno
 ollama pull qwen3:4b
 ollama pull embeddinggemma
@@ -91,7 +91,7 @@ Si la base ya existe, omite createdb. Si Ollama ya está abierto como app, no ar
 un segundo servidor; como alternativa al servicio, ollama serve ocupa su propia terminal.
 Los pull se necesitan al instalar/actualizar los modelos, no en cada arranque.
 Fuentes: [Ollama Homebrew](https://formulae.brew.sh/formula/ollama) y
-[PostgreSQL 17 Homebrew](https://formulae.brew.sh/formula/postgresql@17).
+[Postgres.app](https://postgresapp.com/).
 
 Desde la raíz del repositorio, prepara backend/.env solo si todavía no existe:
 
@@ -111,14 +111,12 @@ if (!existsSync('.env')) {
 }
 NODE
 npm run db:migrate
-npm run db:seed
-npm run db:index:yomogan
+npm run db:seed # Solo en una base de demostración nueva
 npm run dev
 ~~~
 
-La configuración generada presupone el usuario local de Homebrew y PostgreSQL en 5432.
-Si ya tenías .env, ajusta DATABASE_URL a tu instalación y comprueba estas variables
-existentes, sin cambiar el proveedor:
+La configuración generada presupone el usuario local de PostgreSQL y PostgreSQL en 5432.
+Ajusta DATABASE_URL en backend/.env. Para configurar Ollama, copia backend/ai/.env.example a backend/ai/.env si aún no existe. Estas variables pertenecen al proceso AI:
 
 ~~~dotenv
 YOMOGAN_PROVIDER=ollama
@@ -129,10 +127,10 @@ YOMOGAN_EMBED_URL=http://127.0.0.1:11434
 YOMOGAN_EMBED_MODEL=embeddinggemma
 ~~~
 
-db:migrate aplica todas las pendientes en orden (001–011), incluidas
+db:migrate aplica todas las pendientes en orden (001–015), incluidas
 009_event_images.sql, 010_event_gallery_user_edits.sql y 011_yomogan_embeddings.sql.
 Registra las aplicadas; no hay que ejecutar ni modificar esos SQL a mano.
-El seed es exclusivamente de desarrollo. En otra terminal, desde la raíz:
+Con Core en marcha, ejecuta `npm run start:ai` y `npm run start:gateway` en dos terminales en backend. Para precalentar la caché de AI puedes ejecutar después `npm run db:index:yomogan` desde backend. En otra terminal, desde la raíz:
 
 ~~~sh
 cd frontend
@@ -152,7 +150,7 @@ El comando indexa por lotes el mismo catálogo público (máximo 100 candidatos)
 En catálogos mayores hay que ampliar la paginación/indexación antes de escalar.
 No publica un puerto de Ollama a Internet ni necesita una clave de pago.
 
-Variables reales (backend/.env.example):
+Variables reales (backend/ai/.env.example):
 - YOMOGAN_PROVIDER=ollama; YOMOGAN_MODEL=qwen3:4b
 - YOMOGAN_CHAT_URL=http://127.0.0.1:11434
 - YOMOGAN_EMBED_PROVIDER=ollama; YOMOGAN_EMBED_MODEL=embeddinggemma

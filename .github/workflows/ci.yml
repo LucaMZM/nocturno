@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, 'codex/auth-cookie-security', 'codex/shop-catalogo']
 
 permissions:
   contents: read
@@ -70,3 +70,23 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+
+  compose:
+    name: Arranque de Docker Compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      JWT_ACCESS_SECRET: compose-test-access-secret-only-for-ephemeral-ci
+      JWT_REFRESH_SECRET: compose-test-refresh-secret-only-for-ephemeral-ci
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: docker compose up --build --wait --wait-timeout 180
+      - name: Comprobar Angular, catálogo e IA a través de nginx y Gateway
+        run: |
+          curl -fsS http://localhost:4200/ | grep -q '<app-root'
+          curl -fsS http://localhost:4200/api/shop/events | jq -e '.data | length > 0'
+          curl -fsS http://localhost:4200/api/yomogan/config | jq -e '.data'
+      - if: always()
+        run: docker compose down --volumes

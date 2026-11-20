@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Event, Promoter, TicketType, Venue } from '../../../core/models/domain.model';
 import { PromotersApiService } from '../../../core/services/promoters-api.service';
-import { TicketTypesApiService } from '../../../core/services/ticket-types-api.service';
+import { ShopApiService, ShopVariant } from '../../shop/services/shop-api.service';
 import { VenuesApiService } from '../../../core/services/venues-api.service';
 import { toApiProblem } from '../../../shared/utils/api-error';
 import { EventsApiService } from '../services/events-api.service';
@@ -10,9 +10,11 @@ import { AuthStore } from '../../auth/store/auth.store';
 
 // STATE: related data loaded only after the public event has been resolved by slug.
 interface DetailState {
+  viewRecorded: boolean;
+  viewPending: boolean;
   venue: Venue | null;
   promoter: Promoter | null;
-  tickets: TicketType[];
+  tickets: ShopVariant[];
   loading: boolean;
   error: string | null;
   joinedWaitlist: boolean;
@@ -20,6 +22,7 @@ interface DetailState {
   waitlistMessage: string | null;
 }
 const initialState: DetailState = {
+  viewRecorded: false, viewPending: false,
   venue: null,
   promoter: null,
   tickets: [],
@@ -38,16 +41,24 @@ export const EventDetailStore = signalStore(
       store,
       venues = inject(VenuesApiService),
       promoters = inject(PromotersApiService),
-      ticketTypes = inject(TicketTypesApiService),
+      ticketTypes = inject(ShopApiService),
       eventsApi = inject(EventsApiService),
       auth = inject(AuthStore),
     ) => {
       let latestRequestId = 0;
       return {
+        async recordConsentedView(slug: string) {
+          if (store.viewPending() || store.viewRecorded()) return;
+          patchState(store, { viewPending: true });
+          try { await eventsApi.recordView(slug); patchState(store, { viewRecorded: true }); }
+          catch { /* La medición opcional no bloquea el catálogo ni la compra. */ }
+          finally { patchState(store, { viewPending: false }); }
+        },
         /** Keep the venue, promoter and tickets from the same selected event. */
         async loadEventRelations(event: Event) {
           const requestId = ++latestRequestId;
           patchState(store, {
+            viewRecorded: false, viewPending: false,
             venue: null,
             promoter: null,
             tickets: [],
@@ -61,7 +72,7 @@ export const EventDetailStore = signalStore(
             const [venue, promoter, tickets] = await Promise.all([
               venues.getVenue(event.venueId),
               event.promoterId ? promoters.getPromoter(event.promoterId) : Promise.resolve(null),
-              ticketTypes.getByEvent(event.id),
+              ticketTypes.getEventVariants(event.slug),
             ]);
             if (requestId === latestRequestId)
               patchState(store, {

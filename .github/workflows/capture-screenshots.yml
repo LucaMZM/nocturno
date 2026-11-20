@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   capture:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     services:
       postgres:
@@ -61,6 +61,8 @@ jobs:
       - name: Start API and Angular in runner
         run: |
           npm --prefix backend start > /tmp/nocturno-api.log 2>&1 &
+          env -i PATH="$PATH" HOME="$HOME" YOMOGAN_TIMEOUT_MS="${YOMOGAN_TIMEOUT_MS:-60000}" node backend/ai/server.js > /tmp/nocturno-ai.log 2>&1 &
+          node backend/gateway/server.js > /tmp/nocturno-gateway.log 2>&1 &
           npm --prefix frontend start -- --host 127.0.0.1 --port 4200 > /tmp/nocturno-angular.log 2>&1 &
           for attempt in $(seq 1 90); do
             if curl --fail --silent http://localhost:3000/health > /dev/null && curl --fail --silent http://localhost:4200/ > /dev/null; then exit 0; fi

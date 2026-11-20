@@ -3,6 +3,7 @@ import { authGuard, roleGuard } from './features/auth/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', title: 'Descubrir · Nocturno', loadComponent: () => import('./features/events/pages/events-list.page').then((m) => m.EventsListPage) },
+  { path: 'events', title: 'Catálogo · Nocturno', loadComponent: () => import('./features/events/pages/events-list.page').then((m) => m.EventsListPage) },
   { path: 'auth/login', title: 'Iniciar sesión · Nocturno', loadComponent: () => import('./features/auth/pages/login.page').then((m) => m.LoginPage) },
   { path: 'auth/register', title: 'Crear cuenta · Nocturno', loadComponent: () => import('./features/auth/pages/register.page').then((m) => m.RegisterPage) },
   { path: 'error/:code', title: 'Incidencia · Nocturno', loadComponent: () => import('./shared/pages/error.page').then((m) => m.ErrorPage) },

@@ -35,7 +35,7 @@ async function login(page, email, password) {
   await page.goto('/auth/login');
   await page.locator('input[formcontrolname="email"]').fill(email);
   await page.locator('input[formcontrolname="password"]').fill(password);
-  const cookieChoice = page.getByRole('button', { name: 'Solo esta visita', exact: true });
+  const cookieChoice = page.getByRole('button', { name: 'Recordar mi elección', exact: true });
   if (await cookieChoice.isVisible()) await cookieChoice.click();
   await page.getByRole('button', { name: 'Entrar' }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/auth/login'));
@@ -49,11 +49,12 @@ async function assertNoAppError(page) {
 
 try {
   const publicContext = await browser.newContext(contextOptions);
+  publicContext.setDefaultTimeout(30000);
   const page = await publicContext.newPage();
   page.on('pageerror', (error) => console.error('Browser error:', error.message));
   page.on('console', (message) => { if (message.type() === 'error') console.error('Browser console:', message.text()); });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Solo esta visita', exact: true }).click();
+  await page.getByRole('button', { name: 'Recordar mi elección', exact: true }).click();
   await page.locator('.event-card').first().waitFor({ timeout: 20000 });
   await capture(page, '01-home.png');
 
@@ -153,6 +154,7 @@ try {
   await capture(page, '08-ticket-qr.png');
 
   const adminContext = await browser.newContext(contextOptions);
+  adminContext.setDefaultTimeout(30000);
   const admin = await adminContext.newPage();
   await login(admin, process.env.DEMO_ADMIN_EMAIL, process.env.DEMO_ADMIN_PASSWORD);
   await admin.goto('/dashboard');
@@ -230,7 +232,9 @@ try {
   await admin.getByRole('button', { name: /Guardar cambios/ }).click();
   const edited = await editedResponse;
   assert.equal(edited.status(), 200, 'Edit page saves an event');
-  assert.equal((await edited.json()).data.slug, 'noche-de-prueba-revisada');
+  const savedEvent = await admin.request.get(edited.url());
+  assert.equal(savedEvent.status(), 200);
+  assert.equal((await savedEvent.json()).data.slug, 'noche-de-prueba-revisada');
   console.log('Existing create and edit pages saved; changing title regenerated the slug.');
   await page.getByRole('button', {name:'Salir',exact:true}).click();
   await page.getByRole('link', {name:'Carrito, 0 entradas',exact:true}).waitFor();
