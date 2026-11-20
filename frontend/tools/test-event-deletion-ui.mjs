@@ -58,7 +58,7 @@ try {
   const dialog = page.getByRole('dialog', { name: /¿Eliminar|¿Archivar|Operación completada/ });
   async function select(event) {
     await page.getByPlaceholder('Título del evento').fill(event.title);
-    await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
     const row = page.locator('tbody tr').filter({ hasText: event.title });
     try { await row.waitFor(); } catch (error) {
       console.log('UI_SELECTION_DIAGNOSTIC', JSON.stringify({url:page.url(),search:await page.getByPlaceholder('Título del evento').inputValue(),rows:await page.locator('tbody tr').allTextContents(),alerts:await page.getByRole('alert').allTextContents()}));
