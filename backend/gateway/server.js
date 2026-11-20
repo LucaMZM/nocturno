@@ -1,6 +1,6 @@
 import { createServer, request } from 'node:http';
 import { pathToFileURL } from 'node:url';
-export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1:3001',timeout=70000}={}) {
+export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1:3001',timeout=70000,aiTimeout=240000}={}) {
  return createServer((req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');
   const isAi=/^\/api\/yomogan\/(chat|config)(?:\?|$)/.test(req.url);
@@ -10,7 +10,7 @@ export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1
   if(!isAi && req.method==='OPTIONS')allowed.push('access-control-request-method','access-control-request-headers');
   const headers={};
   for(const key of allowed)if(req.headers[key])headers[key]=req.headers[key];
-  const upstream=request({hostname:target.hostname,port:target.port,path:req.url,method:req.method,headers,timeout},incoming=>{
+  const upstream=request({hostname:target.hostname,port:target.port,path:req.url,method:req.method,headers,timeout:isAi?aiTimeout:timeout},incoming=>{
    const outgoing={...incoming.headers};
    if(isAi)delete outgoing['set-cookie'];
    res.writeHead(incoming.statusCode,outgoing);incoming.pipe(res);
