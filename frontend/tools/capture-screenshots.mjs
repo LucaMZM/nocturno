@@ -232,7 +232,9 @@ try {
   await admin.getByRole('button', { name: /Guardar cambios/ }).click();
   const edited = await editedResponse;
   assert.equal(edited.status(), 200, 'Edit page saves an event');
-  assert.equal((await edited.json()).data.slug, 'noche-de-prueba-revisada');
+  const savedEvent = await admin.request.get(edited.url());
+  assert.equal(savedEvent.status(), 200);
+  assert.equal((await savedEvent.json()).data.slug, 'noche-de-prueba-revisada');
   console.log('Existing create and edit pages saved; changing title regenerated the slug.');
   await page.getByRole('button', {name:'Salir',exact:true}).click();
   await page.getByRole('link', {name:'Carrito, 0 entradas',exact:true}).waitFor();
