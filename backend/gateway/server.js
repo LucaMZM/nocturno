@@ -4,7 +4,7 @@ export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1
  return createServer((req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');
   const isAi=/^\/api\/yomogan\/(chat|config)(?:\?|$)/.test(req.url);
-  if(req.url.startsWith('/api/catalog-context') || !req.url.startsWith('/api/') || (req.url.startsWith('/api/yomogan/')&&!isAi)) {res.writeHead(404);return res.end();}
+  if(req.url.toLowerCase().startsWith('/api/catalog-context') || !req.url.startsWith('/api/') || (req.url.startsWith('/api/yomogan/')&&!isAi)) {res.writeHead(404);return res.end();}
   const target=new URL(isAi?ai:core);
   const allowed=isAi?['content-type','accept','user-agent']:['content-type','accept','user-agent','cookie','origin','referer','x-nocturno-csrf','sec-fetch-site','stripe-signature','authorization','idempotency-key','purpose','sec-purpose'];
   if(!isAi && req.method==='OPTIONS')allowed.push('access-control-request-method','access-control-request-headers');

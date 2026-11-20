@@ -124,3 +124,18 @@ test('Gateway conserva el preflight de autenticación de Core', async () => {
   assert.equal(foreign.headers.get('access-control-allow-origin'), null);
  } finally { await close(gateway); await close(core); }
 });
+
+test('Gateway limita el cuerpo, termina por timeout y mantiene las rutas internas en Core', async () => {
+ const slow = createServer(() => {});
+ const target = await listen(slow);
+ const gateway = createGateway({ core: target, ai: target, timeout: 120 });
+ const url = await listen(gateway);
+ try {
+  for (const [path, limit] of [['/api/yomogan/chat', 16384], ['/api/checkout', 1048576]]) {
+   const response = await fetch(url + path, {method: 'POST', body: 'a'.repeat(limit + 1)});
+   assert.equal(response.status, 413);
+  }
+  assert.equal((await fetch(url + '/api/shop/events')).status, 502);
+  assert.equal((await fetch(url + '/api/Catalog-Context/events')).status, 404);
+ } finally { await close(gateway); slow.closeAllConnections(); await close(slow); }
+});
