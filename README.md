@@ -52,15 +52,25 @@ Requiere Node `^24.15.0` o `>=26`, npm y PostgreSQL. Crea una base local y un us
 
 ```bash
 cd backend
-cp .env.example .env
+cp -n .env.example .env
 # Edita DATABASE_URL y genera dos secretos JWT diferentes de al menos 32 caracteres.
 npm ci
 npm run db:migrate
-npm run db:seed
+npm run db:seed # Solo en la base de demostración
 npm run dev
 ```
 
-En otra terminal:
+Desde la raíz, arranca cada proceso en su propia terminal:
+
+```bash
+(cd backend && npm run start:gateway)
+```
+
+```bash
+(cd backend && npm run start:ai)
+```
+
+En la terminal del frontend:
 
 ```bash
 cd frontend
@@ -68,7 +78,7 @@ npm ci
 npm start
 ```
 
-Abre `http://localhost:4200`. Angular reenvía `/api` al backend; `http://localhost:3000/health` confirma que está vivo. Swagger está en `http://localhost:3000/api/docs`. `db:migrate` aplica incrementalmente las migraciones 001–011 y registra las ya aplicadas. `db:reset` **borra datos**; úsalo solo si quieres una base nueva.
+Abre `http://localhost:4200`. Angular reenvía `/api` al Gateway (8080), que dirige las peticiones a Core (3000) o Yomogan (3001); `http://localhost:3000/health` confirma que está vivo. Swagger está en `http://localhost:3000/api/docs`. `db:migrate` aplica incrementalmente las migraciones 001–015 y registra las ya aplicadas. `db:reset` **borra datos**; úsalo solo si quieres una base nueva.
 
 ## Roles y demo
 
