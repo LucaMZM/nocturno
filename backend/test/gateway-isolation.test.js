@@ -16,13 +16,14 @@ test('Gateway conserva bytes Stripe y cookies Core, pero no comparte credenciale
  const gateway=createGateway({core:await listen(core),ai:await listen(ai),timeout:500});
  const url=await listen(gateway);
  try{
-  const headers={cookie:'nocturno_access=private',authorization:'Bearer private','stripe-signature':'t=1,v1=signature','x-nocturno-csrf':'1','content-type':'application/json'};
+  const headers={'idempotency-key':'checkout-request',cookie:'nocturno_access=private',authorization:'Bearer private','stripe-signature':'t=1,v1=signature','x-nocturno-csrf':'1','content-type':'application/json'};
   const raw=' { "amount": 10,\n"currency": "eur" } ';
   const payment=await fetch(url+'/api/stripe/webhook',{method:'POST',headers,body:raw});
+  assert.equal(received[0].headers['idempotency-key'],'checkout-request');
   assert.equal(received[0].body,raw);assert.equal(received[0].headers['stripe-signature'],headers['stripe-signature']);
   assert.ok(payment.headers.get('set-cookie').includes('HttpOnly'));
   const chat=await fetch(url+'/api/yomogan/chat',{method:'POST',headers,body:'{}'});
-  for(const key of ['cookie','authorization','stripe-signature','x-nocturno-csrf'])assert.equal(received[1].headers[key],undefined);
+  for(const key of ['cookie','authorization','stripe-signature','x-nocturno-csrf','idempotency-key'])assert.equal(received[1].headers[key],undefined);
   assert.equal(chat.headers.get('set-cookie'),null);
   assert.equal((await fetch(url+'/api/yomogan/admin')).status,404);
   await close(ai);

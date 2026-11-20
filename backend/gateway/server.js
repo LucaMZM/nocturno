@@ -6,7 +6,7 @@ export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1
   const isAi=/^\/api\/yomogan\/(chat|config)(?:\?|$)/.test(req.url);
   if(req.url.startsWith('/api/catalog-context') || !req.url.startsWith('/api/') || (req.url.startsWith('/api/yomogan/')&&!isAi)) {res.writeHead(404);return res.end();}
   const target=new URL(isAi?ai:core);
-  const allowed=isAi?['content-type','accept','user-agent']:['content-type','accept','user-agent','cookie','origin','referer','x-nocturno-csrf','sec-fetch-site','stripe-signature','authorization'];
+  const allowed=isAi?['content-type','accept','user-agent']:['content-type','accept','user-agent','cookie','origin','referer','x-nocturno-csrf','sec-fetch-site','stripe-signature','authorization','idempotency-key','purpose','sec-purpose'];
   if(!isAi && req.method==='OPTIONS')allowed.push('access-control-request-method','access-control-request-headers');
   const headers={};
   for(const key of allowed)if(req.headers[key])headers[key]=req.headers[key];
@@ -16,8 +16,8 @@ export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1
    res.writeHead(incoming.statusCode,outgoing);incoming.pipe(res);
   });
   let size=0;
-  req.on('data',chunk=>{size+=chunk.length;if(size>(isAi?16384:1048576)){res.writeHead(413);res.end();upstream.destroy();}else upstream.write(chunk);});
-  req.on('end',()=>upstream.end());
+  req.on('data',chunk=>{if(upstream.destroyed)return;size+=chunk.length;if(size>(isAi?16384:1048576)){res.writeHead(413);res.end();upstream.destroy();}else upstream.write(chunk);});
+  req.on('end',()=>{if(!upstream.destroyed)upstream.end();});
   req.on('aborted',()=>upstream.destroy());
   res.on('close',()=>upstream.destroy());
   upstream.on('timeout',()=>upstream.destroy());
