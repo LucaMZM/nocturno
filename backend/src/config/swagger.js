@@ -350,3 +350,21 @@ for (const [path, operations] of Object.entries(swaggerSpec.paths)) {
 }
 swaggerSpec.components.schemas.User.properties.avatarUrl = nullable({ type: 'string', format: 'uri', maxLength: 2048 });
 swaggerSpec.paths['/api/users'].get.parameters.push(query('active', values(['all','true','false'])));
+
+// Shop reutiliza los contratos públicos sin cambiar los endpoints anteriores.
+swaggerSpec.paths['/api/shop/events'] = { get: { ...swaggerSpec.paths['/api/events'].get, tags: ['Shop'] } };
+swaggerSpec.paths['/api/shop/events/{slug}'] = {
+  get: { ...swaggerSpec.paths['/api/events/slug/{slug}'].get, tags: ['Shop'] },
+};
+for (const resource of ['categories', 'hosts', 'locations']) {
+  swaggerSpec.paths['/api/shop/' + resource] = { get: {
+    tags: ['Shop'], summary: 'Catálogo público: ' + resource,
+    responses: { 200: { description: 'Colección pública en data; sin contactos privados' } },
+  } };
+}
+swaggerSpec.paths['/api/shop/events/{slug}/variants'] = { get: {
+  tags: ['Shop'], summary: 'Tipos de entrada activos y disponibilidad calculada',
+  parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
+  responses: { 200: { description: 'data: tipos con available y purchasable; sin reservas de stock' },
+    404: { description: 'Evento no público o inexistente' } },
+} };

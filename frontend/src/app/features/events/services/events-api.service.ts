@@ -39,7 +39,11 @@ export class EventsApiService {
   private readonly location = inject(LocationStore);
 
   // The store and map both call this public endpoint with their current filters.
-  async getEvents(eventFilters: EventFilters): Promise<PaginatedResponse<Event>> {
+  getEvents(eventFilters: EventFilters): Promise<PaginatedResponse<Event>> {
+    return firstValueFrom(this.observeEvents(eventFilters));
+  }
+
+  observeEvents(eventFilters: EventFilters) {
     const latitude = this.location.latitude();
     const longitude = this.location.longitude();
     const hasAutomaticLocation =
@@ -52,11 +56,7 @@ export class EventsApiService {
     if (hasAutomaticLocation) {
       params = params.set('latitude', latitude).set('longitude', longitude);
     }
-    return firstValueFrom(
-      this.http.get<PaginatedResponse<Event>>(`${environment.apiUrl}/events`, {
-        params,
-      }),
-    );
+    return this.http.get<PaginatedResponse<Event>>(`${environment.apiUrl}/shop/events`, { params });
   }
 
   getGalleryConfig(): Promise<ApiResponse<{ maxImages: number }>> {
@@ -68,7 +68,7 @@ export class EventsApiService {
   async getEventBySlug(eventSlug: string): Promise<ApiResponse<Event>> {
     return firstValueFrom(
       this.http.get<ApiResponse<Event>>(
-        `${environment.apiUrl}/events/slug/${encodeURIComponent(eventSlug)}`,
+        `${environment.apiUrl}/shop/events/${encodeURIComponent(eventSlug)}`,
       ),
     );
   }

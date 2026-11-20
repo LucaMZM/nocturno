@@ -20,6 +20,17 @@
         <span class="hero-index">NOCTURNO / 001 — DESCUBRIR</span>
       </section>
 
+      @if (isHome) {
+        @if (discovery.loading()) { <p role="status">Cargando categorías, promotores y locales…</p> }
+        @else if (discovery.error()) {
+          <p role="alert">No se han podido cargar las secciones del catálogo.</p>
+          <button class="button-outline" (click)="discovery.load()">Reintentar</button>
+        } @else {
+          <app-shop-carousel title="Encuentra tu sonido" kind="category" [entries]="discovery.categories()" />
+          <app-shop-carousel title="Quién mueve la noche" kind="host" [entries]="discovery.hosts()" />
+          <app-shop-carousel title="Espacios para descubrir" kind="location" [entries]="discovery.locations()" />
+        }
+      }
       <section class="discovery-controls" aria-label="Filtrar eventos">
         <div class="controls-intro">
           <div>
@@ -127,21 +138,9 @@
             [pendingIds]="favoritesStore.pendingIds()"
             (favoriteClicked)="onFavoriteToggle($event)"
           />
-          @if (eventsStore.pagination().page < eventsStore.pagination().totalPages) {
-            <div class="load-more">
-              <p>
-                Mostrando {{ eventsStore.events().length }} de
-                {{ eventsStore.totalEvents() }} planes
-              </p>
-              <button
-                class="button-outline"
-                type="button"
-                [disabled]="eventsStore.loadingMore()"
-                (click)="onPageChange(eventsStore.pagination().page + 1)"
-              >
-                {{ eventsStore.loadingMore() ? 'Cargando…' : 'Ver más planes' }} <span>↓</span>
-              </button>
-            </div>
+          @if (eventsStore.pagination().totalPages > 1) {
+            <app-shop-pagination [page]="eventsStore.pagination().page" [pages]="eventsStore.pagination().totalPages"
+              [busy]="eventsStore.loading() || eventsStore.loadingMore()" (changed)="onPageChange($event)" />
           }
         }
       </section>

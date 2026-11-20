@@ -1,13 +1,15 @@
+import '@angular/compiler';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { from, Observable } from 'rxjs';
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import '@angular/compiler';
-import { HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpBackend, HttpErrorResponse, HttpRequest, HttpResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom, of, throwError } from 'rxjs';
-import { createEnvironmentInjector, runInInjectionContext } from '@angular/core';
+import { createEnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { build } from 'esbuild';
 
 // Angular's existing build dependency compiles the real stores for Node tests.
@@ -23,7 +25,9 @@ await build({
       export { EventDetailStore } from './src/app/features/events/store/event-detail.store.ts';
       export { VenuesApiService } from './src/app/core/services/venues-api.service.ts';
       export { PromotersApiService } from './src/app/core/services/promoters-api.service.ts';
-      export { TicketTypesApiService } from './src/app/core/services/ticket-types-api.service.ts';
+      export { LocationStore } from './src/app/features/location/store/location.store.ts';
+      export { ShopDiscoveryStore } from './src/app/features/shop/store/shop-discovery.store.ts';
+      export { ShopApiService } from './src/app/features/shop/services/shop-api.service.ts';
       export { AuthStore } from './src/app/features/auth/store/auth.store.ts';
       export { AuthApiService } from './src/app/features/auth/services/auth-api.service.ts';
       export { ProfileStore } from './src/app/features/profile/store/profile.store.ts';
@@ -52,7 +56,7 @@ after(() => rm(bundlePath, { force: true }));
 
 const {
   EventsStore, EventsApiService, EventDetailStore, VenuesApiService,
-  PromotersApiService, TicketTypesApiService, AuthStore, AuthApiService,
+  PromotersApiService, ShopApiService, ShopDiscoveryStore, LocationStore, AuthStore, AuthApiService,
   ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, authGuard, roleGuard, CartStore, CartApiService, CheckoutStore, CheckoutApiService, StripeCheckoutService,
 } = await import(pathToFileURL(bundlePath).href);
 
@@ -69,10 +73,10 @@ function listResponse(id, totalPages = 1) {
 
 test('rapid filters keep only the newest response and finish loading', async () => {
   const requests = [];
-  const api = { getEvents(filters) {
+  const api = { observeEvents(filters) {
     const result = deferred();
     requests.push({ filters, result });
-    return result.promise;
+    return from(result.promise);
   } };
   const injector = createEnvironmentInjector([{ provide: EventsApiService, useValue: api }, EventsStore]);
   try {
@@ -95,9 +99,9 @@ test('rapid filters keep only the newest response and finish loading', async () 
 test('a new filter blocks pagination until its first page finishes', async () => {
   const pending = deferred();
   let calls = 0;
-  const api = { getEvents() {
+  const api = { observeEvents() {
     calls++;
-    return calls === 1 ? Promise.resolve(listResponse('original', 3)) : pending.promise;
+    return from(calls === 1 ? Promise.resolve(listResponse('original', 3)) : pending.promise);
   } };
   const injector = createEnvironmentInjector([{ provide: EventsApiService, useValue: api }, EventsStore]);
   try {
@@ -119,7 +123,7 @@ test('event loading exposes errors and ignores an older detail response', async 
   const first = deferred();
   const second = deferred();
   const api = {
-    getEvents: () => Promise.reject(new Error('API unavailable')),
+    observeEvents: () => from(Promise.reject(new Error('API unavailable'))),
     getEventBySlug: (slug) => slug === 'first' ? first.promise : second.promise,
   };
   const injector = createEnvironmentInjector([{ provide: EventsApiService, useValue: api }, EventsStore]);
@@ -169,12 +173,12 @@ test('a waitlist response from another event does not update the current detail'
   let joins = 0;
   const eventApi = { joinWaitlist() { joins++; return waitlist.promise; } };
   const venues = { getVenue: async (id) => ({ data: { id } }) };
-  const ticketTypes = { getByEvent: async () => ({ data: [] }) };
+  const ticketTypes = { getEventVariants: async () => ({ data: [] }) };
   const injector = createEnvironmentInjector([
     { provide: EventsApiService, useValue: eventApi },
     { provide: VenuesApiService, useValue: venues },
     { provide: PromotersApiService, useValue: {} },
-    { provide: TicketTypesApiService, useValue: ticketTypes },
+    { provide: ShopApiService, useValue: ticketTypes },
     { provide: AuthApiService, useValue: {} },
     AuthStore, EventDetailStore,
   ]);
@@ -527,4 +531,71 @@ test('guards wait for bootstrap, preserve destination and distinguish USER/PROMO
       assert.equal(account === true, !!role);
     } finally { injector.destroy(); }
   }
+});
+
+test('Shop cancela la suscripción obsoleta y al destruir el store', async () => {
+  let cancelled = 0;
+  const injector = createEnvironmentInjector([
+    { provide: EventsApiService, useValue: { observeEvents: () =>
+      new Observable(() => () => { cancelled++; }) } }, EventsStore,
+  ]);
+  const store = injector.get(EventsStore);
+  const first = store.setFilters({ search: 'Va' });
+  const second = store.setFilters({ search: 'Valencia' });
+  await first;
+  assert.equal(cancelled, 1);
+  injector.destroy();
+  await second;
+  assert.equal(cancelled, 2);
+});
+
+test('Shop HttpClient cancela realmente y serializa los filtros del catálogo', async () => {
+  const injector = createEnvironmentInjector([
+    provideHttpClientTesting(), { provide: HttpClient, useFactory: () => new HttpClient(inject(HttpBackend)) }, EventsApiService, EventsStore, ShopApiService,
+    { provide: LocationStore, useValue: { latitude: () => null, longitude: () => null, mode: () => 'manual' } },
+  ]);
+  try {
+    const http = injector.get(HttpTestingController), store = injector.get(EventsStore);
+    const first = store.setFilters({ search: 'Va' });
+    const old = http.expectOne(req => req.url.endsWith('/shop/events'));
+    const latest = store.setFilters({ search: 'Valencia', genre: 'TECHNO', page: 1 });
+    assert.equal(old.cancelled, true);
+    const request = http.expectOne(req => req.url.endsWith('/shop/events'));
+    assert.equal(request.request.params.get('search'), 'Valencia');
+    assert.equal(request.request.params.get('genre'), 'TECHNO');
+    request.flush(listResponse('latest'));
+    await Promise.all([first, latest]);
+    assert.equal(store.events()[0].id, 'latest');
+    const api = injector.get(ShopApiService);
+    for (const [method, endpoint] of [
+      ['getCategories','categories'],['getHosts','hosts'],['getLocations','locations'],
+      ['getEventDetails','events/session'],['getEventVariants','events/session/variants'],
+    ]) {
+      const pending = api[method]('session');
+      http.expectOne(req => req.url.endsWith('/shop/' + endpoint)).flush({ data: [] });
+      await pending;
+    }
+    http.verify();
+  } finally { injector.destroy(); }
+});
+
+test('Carruseles: API real del store, carga, vacío, error y reintento', async () => {
+  let fail = true;
+  const result = async () => { if (fail) throw Error('network'); return { data: [] }; };
+  const injector = createEnvironmentInjector([
+    { provide: ShopApiService, useValue: { getCategories: result, getHosts: result, getLocations: result } },
+    ShopDiscoveryStore,
+  ]);
+  try {
+    const store = injector.get(ShopDiscoveryStore);
+    const pending = store.load();
+    assert.equal(store.loading(), true);
+    await pending;
+    assert.equal(store.error(), true);
+    fail = false;
+    await store.load();
+    assert.equal(store.error(), false);
+    assert.deepEqual(store.categories(), []);
+    assert.equal(store.loading(), false);
+  } finally { injector.destroy(); }
 });
