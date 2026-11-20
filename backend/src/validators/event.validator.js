@@ -1,11 +1,9 @@
+import { eventTypes, genres, atmospheres, ideals } from '../models/catalog-taxonomy.js';
+export { eventTypes, genres, atmospheres, ideals } from '../models/catalog-taxonomy.js';
 import { z } from 'zod';
 import { id, optionalText, pageQuery, patch } from './common.js';
 import { env } from '../config/env.js';
-export const eventTypes = ['CLUB','RAVE','CONCERT','FESTIVAL','ROOFTOP','BEACH_CLUB','BOAT_PARTY','PUB','AFTER','JAZZ_CLUB','LIVE_SESSION','OTHER'];
 export const statuses = ['DRAFT','PENDING_REVIEW','PUBLISHED','SOLD_OUT','CANCELLED','FINISHED','REJECTED'];
-export const genres = ['TECHNO','HARD_TECHNO','HARDGROOVE','HOUSE','TECH_HOUSE','EDM','REGGAETON','LATIN','HIP_HOP','TRAP','POP','INDIE','ROCK','JAZZ','SOUL','LIVE'];
-export const atmospheres = ['UNDERGROUND','COMMERCIAL','UNIVERSITY','ELEGANT','INTERNATIONAL','ALTERNATIVE','CHILL'];
-export const ideals = ['FRIENDS','MEETING_PEOPLE','DANCING','DATE','GROUPS','CELEBRATIONS','DRINKS'];
 const date = z.iso.datetime({ offset: true });
 const httpUrl = z.url().max(2048).regex(/^https?:\/\//i, 'Only HTTP/HTTPS URLs are allowed');
 const imageUrl = z.union([httpUrl, z.string().regex(/^\/posters\/[a-z0-9-]+\.svg$/)]);

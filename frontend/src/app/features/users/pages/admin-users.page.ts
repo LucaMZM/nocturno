@@ -1,6 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
-import { AvatarComponent } from '../../../shared/components/avatar.component';
 import { Promoter, User } from '../../../core/models/domain.model';
 import { PromotersApiService } from '../../../core/services/promoters-api.service';
 import { UsersStore } from '../store/users.store';
@@ -9,7 +8,7 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
 @Component({
   selector: 'app-admin-users-page',
   providers: [UsersStore],
-  imports: [ReactiveFormsModule, FormsModule, AvatarComponent],
+  imports: [ReactiveFormsModule, FormsModule],
   template: `
     <div class="dashboard-heading"><p class="eyebrow">ACCESO</p><h2>Usuarios<span>.</span></h2>
       <button class="button-primary" type="button" (click)="newUser()">+ Crear usuario</button></div>
@@ -29,7 +28,7 @@ import { statusLabel, statusTone } from '../../../shared/utils/status-presentati
       <th>Nombre</th><th>Correo</th><th>Rol</th><th>Activo</th><th>Acción</th>
     </tr></thead><tbody>
       @for (user of store.users(); track user.id) { <tr>
-        <td><app-avatar [url]="user.avatarUrl" [name]="user.displayName" /> {{ user.displayName }}</td><td>{{ user.email }}</td><td><span class="state-badge state-neutral">{{ label(user.role) }}</span></td>
+        <td> {{ user.displayName }}</td><td>{{ user.email }}</td><td><span class="state-badge state-neutral">{{ label(user.role) }}</span></td>
         <td><span [class]="'state-badge state-' + tone(user.isActive ? 'ACTIVE' : 'INACTIVE')">{{ label(user.isActive ? 'ACTIVE' : 'INACTIVE') }}</span></td>
         <td><button class="text-action" type="button" (click)="edit(user)">Editar</button>
           <button class="text-action" type="button" [disabled]="store.saving()" (click)="toggleActive(user)">{{ user.isActive ? 'Desactivar' : 'Activar' }}</button>

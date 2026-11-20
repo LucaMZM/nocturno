@@ -1,4 +1,3 @@
-import { AvatarComponent } from '../shared/components/avatar.component';
 import { Component, inject, input, output } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { LocationSelectorComponent } from '../shared/components/location-selector';
@@ -8,7 +7,7 @@ import { FavoritesStore } from '../features/favorites/store/favorites.store';
 
 @Component({
   selector: 'app-header',
-  imports: [AvatarComponent, RouterLink, RouterLinkActive, LocationSelectorComponent],
+  imports: [RouterLink, RouterLinkActive, LocationSelectorComponent],
   styles: [`.header-user-name{display:inline-block;max-width:8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}`],
   template: `
     <header class="site-header">
@@ -37,7 +36,7 @@ import { FavoritesStore } from '../features/favorites/store/favorites.store';
             @if (user.role === 'ADMIN' || user.role === 'PROMOTER') {
               <a class="header-action" routerLink="/dashboard">Gestión</a>
             }
-            <a class="header-action" routerLink="/account" [attr.aria-label]="user.displayName + ' — Mi cuenta'"><app-avatar [url]="user.avatarUrl" [name]="user.displayName" /> <span class="header-user-name">{{ user.displayName }}</span></a>
+            <a class="header-action" routerLink="/account" [attr.aria-label]="user.displayName + ' — Mi cuenta'"> <span class="header-user-name">{{ user.displayName }}</span></a>
             <button class="header-action" type="button" (click)="logout()">Salir</button>
           } @else if (auth.initialized()) {
             <a class="header-action" routerLink="/auth/login">Entrar</a>

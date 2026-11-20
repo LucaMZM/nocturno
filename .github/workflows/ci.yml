@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, 'codex/auth-cookie-security']
+    branches: [main, 'codex/auth-cookie-security', 'codex/shop-catalogo']
 
 permissions:
   contents: read

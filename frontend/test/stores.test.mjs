@@ -26,7 +26,6 @@ await build({
       export { VenuesApiService } from './src/app/core/services/venues-api.service.ts';
       export { PromotersApiService } from './src/app/core/services/promoters-api.service.ts';
       export { LocationStore } from './src/app/features/location/store/location.store.ts';
-      export { ShopDiscoveryStore } from './src/app/features/shop/store/shop-discovery.store.ts';
       export { ShopApiService } from './src/app/features/shop/services/shop-api.service.ts';
       export { AuthStore } from './src/app/features/auth/store/auth.store.ts';
       export { AuthApiService } from './src/app/features/auth/services/auth-api.service.ts';
@@ -56,7 +55,7 @@ after(() => rm(bundlePath, { force: true }));
 
 const {
   EventsStore, EventsApiService, EventDetailStore, VenuesApiService,
-  PromotersApiService, ShopApiService, ShopDiscoveryStore, LocationStore, AuthStore, AuthApiService,
+  PromotersApiService, ShopApiService, LocationStore, AuthStore, AuthApiService,
   ProfileStore, ProfileApiService, UsersStore, UsersApiService, authInterceptor, authGuard, roleGuard, CartStore, CartApiService, CheckoutStore, CheckoutApiService, StripeCheckoutService,
 } = await import(pathToFileURL(bundlePath).href);
 
@@ -440,7 +439,7 @@ test('bootstrap is deduplicated and restores user without exposing credentials',
   try {
     const auth = injector.get(AuthStore), a = auth.bootstrap(), b = auth.bootstrap();
     await Promise.resolve(); assert.equal(calls, 1); assert.equal(auth.initialized(), false);
-    pending.resolve({ data: { user: { id: 'restored', role: 'USER', avatarUrl: 'https://example.test/avatar.png' } } });
+    pending.resolve({ data: { user: { id: 'restored', role: 'USER' } } });
     await Promise.all([a,b]); assert.equal(auth.initialized(), true); assert.equal(auth.user().id, 'restored');
     assert.equal('accessToken' in auth, false); await auth.bootstrap(); assert.equal(calls, 1);
   } finally { injector.destroy(); }
@@ -499,15 +498,16 @@ test('concurrent 401s share refresh, never replay across logout and never send c
   } finally { injector.destroy(); }
 });
 
-test('avatar edits immediately update the same user signal used by navbar and profile', async () => {
-  const user = { id: 'avatar-user', role: 'USER', displayName: 'Before', avatarUrl: null };
+test('el nombre de perfil actualiza la sesión sin avatares', async () => {
+  const user = { id: 'profile-user', role: 'USER', displayName: 'Antes' };
   const injector = createEnvironmentInjector([{ provide: AuthApiService, useValue: { login: async () => ({ data: { user } }) } },
-    { provide: ProfileApiService, useValue: { updateMine: async (displayName, avatarUrl) => ({ data: { ...user, displayName, avatarUrl } }) } }, AuthStore, ProfileStore]);
+    { provide: ProfileApiService, useValue: { updateMine: async displayName => ({ data: { ...user, displayName } }) } }, AuthStore, ProfileStore]);
   try {
-    const auth = injector.get(AuthStore), profile = injector.get(ProfileStore); await auth.login('user@example.test','pass');
-    assert.equal(await profile.save('After','https://example.test/avatar.png'), true);
-    assert.equal(auth.user(), profile.user()); assert.equal(auth.user().avatarUrl, 'https://example.test/avatar.png');
-    assert.equal(await profile.save('After',null), true); assert.equal(auth.user().avatarUrl,null);
+    const auth = injector.get(AuthStore), profile = injector.get(ProfileStore);
+    await auth.login('user@example.test','pass');
+    assert.equal(await profile.save('Después'), true);
+    assert.equal(auth.user(), profile.user());
+    assert.equal(auth.user().displayName, 'Después');
   } finally { injector.destroy(); }
 });
 
@@ -576,26 +576,5 @@ test('Shop HttpClient cancela realmente y serializa los filtros del catálogo', 
       await pending;
     }
     http.verify();
-  } finally { injector.destroy(); }
-});
-
-test('Carruseles: API real del store, carga, vacío, error y reintento', async () => {
-  let fail = true;
-  const result = async () => { if (fail) throw Error('network'); return { data: [] }; };
-  const injector = createEnvironmentInjector([
-    { provide: ShopApiService, useValue: { getCategories: result, getHosts: result, getLocations: result } },
-    ShopDiscoveryStore,
-  ]);
-  try {
-    const store = injector.get(ShopDiscoveryStore);
-    const pending = store.load();
-    assert.equal(store.loading(), true);
-    await pending;
-    assert.equal(store.error(), true);
-    fail = false;
-    await store.load();
-    assert.equal(store.error(), false);
-    assert.deepEqual(store.categories(), []);
-    assert.equal(store.loading(), false);
   } finally { injector.destroy(); }
 });

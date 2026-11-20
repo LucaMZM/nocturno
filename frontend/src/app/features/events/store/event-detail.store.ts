@@ -10,6 +10,8 @@ import { AuthStore } from '../../auth/store/auth.store';
 
 // STATE: related data loaded only after the public event has been resolved by slug.
 interface DetailState {
+  viewRecorded: boolean;
+  viewPending: boolean;
   venue: Venue | null;
   promoter: Promoter | null;
   tickets: ShopVariant[];
@@ -20,6 +22,7 @@ interface DetailState {
   waitlistMessage: string | null;
 }
 const initialState: DetailState = {
+  viewRecorded: false, viewPending: false,
   venue: null,
   promoter: null,
   tickets: [],
@@ -44,10 +47,18 @@ export const EventDetailStore = signalStore(
     ) => {
       let latestRequestId = 0;
       return {
+        async recordConsentedView(slug: string) {
+          if (store.viewPending() || store.viewRecorded()) return;
+          patchState(store, { viewPending: true });
+          try { await eventsApi.recordView(slug); patchState(store, { viewRecorded: true }); }
+          catch { /* La medición opcional no bloquea el catálogo ni la compra. */ }
+          finally { patchState(store, { viewPending: false }); }
+        },
         /** Keep the venue, promoter and tickets from the same selected event. */
         async loadEventRelations(event: Event) {
           const requestId = ++latestRequestId;
           patchState(store, {
+            viewRecorded: false, viewPending: false,
             venue: null,
             promoter: null,
             tickets: [],

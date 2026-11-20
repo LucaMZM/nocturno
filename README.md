@@ -177,6 +177,10 @@ El [catálogo incremental y carrito](docs/catalogue-expansion.md) documenta cóm
 
 ### Catálogo Shop
 
-Home incorpora categorías, promotores y locales del catálogo público. El listado
+Shop conserva categorías, promotores y locales en la API; Home muestra directamente la agenda. El listado
 reproducible está en `/events` y mantiene mapa, geolocalización y filtros.
 Consulta [la arquitectura de Shop, sus seis endpoints y pruebas](docs/shop.md).
+
+### Interfaz, panel y servicios de IA
+
+Consulta [los hitos, arranque Core/AI/Gateway, privacidad y mediciones reales](docs/evolucion-interfaz-panel-ia.md).

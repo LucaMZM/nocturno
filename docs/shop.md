@@ -1,3 +1,5 @@
+> Actualización: los carruseles de Home se retiraron en el hito A. Se conservan los endpoints Shop; consulta [la evolución actual](evolucion-interfaz-panel-ia.md).
+
 # Shop: catálogo público reactivo
 
 Shop adapta el dominio existente: categoría = género musical, host = promotor,

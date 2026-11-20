@@ -1,14 +1,13 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { AvatarComponent } from '../../../shared/components/avatar.component';
 import { ProfileFormComponent } from '../components/profile-form.component';
 import { ProfileStore } from '../store/profile.store';
 
 @Component({
   selector: 'app-profile-page', providers: [ProfileStore],
-  imports: [AvatarComponent, ProfileFormComponent],
+  imports: [ProfileFormComponent],
   template: `<section class="editor-panel">
     <p class="eyebrow">TU PERFIL</p><h2>Datos de la cuenta</h2>
-    <app-avatar [url]="profile.user()?.avatarUrl" [name]="profile.user()?.displayName ?? 'Usuario'" />
+
     <p>Correo: {{ profile.user()?.email }}</p>
     @if (profile.loading()) { <p role="status">Cargando perfil…</p> }
     @if (profile.error()) { <p class="inline-alert" role="alert">{{ profile.error() }}</p> }
@@ -19,8 +18,8 @@ import { ProfileStore } from '../store/profile.store';
 export class ProfilePage implements OnInit {
   readonly profile = inject(ProfileStore);
   ngOnInit() { void this.profile.load(); }
-  async save({ displayName, avatarUrl }: { displayName: string; avatarUrl: string | null }) {
+  async save({ displayName }: { displayName: string }) {
     this.profile.clearFeedback();
-    await this.profile.save(displayName, avatarUrl);
+    await this.profile.save(displayName);
   }
 }

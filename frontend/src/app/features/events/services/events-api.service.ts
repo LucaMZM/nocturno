@@ -59,6 +59,9 @@ export class EventsApiService {
     return this.http.get<PaginatedResponse<Event>>(`${environment.apiUrl}/shop/events`, { params });
   }
 
+  recordView(slug: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(`${environment.apiUrl}/shop/events/${encodeURIComponent(slug)}/view`, {}));
+  }
   getGalleryConfig(): Promise<ApiResponse<{ maxImages: number }>> {
     return firstValueFrom(this.http.get<ApiResponse<{ maxImages: number }>>(
       `${environment.apiUrl}/config/events`,
