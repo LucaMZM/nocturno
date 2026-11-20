@@ -99,3 +99,27 @@ test('Gateway → Core real mantiene registro, perfil y logout cuando AI está c
   await closePool();
  }
 });
+
+test('Gateway conserva el preflight de autenticación de Core', async () => {
+ const { app } = await import('../src/app.js');
+ const { env } = await import('../src/config/env.js');
+ const core = createServer(app);
+ const gateway = createGateway({ core: await listen(core) });
+ const url = await listen(gateway);
+ try {
+  const headers = {
+   origin: env.FRONTEND_URL,
+   'access-control-request-method': 'POST',
+   'access-control-request-headers': 'content-type,x-nocturno-csrf',
+  };
+  const response = await fetch(url + '/api/auth/login', { method: 'OPTIONS', headers });
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-origin'), env.FRONTEND_URL);
+  assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+  assert.equal(response.headers.get('access-control-allow-headers'), headers['access-control-request-headers']);
+  const foreign = await fetch(url + '/api/auth/login', {
+   method: 'OPTIONS', headers: { ...headers, origin: 'https://example.invalid' },
+  });
+  assert.equal(foreign.headers.get('access-control-allow-origin'), null);
+ } finally { await close(gateway); await close(core); }
+});

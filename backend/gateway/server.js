@@ -7,6 +7,7 @@ export function createGateway({core='http://127.0.0.1:3000',ai='http://127.0.0.1
   if(req.url.startsWith('/api/catalog-context') || !req.url.startsWith('/api/') || (req.url.startsWith('/api/yomogan/')&&!isAi)) {res.writeHead(404);return res.end();}
   const target=new URL(isAi?ai:core);
   const allowed=isAi?['content-type','accept','user-agent']:['content-type','accept','user-agent','cookie','origin','referer','x-nocturno-csrf','sec-fetch-site','stripe-signature','authorization'];
+  if(!isAi && req.method==='OPTIONS')allowed.push('access-control-request-method','access-control-request-headers');
   const headers={};
   for(const key of allowed)if(req.headers[key])headers[key]=req.headers[key];
   const upstream=request({hostname:target.hostname,port:target.port,path:req.url,method:req.method,headers,timeout},incoming=>{
