@@ -48,8 +48,8 @@ verificarse por separado. No inferir aislamiento por la existencia de este docum
 
 ## C: arquitectura separada
 Core conserva npm start y escucha 127.0.0.1:3000. AI arranca con npm run start:ai
-en 127.0.0.1:3001; Gateway con npm run start:gateway en 127.0.0.1:8080.
-Angular npm start usa proxy 8080. Las rutas públicas de Yomogan no cambian.
+en 127.0.0.1:3001; Gateway con npm run start:gateway en 127.0.0.1:4000.
+Angular npm start usa proxy 4000. Las rutas públicas de Yomogan no cambian.
 
 AI no carga backend/.env y rechaza arrancar si hereda DATABASE_URL, PGPASSWORD,
 PGUSER, STRIPE_* o JWT_*. Su configuración reside exclusivamente en ai/.env
@@ -85,7 +85,7 @@ y limita concurrencia; no se confía en X-Forwarded-For enviado por visitantes.
    npm run start:ai
    npm run start:gateway
 5. En frontend: npm start.
-6. Stripe CLI: stripe listen --forward-to localhost:8080/api/stripe/webhook.
+6. Stripe CLI: stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded --forward-to localhost:4000/api/stripe/webhook.
    Guardar el whsec del listener solo en backend/.env, nunca en AI ni Git.
 
 La migración 015 no se ha aplicado a la base habitual. El arranque contra datos

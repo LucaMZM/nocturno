@@ -1,0 +1,11 @@
+{
+  "name": "nocturno-local",
+  "private": true,
+  "scripts": {
+    "up": "node scripts/local.mjs up",
+    "down": "node scripts/local.mjs down",
+    "status": "node scripts/local.mjs status",
+    "logs": "node scripts/local.mjs logs",
+    "restart": "node scripts/local.mjs restart"
+  }
+}
