@@ -115,6 +115,42 @@ function installed(cmd) {
     return false;
   }
 }
+function prepareStripe(core) {
+  if (
+    installed('stripe') &&
+    core.STRIPE_SECRET_KEY?.startsWith('sk_test_') &&
+    core.STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')
+  ) {
+    const args = [
+      'listen',
+      '--events',
+      'payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded',
+      '--forward-to',
+      `localhost:${gateway}/api/stripe/webhook`,
+    ];
+    const env = { ...cleanEnv, STRIPE_API_KEY: core.STRIPE_SECRET_KEY };
+    try {
+      const secret = execFileSync('stripe', [...args, '--print-secret'], {
+        env,
+        encoding: 'utf8',
+        timeout: 12000,
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim();
+      if (/^whsec_[a-zA-Z0-9]+$/.test(secret)) {
+        if (process.env.NOCTURNO_STRIPE_CLI === '1' && core.NODE_ENV !== 'production')
+          core.STRIPE_WEBHOOK_SECRET = secret;
+        if (secret === core.STRIPE_WEBHOOK_SECRET) return {args, env};
+      }
+      notify(
+          'Stripe desactivado. Comprueba stripe listen --print-secret en tu Sandbox, actualiza STRIPE_WEBHOOK_SECRET en backend/.env y ejecuta npm run restart.',
+        );
+    } catch {
+      notify(
+        'Stripe opcional no disponible. Revisa la CLI y las claves Sandbox.',
+      );
+    }
+  } else notify('Stripe opcional desactivado.');
+}
 async function services() {
   if (
     !Number.isInteger(gateway) ||
@@ -150,6 +186,7 @@ async function services() {
   } finally {
     await db.end();
   }
+  const listener = prepareStripe(core);
   start('core', process.execPath, ['src/server.js'], 'backend', {
     ...core,
     PORT: '3000',
@@ -200,38 +237,7 @@ async function services() {
       notify('Ollama no responde en 11434. Consulta el log de Ollama.');
     }
   } else notify('Ollama ausente. Yomogan dispone de búsqueda.');
-  if (
-    installed('stripe') &&
-    core.STRIPE_SECRET_KEY?.startsWith('sk_test_') &&
-    core.STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')
-  ) {
-    const args = [
-      'listen',
-      '--events',
-      'payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded',
-      '--forward-to',
-      `localhost:${gateway}/api/stripe/webhook`,
-    ];
-    const env = { ...cleanEnv, STRIPE_API_KEY: core.STRIPE_SECRET_KEY };
-    try {
-      const secret = execFileSync('stripe', [...args, '--print-secret'], {
-        env,
-        encoding: 'utf8',
-        timeout: 12000,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
-      if (secret.startsWith('whsec_') && secret === core.STRIPE_WEBHOOK_SECRET)
-        start('stripe', 'stripe', args, '.', env, true);
-      else
-        notify(
-          'Stripe desactivado. Comprueba stripe listen --print-secret en tu Sandbox, actualiza STRIPE_WEBHOOK_SECRET en backend/.env y ejecuta npm run restart.',
-        );
-    } catch {
-      notify(
-        'Stripe opcional no disponible. Revisa la CLI y las claves Sandbox.',
-      );
-    }
-  } else notify('Stripe opcional desactivado.');
+  if (listener) start('stripe', 'stripe', listener.args, '.', listener.env, true);
   if (phase === 'Deteniendo') throw Error('Arranque cancelado.');
   phase = 'Disponible';
 }

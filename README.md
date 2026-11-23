@@ -48,6 +48,8 @@ El [carrito con dos entradas](docs/screenshots/06-cart.png) completa el recorrid
 
 ## Arranque local
 
+[Guía rápida con nocturno.sh](ARRANQUE.md)
+
 Con PostgreSQL 18 abierto en Postgres.app y el proyecto configurado, ejecuta desde la raíz:
 
 ```sh
