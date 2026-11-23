@@ -115,8 +115,8 @@ Aprueba la URL/código que devuelve la CLI en el Sandbox correcto. No listes la
 configuración ni compartas claves. En otra terminal, inicia el listener:
 
 ```sh
-stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,charge.refunded \
-  --forward-to localhost:3000/api/stripe/webhook
+stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded \
+  --forward-to localhost:4000/api/stripe/webhook
 ```
 
 La CLI muestra una firma `whsec_…` en tu terminal: cópiala exclusivamente a

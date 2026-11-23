@@ -48,37 +48,30 @@ El [carrito con dos entradas](docs/screenshots/06-cart.png) completa el recorrid
 
 ## Arranque local
 
-Requiere Node `^24.15.0` o `>=26`, npm y PostgreSQL. Crea una base local y un usuario con permisos sobre ella. El ejemplo de `DATABASE_URL` presupone `nocturno`/`nocturno`; ajústalo a tu instalación.
+[Guía rápida con nocturno.sh](ARRANQUE.md)
 
-```bash
-cd backend
-cp -n .env.example .env
-# Edita DATABASE_URL y genera dos secretos JWT diferentes de al menos 32 caracteres.
-npm ci
-npm run db:migrate
-npm run db:seed # Solo en la base de demostración
-npm run dev
+Con PostgreSQL 18 abierto en Postgres.app y el proyecto configurado, ejecuta desde la raíz:
+
+```sh
+npm run up
 ```
 
-Desde la raíz, arranca cada proceso en su propia terminal:
+Abre http://localhost:4200. El supervisor continúa en segundo plano al cerrar la terminal. `npm run status` muestra sus procesos, `npm run logs` muestra las últimas líneas y `npm run down` los detiene. Usa `npm run restart` después de cambiar la configuración. Un puerto ocupado por otro proceso impide el arranque y se conserva ese proceso.
 
-```bash
-(cd backend && npm run start:gateway)
-```
+En una instalación nueva usa Node 24.15+ compatible con Angular, ejecuta `npm ci --prefix backend` y `npm ci --prefix frontend`, y configura `backend/.env` a partir del ejemplo con tu DATABASE_URL y dos secretos JWT. Prepara el esquema de la base elegida con `npm --prefix backend run db:migrate`. El arranque solo comprueba la conexión. No migra ni carga datos.
 
-```bash
-(cd backend && npm run start:ai)
-```
+| Servicio | Puerto local |
+|---|---|
+| Angular | 4200 |
+| Gateway | 4000 |
+| Core | 3000 |
+| Yomogan | 3001 |
+| Ollama | 11434 |
+| Postgres.app | 5432 |
 
-En la terminal del frontend:
+Para usar otro puerto de Gateway, ejecuta por ejemplo `GATEWAY_PORT=4100 npm run up`. El supervisor ajusta el proxy Angular y el destino del listener de Stripe. Compose utiliza internamente el puerto 4000. Core expone su comprobación de salud en `/health` y Swagger en `/api/docs`.
 
-```bash
-cd frontend
-npm ci
-npm start
-```
-
-Abre `http://localhost:4200`. Angular reenvía `/api` al Gateway (8080), que dirige las peticiones a Core (3000) o Yomogan (3001); `http://localhost:3000/health` confirma que está vivo. Swagger está en `http://localhost:3000/api/docs`. `db:migrate` aplica incrementalmente las migraciones 001–015 y registra las ya aplicadas. `db:reset` **borra datos**; úsalo solo si quieres una base nueva.
+El supervisor guarda el PID, socket y logs en la carpeta privada e ignorada `.nocturno-local/`. Reutiliza Ollama si ya responde. Solo Core carga `backend/.env`; Yomogan carga `backend/ai/.env`. Stripe CLI es opcional y utiliza exclusivamente credenciales de Sandbox. Si la firma del listener difiere, consulta `stripe listen --print-secret` en el mismo Sandbox, actualiza manualmente `STRIPE_WEBHOOK_SECRET` y ejecuta `npm run restart`. Los eventos de éxito, fallo y reembolso tienen manejadores de webhook. También se reenvía la cancelación; Core comprueba el estado cancelado en su reconciliación de reservas.
 
 ## Roles y demo
 
@@ -140,7 +133,7 @@ Zod valida entradas; las consultas SQL usan parámetros; Cookies de acceso y ref
 
 `backend/.env.example` documenta `DATABASE_URL`, `PORT`, `NODE_ENV`, `CORS_ORIGIN`, `FRONTEND_URL`, dos secretos JWT distintos y las tres variables Stripe opcionales. `.env.example` de la raíz contiene las variables para Docker Compose. Los archivos `.env` reales están ignorados por Git. No publiques secretos ni credenciales personales.
 
-Rellena `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` y `STRIPE_WEBHOOK_SECRET` en `backend/.env`; usa claves `sk_test_` durante desarrollo. Para recibir eventos locales, ejecuta Stripe CLI con `stripe listen --forward-to localhost:3000/api/stripe/webhook` y copia el secreto que muestra a `STRIPE_WEBHOOK_SECRET`. Reinicia el backend. La clave publicable llega a Angular desde `/api/config/payments`. El secreto nunca se envía al navegador. Sin estas tres variables, las compras de pago muestran que Stripe no está configurado; las entradas gratuitas funcionan. Las pruebas locales usan firmas HMAC de fixture para comprobar éxito, fallo, reembolso e idempotencia; no sustituyen una prueba real con la cuenta Stripe test. La [validación real de Sandbox y pasos de prueba](docs/checkout-flow.md) documenta aprobación, rechazo, 3DS, reintentos, webhooks y reembolso verificados el 29/10/2026 en una base aislada.
+Rellena `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` y `STRIPE_WEBHOOK_SECRET` en `backend/.env`; usa claves `sk_test_` durante desarrollo. Para recibir eventos locales, ejecuta Stripe CLI con `stripe listen --events payment_intent.succeeded,payment_intent.payment_failed,payment_intent.canceled,charge.refunded --forward-to localhost:4000/api/stripe/webhook` y copia el secreto que muestra a `STRIPE_WEBHOOK_SECRET`. Reinicia el backend. La clave publicable llega a Angular desde `/api/config/payments`. El secreto nunca se envía al navegador. Sin estas tres variables, las compras de pago muestran que Stripe no está configurado; las entradas gratuitas funcionan. Las pruebas locales usan firmas HMAC de fixture para comprobar éxito, fallo, reembolso e idempotencia; no sustituyen una prueba real con la cuenta Stripe test. La [validación real de Sandbox y pasos de prueba](docs/checkout-flow.md) documenta aprobación, rechazo, 3DS, reintentos, webhooks y reembolso verificados el 29/10/2026 en una base aislada.
 
 ## Docker
 

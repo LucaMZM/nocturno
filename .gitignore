@@ -59,3 +59,6 @@ __screenshots__/
 *.mobileprovision
 # Provenance and reuse rights have not been verified for this local image.
 frontend/public/images/nocturno-hero.jpg
+
+# Estado privado del arranque local
+.nocturno-local/

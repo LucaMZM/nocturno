@@ -57,7 +57,7 @@ services:
       GATEWAY_HOST: 0.0.0.0
       CORE_URL: http://backend:3000
       AI_URL: http://ai:3001
-    expose: ["8080"]
+    expose: ["4000"]
     networks: [catalog, edge]
 
   frontend:
