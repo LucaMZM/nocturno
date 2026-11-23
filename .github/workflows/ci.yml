@@ -51,6 +51,21 @@ jobs:
       - run: npm test
       - run: npm run check
       - run: npm run db:audit
+      - name: Verificar el supervisor con la base efímera
+        working-directory: .
+        run: |
+          npm ci --prefix frontend
+          trap 'npm run down' EXIT
+          npm run up
+          npm run up
+          curl -fsS http://localhost:3000/health | jq -e '.status == "ok"'
+          curl -fsS http://localhost:4000/api/config/events | jq -e '.data.maxImages > 0'
+          curl -fsS -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"Hola"}]}' http://localhost:4200/api/yomogan/chat | jq -e '.data.message'
+          GATEWAY_PORT=4100 npm run restart
+          curl -fsS http://localhost:4100/api/config/events | jq -e '.data.maxImages > 0'
+          curl -fsS http://localhost:4200/api/config/events | jq -e '.data.maxImages > 0'
+          npm run down
+          if curl -fsS http://localhost:4100/api/config/events; then exit 1; fi
 
   frontend:
     name: Frontend tests and build
