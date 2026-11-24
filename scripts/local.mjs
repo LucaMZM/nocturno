@@ -1,10 +1,12 @@
 // Supervisor local. El socket privado identifica esta copia del proyecto.
-import { spawn, execFileSync } from 'node:child_process';
+import { DatabaseSync } from 'node:sqlite';
+import { spawn, execFileSync, execFile } from 'node:child_process';
+import { createInterface } from 'node:readline';
 import { createServer, createConnection } from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseEnv } from 'node:util';
+import { parseEnv, promisify } from 'node:util';
 import { createRequire } from 'node:module';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -13,10 +15,16 @@ const script = fileURLToPath(import.meta.url);
 const root = path.dirname(path.dirname(script));
 const state = path.join(root, '.nocturno-local');
 fs.mkdirSync(state, { recursive: true, mode: 0o700 });
-const socket = path.join(state, 'control.sock');
+// Un nombre relativo cabe también en sockaddr_un bajo rutas largas de macOS.
+process.chdir(state);
+const socket = 'control.sock';
 const gateway = Number(process.env.GATEWAY_PORT ?? 4000);
+const latest = path.join(state, 'latest');
+let run;
+const endpoints = new Map();
 const children = new Map();
 const messages = [];
+const stopping = new AbortController();
 let phase = 'Arrancando';
 const cleanEnv = Object.fromEntries(
   ['PATH', 'HOME', 'USER', 'LANG', 'TMPDIR']
@@ -28,81 +36,88 @@ function notify(message) {
   console.log(message);
 }
 function fileLog(name) {
-  return fs.openSync(path.join(state, name + '.log'), 'a', 0o600);
+  return fs.openSync(path.join(run, name + '.log'), 'a', 0o600);
 }
 
-function start(name, exe, args, cwd, env, quiet = false) {
+function start(name, exe, args, cwd, env, redactOutput = false) {
   if (phase === 'Deteniendo') throw Error('Arranque cancelado.');
   const fd = fileLog(name);
-  const child = spawn(exe, args, {
-    cwd: path.join(root, cwd),
-    env,
-    detached: true,
-    stdio: ['ignore', quiet ? 'ignore' : fd, quiet ? 'ignore' : fd],
+  const child = spawn(process.execPath, [path.join(root, 'scripts/local-service.mjs'), exe, ...args], {
+    cwd: path.join(root, cwd), env, detached: true,
+    stdio: ['ignore', redactOutput ? 'pipe' : fd, redactOutput ? 'pipe' : fd, 'ipc'],
   });
+  if (redactOutput) {
+    for (const stream of [child.stdout, child.stderr]) {
+      createInterface({ input: stream }).on('line', line => {
+        fs.appendFileSync(path.join(run, name + '.log'), redact(line) + '\n');
+      });
+    }
+  }
   fs.closeSync(fd);
   children.set(name, child);
-  child.on('error', () => notify(name + ': no se pudo iniciar.'));
-  child.on('exit', () => {
-    // Un lanzador (por ejemplo Stripe CLI) puede tener descendientes.
-    if (phase !== 'Deteniendo') {
-      try {
-        signalGroup(child, 'SIGTERM');
-      } catch (e) {
-        notify(name + ': ' + e.code);
-      }
-      notify(name + ': proceso detenido.');
-    }
+  child.on('message', ({ pid }) => { child.servicePid = pid; });
+  child.on('error', error => notify(name + ': ' + error.message));
+  child.on('exit', (code, signal) => {
+    if (phase !== 'Deteniendo') notify(name + ': detenido (' + (signal ?? code) + '). ' + tail(name));
   });
   return child;
 }
-function signalGroup(child, signal) {
-  if (child.pid)
-    try {
-      process.kill(-child.pid, signal);
-    } catch (e) {
-      if (e.code !== 'ESRCH') throw e;
-    }
+function redact(text) {
+  return text.replace(/(?:(?:sk|rk|pk)_(?:test|live)_|whsec_)[a-zA-Z0-9]+|postgres(?:ql)?:\/\/[^\s]+/gi, '[oculto]');
+}
+function tail(name) {
+  const file = path.join(run, name + '.log');
+  if (!fs.existsSync(file)) return '';
+  const fd = fs.openSync(file, 'r');
+  try {
+    const size = fs.fstatSync(fd).size;
+    const buf = Buffer.alloc(Math.min(size, 8192));
+    fs.readSync(fd, buf, 0, buf.length, size - buf.length);
+    return redact(buf.toString().trim().split('\n').slice(-12).join('\n'));
+  } finally { fs.closeSync(fd); }
 }
 function active(child) {
   return child?.pid && child.exitCode === null && child.signalCode === null;
 }
 async function stop() {
   phase = 'Deteniendo';
-  const owned = [...children.values()].filter(active).reverse();
-  for (const child of owned) signalGroup(child, 'SIGTERM');
-  for (let i = 0; i < 35 && owned.some(active); i++) await sleep(100);
-  for (const child of owned.filter(active)) signalGroup(child, 'SIGKILL');
+  stopping.abort();
+  await Promise.all([...children.values()].filter(active).map(child => new Promise(resolve => {
+    child.once('exit', resolve);
+    child.once('error', resolve);
+    if (child.connected) child.disconnect();
+  })));
 }
-async function reachable(url) {
+async function probe(url) {
   try {
-    return (await fetch(url, { signal: AbortSignal.timeout(1200) })).ok;
-  } catch {
-    return false;
-  }
+    const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+    if (!response.ok) {
+      await response.body?.cancel();
+      return 'HTTP ' + response.status;
+    }
+    const body = await response.json();
+    if (url.endsWith('/health')) return body.status === 'ok' ? null : 'estado inesperado';
+    if (url.endsWith('/api/tags')) return Array.isArray(body.models) ? null : 'respuesta de Ollama inesperada';
+    return body.data != null ? null : 'respuesta de API inesperada';
+  } catch (error) { return error.cause?.code ?? error.message; }
 }
+async function reachable(url) { return (await probe(url)) === null; }
 async function ready(name, url) {
-  for (let i = 0; i < 160; i++) {
-    if (!active(children.get(name))) break;
-    if (await reachable(url)) return;
-    await sleep(300);
+  endpoints.set(name, url);
+  const deadline = Date.now() + (name === 'angular' ? 120000 : name === 'ollama' ? 8000 : 60000);
+  let reason = 'proceso detenido';
+  while (phase === 'Arrancando' && active(children.get(name)) && Date.now() < deadline) {
+    reason = await probe(url);
+    if (!reason) return;
+    await sleep(200);
   }
-  throw Error(name + ' no responde. Consulta npm run logs.');
+  throw Error(`${name}: ${url} — ${reason}.\n${tail(name)}`);
 }
 async function free(port) {
   const probe = createServer();
   await new Promise((ok, fail) =>
     probe
-      .once('error', () =>
-        fail(
-          Error(
-            'Puerto ' +
-              port +
-              ' ocupado o no válido. Usa npm run status y comprueba lsof -i :' +
-              port,
-          ),
-        ),
-      )
+      .once('error', error => fail(Error(`Puerto ${port}: ${error.code}. Comprueba lsof -nP -iTCP:${port} -sTCP:LISTEN.`)))
       .listen(port, '127.0.0.1', ok),
   );
   await new Promise((ok) => probe.close(ok));
@@ -115,7 +130,7 @@ function installed(cmd) {
     return false;
   }
 }
-function prepareStripe(core) {
+async function prepareStripe(core) {
   if (
     installed('stripe') &&
     core.STRIPE_SECRET_KEY?.startsWith('sk_test_') &&
@@ -130,12 +145,13 @@ function prepareStripe(core) {
     ];
     const env = { ...cleanEnv, STRIPE_API_KEY: core.STRIPE_SECRET_KEY };
     try {
-      const secret = execFileSync('stripe', [...args, '--print-secret'], {
+      const { stdout } = await promisify(execFile)('stripe', [...args, '--print-secret'], {
         env,
         encoding: 'utf8',
         timeout: 12000,
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
+        signal: stopping.signal,
+      });
+      const secret = stdout.trim();
       if (/^whsec_[a-zA-Z0-9]+$/.test(secret)) {
         if (process.env.NOCTURNO_STRIPE_CLI === '1' && core.NODE_ENV !== 'production')
           core.STRIPE_WEBHOOK_SECRET = secret;
@@ -179,14 +195,14 @@ async function services() {
   try {
     await db.connect();
     await db.query('SELECT 1');
-  } catch {
+  } catch (error) {
     throw Error(
-      'No se puede conectar a PostgreSQL. Abre Postgres.app, inicia PostgreSQL 18 y revisa DATABASE_URL en backend/.env.',
+      'PostgreSQL (' + (error.code ?? error.message) + '). Abre Postgres.app, inicia PostgreSQL 18 y revisa DATABASE_URL en backend/.env.',
     );
   } finally {
     await db.end();
   }
-  const listener = prepareStripe(core);
+  const listener = await prepareStripe(core);
   start('core', process.execPath, ['src/server.js'], 'backend', {
     ...core,
     PORT: '3000',
@@ -204,7 +220,7 @@ async function services() {
     GATEWAY_PORT: String(gateway),
   });
   await ready('gateway', `http://127.0.0.1:${gateway}/api/config/events`);
-  const proxy = path.join(state, 'proxy.json');
+  const proxy = path.join(run, 'proxy.json');
   const config = JSON.parse(
     fs.readFileSync(path.join(root, 'frontend/proxy.conf.json')),
   );
@@ -226,187 +242,161 @@ async function services() {
     'frontend',
     cleanEnv,
   );
-  await ready('angular', 'http://127.0.0.1:4200/api/config/events');
+  await ready('angular', 'http://127.0.0.1:4200/api/shop/events?limit=1');
   if (await reachable('http://127.0.0.1:11434/api/tags'))
     notify('Ollama externo disponible.');
   else if (installed('ollama')) {
     start('ollama', 'ollama', ['serve'], '.', cleanEnv);
     try {
       await ready('ollama', 'http://127.0.0.1:11434/api/tags');
-    } catch {
-      notify('Ollama no responde en 11434. Consulta el log de Ollama.');
+    } catch (error) {
+      notify('Ollama opcional: ' + error.message);
     }
   } else notify('Ollama ausente. Yomogan dispone de búsqueda.');
   if (listener) start('stripe', 'stripe', listener.args, '.', listener.env, true);
   if (phase === 'Deteniendo') throw Error('Arranque cancelado.');
   phase = 'Disponible';
 }
-function report() {
-  const degraded =
-    phase === 'Disponible' &&
-    ['angular', 'gateway', 'core', 'ai'].some((n) => !active(children.get(n)));
-  return [
-    degraded ? 'Servicio detenido. Ejecuta npm run restart.' : phase,
-    ...messages,
-    ...[...children].map(
-      ([name, c]) => name + ' ' + (active(c) ? 'PID ' + c.pid : 'detenido'),
-    ),
-  ].join('\n');
+async function report() {
+  let degraded = false;
+  const lines = await Promise.all([...children].map(async ([name, child]) => {
+    const error = !active(child) ? 'detenido' :
+      phase === 'Disponible' && endpoints.has(name) && await probe(endpoints.get(name));
+    if (error && ['core', 'ai', 'gateway', 'angular'].includes(name)) degraded = true;
+    return name + (error ? ': ' + error : ' PID ' + (child.servicePid ?? child.pid));
+  }));
+  return [degraded && phase === 'Disponible' ? 'Degradado' : phase, ...lines, ...messages].join('\n');
 }
 async function daemon() {
-  const server = createServer((conn) => {
+  run = process.argv[3];
+  let shutdown;
+  const server = createServer(conn => {
     conn.on('error', () => conn.destroy());
-    conn.once('data', async (data) => {
-      if (data.toString().trim() === 'down') {
-        if (phase === 'Deteniendo') return conn.end('Deteniendo');
-        await stop();
+    conn.once('data', async data => {
+      if (data.toString() === 'down') {
+        await finish();
         conn.end('Servicios propios detenidos');
-        server.close();
-      } else conn.end(report());
+      } else conn.end(await report());
     });
   });
-  await new Promise((ok, fail) =>
-    server.once('error', fail).listen(socket, ok),
-  );
-  fs.writeFileSync(path.join(state, 'supervisor.pid'), String(process.pid));
-  const shutdown = async () => {
-    if (phase !== 'Deteniendo') {
-      await stop();
-      server.close();
-    }
-  };
-  process.once('SIGTERM', shutdown);
-  process.once('SIGINT', shutdown);
-  server.once('close', () =>
-    fs.rmSync(path.join(state, 'supervisor.pid'), { force: true }),
-  );
-  try {
-    await services();
-  } catch (e) {
-    console.error(e.message);
-    await shutdown();
+  function finish() {
+    return shutdown ??= stop().then(() => { server.close(); });
+  }
+  await new Promise((resolve, reject) => server.once('error', reject).listen(socket, resolve));
+  process.on('disconnect', () => { if (phase === 'Arrancando') void finish(); });
+  process.channel?.unref();
+  process.on('SIGTERM', finish);
+  process.on('SIGINT', finish);
+  try { await services(); }
+  catch (error) {
+    if (!shutdown) console.error(error.message);
+    await finish();
     process.exitCode = 1;
   }
 }
-// Solo este supervisor conoce y señala sus grupos de procesos. El cliente nunca
-// usa el PID del archivo para detener procesos.
 function request(command) {
-  return new Promise((ok, fail) => {
-    const c = createConnection(socket);
+  return new Promise((resolve, reject) => {
+    const conn = createConnection(socket);
     let data = '';
-    c.on('connect', () => c.write(command));
-    c.on('data', (v) => (data += v));
-    c.on('end', () => ok(data));
-    c.on('error', fail);
+    conn.setTimeout(15000, () => conn.destroy(Error('El supervisor no responde por su socket.')));
+    conn.on('connect', () => conn.write(command));
+    conn.on('data', chunk => { data += chunk; });
+    conn.on('end', () => resolve(data));
+    conn.on('error', reject);
   });
 }
 async function current() {
-  try {
-    return await request('status');
-  } catch (e) {
-    if (e.code === 'ENOENT') return null;
-    if (e.code !== 'ECONNREFUSED') throw e;
-  }
-  // Un cierre abrupto puede dejar un socket sin servidor. Serializar la
-  // recuperación impide borrar el socket que otro arranque acaba de crear.
-  const lock = path.join(state, 'recover.lock');
-  try {
-    fs.mkdirSync(lock);
-  } catch (e) {
-    if (e.code !== 'EEXIST') throw e;
-    await sleep(100);
-    return request('status');
-  }
-  try {
-    try {
-      return await request('status');
-    } catch (e) {
-      if (!['ECONNREFUSED', 'ENOENT'].includes(e.code)) throw e;
-    }
-    fs.rmSync(socket, { force: true });
-    return null;
-  } finally {
-    fs.rmdirSync(lock);
+  try { return await request('status'); }
+  catch (error) {
+    if (['ENOENT', 'ECONNREFUSED'].includes(error.code)) return null;
+    throw error;
   }
 }
-async function up() {
-  let status = await current();
-  if (!status) {
-    const fd = fileLog('supervisor');
-    const child = spawn(process.execPath, [script, 'supervise'], {
-      detached: true,
-      stdio: ['ignore', fd, fd],
-    });
-    fs.closeSync(fd);
-    child.unref();
-    for (let i = 0; i < 80 && !status; i++) {
-      await sleep(100);
-      status = await current();
-      if (child.exitCode !== null && !status) break;
+// Esta transacción local serializa elección, reemplazo de socket y restart.
+// El SO libera el bloqueo si el cliente termina abruptamente.
+function commandLock() {
+  const db = new DatabaseSync(path.join(state, 'launcher.sqlite'));
+  db.exec('PRAGMA busy_timeout=30000');
+  db.exec('BEGIN IMMEDIATE');
+  return db;
+}
+async function down(status) {
+  if (!status) return console.log('Supervisor detenido.');
+  const reply = await request('down');
+  if (!reply) throw Error('Se perdió la conexión durante el apagado.');
+  console.log(reply);
+  const deadline = Date.now() + 10000;
+  while (fs.existsSync(socket) && Date.now() < deadline) await sleep(50);
+  if (fs.existsSync(socket)) throw Error('El supervisor anterior aún tiene su socket.');
+}
+async function command(action) {
+  let daemonChild;
+  let cancelled = false;
+  const cancel = () => { cancelled = true; if (active(daemonChild)) daemonChild.kill('SIGTERM'); };
+  process.on('SIGINT', cancel);
+  process.on('SIGTERM', cancel);
+  process.on('SIGHUP', cancel);
+  let status;
+  const lock = commandLock();
+  try {
+    status = await current();
+    if (action !== 'up' || status?.startsWith('Degradado')) {
+      await down(status);
+      status = null;
     }
-  }
-  for (let i = 0; i < 180 && status?.startsWith('Arrancando'); i++) {
-    await sleep(500);
+    if (action === 'down' || cancelled) return;
+    if (!status) {
+      if (fs.existsSync(socket)) {
+        if (!fs.lstatSync(socket).isSocket()) throw Error('control.sock no es un socket.');
+        fs.unlinkSync(socket);
+      }
+      run = fs.mkdtempSync(path.join(state, 'run-' + new Date().toISOString().replaceAll(':', '-') + '-'));
+      fs.writeFileSync(latest + '.tmp', path.basename(run));
+      fs.renameSync(latest + '.tmp', latest);
+      const fd = fileLog('supervisor');
+      daemonChild = spawn(process.execPath, [script, 'supervise', run], {
+        detached: true, stdio: ['ignore', fd, fd, 'ipc'],
+      });
+      fs.closeSync(fd);
+      daemonChild.unref();
+      daemonChild.channel.unref();
+      for (let i = 0; i < 100 && !status && active(daemonChild); i++) {
+        await sleep(100);
+        status = await current();
+      }
+      if (!status && active(daemonChild)) cancel();
+    }
+  } finally { lock.close(); }
+  const deadline = Date.now() + 300000;
+  while ((status?.startsWith('Arrancando') || status?.startsWith('Deteniendo')) && Date.now() < deadline && !cancelled) {
+    await sleep(300);
     status = await current();
   }
-  if (status && !status.startsWith('Disponible')) throw Error(status);
-  if (!status)
-    throw Error(
-      'Arranque incompleto. ' +
-        fs
-          .readFileSync(path.join(state, 'supervisor.log'), 'utf8')
-          .trim()
-          .split('\n')
-          .at(-1),
-    );
+  if (cancelled) {
+    while (active(daemonChild)) await sleep(100);
+    throw Error('Arranque cancelado.');
+  }
+  if (!status?.startsWith('Disponible')) {
+    if (status?.startsWith('Arrancando')) cancel();
+    run ??= path.join(state, fs.readFileSync(latest, 'utf8'));
+    throw Error([status, 'Arranque incompleto.', tail('supervisor')].filter(Boolean).join('\n'));
+  }
   console.log(status + '\nhttp://localhost:4200');
 }
-async function down() {
-  if (await current()) {
-    const result = await request('down');
-    if (!result)
-      throw Error(
-        'Supervisor desconectado durante el apagado. Consulta npm run status.',
-      );
-    console.log(result);
-    for (let i = 0; i < 40 && fs.existsSync(socket); i++) await sleep(100);
-  } else console.log('Supervisor detenido.');
-}
 try {
-  switch (process.argv[2]) {
-    case 'supervise':
-      await daemon();
-      break;
-    case 'up':
-      await up();
-      break;
-    case 'down':
-      await down();
-      break;
-    case 'restart':
-      await down();
-      await up();
-      break;
-    case 'status':
-      console.log((await current()) ?? 'Supervisor detenido.');
-      break;
-    case 'logs':
-      for (const name of fs
-        .readdirSync(state)
-        .filter((n) => n.endsWith('.log'))) {
-        console.log(name);
-        const fd = fs.openSync(path.join(state, name), 'r');
-        const size = fs.fstatSync(fd).size;
-        const buf = Buffer.alloc(Math.min(size, 8192));
-        fs.readSync(fd, buf, 0, buf.length, size - buf.length);
-        fs.closeSync(fd);
-        console.log(buf.toString().split('\n').slice(-20).join('\n'));
-      }
-      break;
-    default:
-      throw Error('Acción desconocida');
-  }
-} catch (e) {
-  console.error(e.message);
+  const action = process.argv[2];
+  if (action === 'supervise') await daemon();
+  else if (['up', 'down', 'restart'].includes(action)) await command(action);
+  else if (action === 'status') console.log(await current() ?? 'Supervisor detenido.');
+  else if (action === 'logs') {
+    if (fs.existsSync(latest)) {
+      run = path.join(state, fs.readFileSync(latest, 'utf8'));
+      console.log(run);
+      for (const file of fs.readdirSync(run).filter(name => name.endsWith('.log')))
+        console.log(file, tail(path.basename(file, '.log')));
+    } else console.log('Sin ejecuciones registradas.');
+  } else throw Error('Acción desconocida');
+} catch (error) {
+  console.error(error.message);
   process.exitCode = 1;
 }

@@ -55,8 +55,9 @@ jobs:
         working-directory: .
         run: |
           npm ci --prefix frontend
+          node --test scripts/local-service.test.mjs
           trap 'npm run down' EXIT
-          npm run up
+          ./nocturno.sh
           npm run up
           curl -fsS http://localhost:3000/health | jq -e '.status == "ok"'
           curl -fsS http://localhost:4000/api/config/events | jq -e '.data.maxImages > 0'
@@ -64,7 +65,7 @@ jobs:
           GATEWAY_PORT=4100 npm run restart
           curl -fsS http://localhost:4100/api/config/events | jq -e '.data.maxImages > 0'
           curl -fsS http://localhost:4200/api/config/events | jq -e '.data.maxImages > 0'
-          npm run down
+          ./nocturno.sh stop
           if curl -fsS http://localhost:4100/api/config/events; then exit 1; fi
 
   frontend:
