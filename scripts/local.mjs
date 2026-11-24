@@ -244,7 +244,7 @@ async function services() {
   );
   await ready('angular', 'http://127.0.0.1:4200/api/shop/events?limit=1');
   if (await reachable('http://127.0.0.1:11434/api/tags'))
-    notify('Ollama externo disponible.');
+    endpoints.set('ollama-externo', 'http://127.0.0.1:11434/api/tags');
   else if (installed('ollama')) {
     start('ollama', 'ollama', ['serve'], '.', cleanEnv);
     try {
@@ -265,6 +265,10 @@ async function report() {
     if (error && ['core', 'ai', 'gateway', 'angular'].includes(name)) degraded = true;
     return name + (error ? ': ' + error : ' PID ' + (child.servicePid ?? child.pid));
   }));
+  if (endpoints.has('ollama-externo')) {
+    const error = await probe(endpoints.get('ollama-externo'));
+    lines.push(error ? 'Ollama externo: ' + error : 'Ollama externo disponible.');
+  }
   return [degraded && phase === 'Disponible' ? 'Degradado' : phase, ...lines, ...messages].join('\n');
 }
 async function daemon() {
@@ -289,7 +293,11 @@ async function daemon() {
   process.on('SIGINT', finish);
   try { await services(); }
   catch (error) {
-    if (!shutdown) console.error(error.message);
+    if (!shutdown) {
+      const failure = redact(error.message);
+      fs.writeFileSync(path.join(run, 'error.txt'), failure);
+      console.error(failure);
+    }
     await finish();
     process.exitCode = 1;
   }
@@ -379,7 +387,9 @@ async function command(action) {
   if (!status?.startsWith('Disponible')) {
     if (status?.startsWith('Arrancando')) cancel();
     run ??= path.join(state, fs.readFileSync(latest, 'utf8'));
-    throw Error([status, 'Arranque incompleto.', tail('supervisor')].filter(Boolean).join('\n'));
+    const failure = path.join(run, 'error.txt');
+    throw Error([status, 'Arranque incompleto.', fs.existsSync(failure)
+      ? fs.readFileSync(failure, 'utf8') : tail('supervisor')].filter(Boolean).join('\n'));
   }
   console.log(status + '\nhttp://localhost:4200');
 }
