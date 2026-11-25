@@ -1,4 +1,5 @@
 // Supervisor local. El socket privado identifica esta copia del proyecto.
+import { prepareLocalFiles } from './local-files.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { spawn, execFileSync, execFile } from 'node:child_process';
 import { createInterface } from 'node:readline';
@@ -26,6 +27,11 @@ const children = new Map();
 const messages = [];
 const stopping = new AbortController();
 let phase = 'Arrancando';
+let step = '';
+function progress(message) {
+  step = message;
+  console.log(message);
+}
 const cleanEnv = Object.fromEntries(
   ['PATH', 'HOME', 'USER', 'LANG', 'TMPDIR']
     .filter((k) => process.env[k])
@@ -95,6 +101,9 @@ async function probe(url) {
       await response.body?.cancel();
       return 'HTTP ' + response.status;
     }
+    if (new URL(url).pathname === '/') {
+      return (await response.text()).includes('<app-root') ? null : 'Angular no ha servido la aplicación';
+    }
     const body = await response.json();
     if (url.endsWith('/health')) return body.status === 'ok' ? null : 'estado inesperado';
     if (url.endsWith('/api/tags')) return Array.isArray(body.models) ? null : 'respuesta de Ollama inesperada';
@@ -103,6 +112,7 @@ async function probe(url) {
 }
 async function reachable(url) { return (await probe(url)) === null; }
 async function ready(name, url) {
+  progress('Esperando a ' + name);
   endpoints.set(name, url);
   const deadline = Date.now() + (name === 'angular' ? 120000 : name === 'ollama' ? 8000 : 60000);
   let reason = 'proceso detenido';
@@ -176,6 +186,9 @@ async function services() {
   )
     throw Error('GATEWAY_PORT no es válido o coincide con otro servicio.');
   for (const port of [3000, 3001, gateway, 4200]) await free(port);
+  progress('Comprobando archivos locales');
+  await prepareLocalFiles(root, stopping.signal, progress);
+  progress('Comprobando PostgreSQL');
   const coreFile = path.join(root, 'backend/.env');
   const core = {
     ...(fs.existsSync(coreFile)
@@ -202,6 +215,7 @@ async function services() {
   } finally {
     await db.end();
   }
+  progress('Comprobando Stripe Sandbox');
   const listener = await prepareStripe(core);
   start('core', process.execPath, ['src/server.js'], 'backend', {
     ...core,
@@ -242,7 +256,7 @@ async function services() {
     'frontend',
     cleanEnv,
   );
-  await ready('angular', 'http://127.0.0.1:4200/api/shop/events?limit=1');
+  await ready('angular', 'http://127.0.0.1:4200/');
   if (await reachable('http://127.0.0.1:11434/api/tags'))
     endpoints.set('ollama-externo', 'http://127.0.0.1:11434/api/tags');
   else if (installed('ollama')) {
@@ -269,7 +283,7 @@ async function report() {
     const error = await probe(endpoints.get('ollama-externo'));
     lines.push(error ? 'Ollama externo: ' + error : 'Ollama externo disponible.');
   }
-  return [degraded && phase === 'Disponible' ? 'Degradado' : phase, ...lines, ...messages].join('\n');
+  return [degraded && phase === 'Disponible' ? 'Degradado' : phase, ...(phase === 'Arrancando' && step ? [step] : []), ...lines, ...messages].join('\n');
 }
 async function daemon() {
   run = process.argv[3];
@@ -375,8 +389,12 @@ async function command(action) {
       if (!status && active(daemonChild)) cancel();
     }
   } finally { lock.close(); }
-  const deadline = Date.now() + 300000;
+  const deadline = Date.now() + 660000;
+  let lastStep;
   while ((status?.startsWith('Arrancando') || status?.startsWith('Deteniendo')) && Date.now() < deadline && !cancelled) {
+    const detail = status.split('\n')[1];
+    if (detail && detail !== lastStep) console.error(detail);
+    lastStep = detail;
     await sleep(300);
     status = await current();
   }

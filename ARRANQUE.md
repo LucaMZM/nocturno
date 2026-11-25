@@ -19,3 +19,5 @@ El script arranca Angular, Gateway, Core, Yomogan, Ollama local y el listener de
 Cada arranque guarda sus registros en un directorio privado bajo `.nocturno-local/run-*`. Si cae Core, ejecuta `./nocturno.sh` para recuperar el conjunto. Si aparece `EADDRINUSE`, el mensaje indica el comando para identificar quién escucha en ese puerto.
 
 En macOS, si el proyecto está en un Escritorio sincronizado con iCloud, selecciona **Mantener descargado** en Finder para la carpeta del proyecto. Node y Angular leen miles de archivos de dependencias antes de escuchar por HTTP. Una copia fuera de iCloud también evita esa espera.
+
+En macOS el lanzador detecta los archivos de arranque que iCloud ha dejado solo en la nube y muestra el progreso mientras los lee. El tiempo de espera de Core empieza después. El estado de Angular se comprueba cargando su página de inicio y el de Gateway consultando la configuración pública.
